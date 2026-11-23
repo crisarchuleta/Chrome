@@ -1,0 +1,507 @@
+# Neon Coast vehicles: every swappable part, sized to the vehicle being built (exec'd by build_vehicles.py, which
+# provides the spec globals W, L0, L1, ZB, BELT, NOSE, HOOD, TAIL, A0, A1, B, Q, C0, C1, ROOF, WX, WY_F, WY_R, WR, TW,
+# REAR, BED, FLAV, DOORS and the helpers). Each variant is a set of pieces whose kind is registered with
+# opt(slot, variant, mat); the game shows the variant the player picked and colours each piece by its mat (same mats
+# as the lowrider: Chrome, Body, Dark, Glass, Head, Tail, Light, Seat, SeatTrim, Wood, Dash, Neon, Carpet).
+# Variant ids reuse the lowrider's where they mean the same thing, so one tuning menu covers every vehicle.
+TRUCKISH = FLAV in ("truck", "suv")
+BZ0 = ZB + 0.05                                   # bumper zone
+BZ1 = ZB + (0.75 if TRUCKISH else 0.55)
+NOSE_FACE = L0 + 0.02
+TAIL_FACE = L1 - 0.02
+REAR_TOP = (TAIL if REAR in ("trunk", "hatch") else BELT) - 0.2
+HX = W - 1.05                                      # headlight centre |x|
+FLOOR = ZB + 0.3
+SY = (A0 + B) / 2 + 0.9                            # front seat y
+GAUGE = ((W * 0.42, A0 + 0.82, BELT - 0.28), 16.0)
+
+
+def kind(slot, variant, mat):
+    return opt(slot, variant, mat)
+
+
+# ================================================================================================ exterior
+def front_bumpers():
+    S = "FrontBumper"
+    y0, y1 = L0 - 0.28, L0 + 0.35
+    x = W - 0.3
+    sbox(kind(S, "Stock", "Body"), -x, y0, BZ0, x, y1, BZ1, bev=0.12)
+    sbox(kind(S, "Stock", "Dark"), -x + 0.6, y0 - 0.02, BZ0 + 0.08, x - 0.6, y0 + 0.1, BZ0 + 0.22)
+    sbox(kind(S, "Sport", "Body"), -x, y0 - 0.05, BZ0 + 0.08, x, y1, BZ1, bev=0.14)
+    sbox(kind(S, "Sport", "Dark"), -x - 0.05, y0 - 0.25, BZ0 - 0.02, x + 0.05, y0 + 0.4, BZ0 + 0.08)       # splitter
+    for s in (-1, 1):
+        sbox(kind(S, "Sport", "Dark"), s * (x - 0.9), y0 - 0.07, BZ0 + 0.2, s * (x - 0.25), y0 + 0.05, BZ1 - 0.15)
+    sbox(kind(S, "Classic", "Chrome"), -x - 0.05, y0, BZ0 + 0.1, x + 0.05, y1 - 0.1, BZ1, bev=0.14)
+    if TRUCKISH:
+        k = kind(S, "Tube", "Chrome")
+        sbox(kind(S, "Tube", "Body"), -x, y0 + 0.1, BZ0, x, y1, BZ1, bev=0.1)
+        for z in (BZ1 + 0.15, BZ1 + 0.75):
+            sbeam(k, (-(x - 0.6), y0 - 0.25, z), (x - 0.6, y0 - 0.25, z), 0.14, 0.14)
+        for s in (-1, 1):
+            sbeam(k, (s * (x - 0.9), y0 - 0.25, BZ0 + 0.2), (s * (x - 0.9), y0 - 0.25, BZ1 + 0.85), 0.14, 0.14)
+        k = kind(S, "Bull", "Dark")
+        sbox(k, -x - 0.1, y0 - 0.15, BZ0, x + 0.1, y1, BZ1 + 0.05, bev=0.06)
+        for s in (-1, 1):
+            sbeam(k, (s * 0.7, y0 - 0.3, BZ0 + 0.3), (s * 0.7, y0 - 0.3, BZ1 + 1.1), 0.18, 0.18)
+            sbeam(k, (s * 0.7, y0 - 0.3, BZ1 + 1.1), (s * (x - 0.3), y0 + 0.2, BZ1 + 0.9), 0.16, 0.16)
+        sbeam(k, (-0.7, y0 - 0.3, BZ1 + 1.1), (0.7, y0 - 0.3, BZ1 + 1.1), 0.18, 0.18)
+        for s in (-1, 1):
+            scyl(kind(S, "Bull", "Light"), (s * 0.35, y0 - 0.38, BZ1 + 0.7), (s * 0.35, y0 - 0.3, BZ1 + 0.7), 0.16, seg=14)
+
+
+def rear_bumpers():
+    S = "RearBumper"
+    y0, y1 = L1 - 0.35, L1 + 0.28
+    x = W - 0.3
+    sbox(kind(S, "Stock", "Body"), -x, y0, BZ0, x, y1, BZ1, bev=0.12)
+    sbox(kind(S, "Sport", "Body"), -x, y0, BZ0 + 0.1, x, y1, BZ1, bev=0.12)
+    for i in range(7):                                                                    # diffuser fins
+        xx = -1.5 + i * 0.5
+        sbox(kind(S, "Sport", "Dark"), xx - 0.03, y0, BZ0 - 0.02, xx + 0.03, y1 + 0.05, BZ0 + 0.25)
+    sbox(kind(S, "Sport", "Dark"), -1.7, y0, BZ0 - 0.04, 1.7, y1, BZ0 + 0.1)
+    sbox(kind(S, "Classic", "Chrome"), -x - 0.05, y0 + 0.1, BZ0 + 0.1, x + 0.05, y1, BZ1, bev=0.14)
+    if TRUCKISH:
+        sbox(kind(S, "Tube", "Body"), -x, y0, BZ0, x, y1 - 0.1, BZ1, bev=0.1)
+        sbox(kind(S, "Tube", "Chrome"), -x - 0.05, y1 - 0.15, BZ0 + 0.1, x + 0.05, y1 + 0.05, BZ1 - 0.05, bev=0.05)
+        sbox(kind(S, "Tube", "Dark"), -0.25, y1, BZ0 + 0.15, 0.25, y1 + 0.35, BZ0 + 0.4)                          # hitch
+
+
+def grilles():
+    S = "Grille"
+    gw = HX - 0.62
+    z0, z1 = BZ1 + 0.06, NOSE - 0.25
+    if FLAV == "sports":
+        z0, z1 = BZ0 + 0.12, BZ1 - 0.08                                                   # low intake
+    y = NOSE_FACE - 0.04 if FLAV != "sports" else L0 - 0.36       # the sports intake sits in the bumper face
+    for v in ("Bars", "Mesh", "Billet", "Eggcrate"):
+        sbox(kind(S, v, "Dark"), -gw, y, z0, gw, y + 0.06, z1)
+        sbox(kind(S, v, "Chrome"), -gw - 0.07, y - 0.04, z1 - 0.06, gw + 0.07, y + 0.04, z1 + 0.02)    # surround top
+        sbox(kind(S, v, "Chrome"), -gw - 0.07, y - 0.04, z0 - 0.02, gw + 0.07, y + 0.04, z0 + 0.06)
+    n = int((z1 - z0) / 0.16)
+    for i in range(1, n):
+        z = z0 + i * (z1 - z0) / n
+        sbox(kind(S, "Bars", "Chrome"), -gw, y - 0.06, z - 0.025, gw, y, z + 0.025)
+    for i in range(int(gw * 2 / 0.3)):
+        xx = -gw + 0.15 + i * 0.3
+        sbox(kind(S, "Billet", "Chrome"), xx - 0.03, y - 0.06, z0, xx + 0.03, y, z1)
+    span = z1 - z0
+    for i in range(-12, 13):                                                                # diamond mesh
+        if abs(i * 0.3) + span > gw:
+            continue
+        sbeam(kind(S, "Mesh", "Chrome"), (i * 0.3 - (z1 - z0), y - 0.03, z0), (i * 0.3, y - 0.03, z1), 0.03, 0.03, up=(0, -1, 0))
+        sbeam(kind(S, "Mesh", "Chrome"), (i * 0.3 + (z1 - z0), y - 0.03, z0), (i * 0.3, y - 0.03, z1), 0.03, 0.03, up=(0, -1, 0))
+    for i in range(int(gw * 2 / 0.45) + 1):
+        xx = -gw + i * (2 * gw) / int(gw * 2 / 0.45)
+        sbox(kind(S, "Eggcrate", "Chrome"), xx - 0.03, y - 0.08, z0, xx + 0.03, y, z1)
+    for i in range(1, 3):
+        z = z0 + i * (z1 - z0) / 3
+        sbox(kind(S, "Eggcrate", "Chrome"), -gw, y - 0.08, z - 0.03, gw, y, z + 0.03)
+
+
+def headlights():
+    S = "Headlights"
+    z0, z1 = BZ1 + 0.1, NOSE - 0.2
+    zc = (z0 + z1) / 2
+    y = NOSE_FACE
+    for s in (-1, 1):
+        x = s * HX
+        sbox(kind(S, "Square", "Chrome"), x - 0.5, y - 0.05, zc - 0.28, x + 0.5, y + 0.08, zc + 0.28, bev=0.03)
+        sbox(kind(S, "Square", "Head"), x - 0.44, y - 0.08, zc - 0.22, x + 0.44, y, zc + 0.22)
+        for dx in (-0.25, 0.25):
+            scyl(kind(S, "Dual", "Chrome"), (x + dx, y + 0.08, zc), (x + dx, y - 0.05, zc), 0.24, seg=20)
+            scyl(kind(S, "Dual", "Head"), (x + dx, y - 0.05, zc), (x + dx, y - 0.09, zc), 0.19, seg=20)
+        sbox(kind(S, "Slim", "Dark"), x - 0.55, y - 0.05, z1 - 0.3, x + 0.55, y + 0.08, z1 - 0.06, bev=0.03)
+        sbox(kind(S, "Slim", "Head"), x - 0.5, y - 0.08, z1 - 0.2, x + 0.5, y, z1 - 0.12)
+        for dx in (-0.25, 0.25):
+            scyl(kind(S, "Quad", "Chrome"), (x + dx, y + 0.08, zc + 0.12), (x + dx, y - 0.05, zc + 0.12), 0.18, seg=16)
+            scyl(kind(S, "Quad", "Head"), (x + dx, y - 0.05, zc + 0.12), (x + dx, y - 0.09, zc + 0.12), 0.14, seg=16)
+        scyl(kind(S, "Quad", "Light"), (x, y + 0.02, zc - 0.25), (x, y - 0.06, zc - 0.25), 0.1, seg=12)
+
+
+def taillights():
+    S = "Taillights"
+    y = TAIL_FACE
+    corner = REAR in ("liftgate", "tailgate")
+    if corner:                                                                              # tall corner lamps
+        z0, z1 = BZ1 + 0.1, BELT - 0.15
+        for s in (-1, 1):
+            x = s * (W - 0.38)
+            sbox(kind(S, "Bar", "Tail"), x - 0.15, y - 0.04, z0, x + 0.15, y + 0.08, z1)
+            sbox(kind(S, "Twin", "Tail"), x - 0.15, y - 0.04, z1 - 0.7, x + 0.15, y + 0.08, z1)
+            sbox(kind(S, "Twin", "Tail"), x - 0.15, y - 0.04, z0, x + 0.15, y + 0.08, z0 + 0.5)
+            sbox(kind(S, "Twin", "Light"), x - 0.15, y - 0.04, z0 + 0.55, x + 0.15, y + 0.08, z1 - 0.75)
+            for i in range(4):
+                zz = z0 + 0.1 + i * (z1 - z0 - 0.2) / 3
+                scyl(kind(S, "Stacked", "Tail"), (x, y - 0.04, zz), (x, y + 0.1, zz), 0.13, seg=14)
+            sbox(kind(S, "Slim", "Dark"), x - 0.16, y - 0.03, z0, x + 0.16, y + 0.08, z1)
+            sbox(kind(S, "Slim", "Tail"), x - 0.1, y + 0.08, z1 - 0.9, x + 0.1, y + 0.11, z1 - 0.1)
+        sbox(kind(S, "Slim", "Tail"), -(W - 0.7), y + 0.06, BELT + 0.05, W - 0.7, y + 0.1, BELT + 0.12) if REAR == "liftgate" else None
+        return
+    z0, z1 = max(BZ1 + 0.08, REAR_TOP - 0.55), REAR_TOP - 0.05
+    zc = (z0 + z1) / 2
+    xo = W - 0.5
+    sbox(kind(S, "Bar", "Tail"), -xo, y - 0.04, z0 + 0.08, xo, y + 0.08, z1 - 0.08)
+    for s in (-1, 1):
+        for dx in (0.0, 0.62):
+            scyl(kind(S, "Twin", "Tail"), (s * (xo - 0.3 - dx), y - 0.04, zc), (s * (xo - 0.3 - dx), y + 0.08, zc), 0.22, seg=18)
+        sbox(kind(S, "Stacked", "Tail"), s * (xo - 1.0), y - 0.04, zc + 0.02, s * xo, y + 0.08, z1 - 0.04)
+        sbox(kind(S, "Stacked", "Light"), s * (xo - 1.0), y - 0.04, z0 + 0.04, s * xo, y + 0.08, zc - 0.02)
+        sbox(kind(S, "Slim", "Dark"), s * (xo - 1.3), y - 0.03, zc - 0.12, s * xo, y + 0.08, zc + 0.12)
+        sbox(kind(S, "Slim", "Tail"), s * (xo - 1.25), y + 0.08, zc - 0.05, s * (xo - 0.05), y + 0.11, zc + 0.05)
+
+
+def hoods():
+    S = "Hood"
+    ym = (L0 + A0) / 2
+    yl = A0 - L0
+    z = lambda x, y: deck_z(x, y)
+    # Scoop: a raised intake with a dark mouth
+    y0, y1 = ym - yl * 0.12, ym + yl * 0.2
+    sprism(kind(S, "Scoop", "Body"), [(-0.75, y0, z(0, y0) + 0.42), (0.75, y0, z(0, y0) + 0.42), (0.85, y1, z(0, y1) + 0.02), (-0.85, y1, z(0, y1) + 0.02)],
+           [(-0.75, y0, z(0, y0) - 0.05), (0.75, y0, z(0, y0) - 0.05), (0.85, y1, z(0, y1) - 0.05), (-0.85, y1, z(0, y1) - 0.05)])
+    sbox(kind(S, "Scoop", "Dark"), -0.65, y0 - 0.03, z(0, y0) + 0.05, 0.65, y0 + 0.05, z(0, y0) + 0.35)
+    # Cowl: a long low bulge up to the windshield
+    y0, y1 = ym - yl * 0.05, A0 - 0.15
+    sprism(kind(S, "Cowl", "Body"), [(-0.9, y0, z(0, y0) + 0.02), (0.9, y0, z(0, y0) + 0.02), (1.0, y1, z(0, y1) + 0.3), (-1.0, y1, z(0, y1) + 0.3)],
+           [(-0.9, y0, z(0, y0) - 0.05), (0.9, y0, z(0, y0) - 0.05), (1.0, y1, z(0, y1) - 0.05), (-1.0, y1, z(0, y1) - 0.05)])
+    # Vents: two dark heat extractors
+    for s in (-1, 1):
+        xc = s * W * 0.42
+        for i in range(5):
+            y = ym - 0.6 + i * 0.3
+            sbox(kind(S, "Vents", "Dark"), xc - 0.55, y - 0.05, z(xc, y) - 0.02, xc + 0.55, y + 0.05, z(xc, y) + 0.06)
+        sbox(kind(S, "Vents", "Body"), xc - 0.65, ym - 0.75, z(xc, ym) - 0.02, xc + 0.65, ym + 0.75, z(xc, ym) + 0.02)
+
+
+def spoilers():
+    S = "Spoiler"
+    if REAR == "tailgate":
+        return
+    if REAR == "liftgate":
+        y0 = C0 + 0.25
+        sbox(kind(S, "Roof", "Body"), -(gx(ROOF) - 0.05), y0, ROOF + 0.05, gx(ROOF) - 0.05, y0 + 0.55, ROOF + 0.18, bev=0.05)
+        sbox(kind(S, "Roof", "Tail"), -0.5, y0 + 0.5, ROOF + 0.08, 0.5, y0 + 0.57, ROOF + 0.15)
+        sbox(kind(S, "Wing", "Dark"), -(gx(ROOF) + 0.05), y0 + 0.1, ROOF + 0.25, gx(ROOF) + 0.05, y0 + 0.8, ROOF + 0.33)
+        for s in (-1, 1):
+            sbox(kind(S, "Wing", "Dark"), s * 1.2 - 0.05, y0, ROOF + 0.1, s * 1.2 + 0.05, y0 + 0.3, ROOF + 0.27)
+        return
+    ye = L1 - 0.6
+    ze = deck_z(0, ye)
+    xw = W - 0.7
+    sprism(kind(S, "Ducktail", "Body"), [(-xw, ye - 0.6, ze + 0.02), (xw, ye - 0.6, ze + 0.02), (xw, ye + 0.08, ze + 0.28), (-xw, ye + 0.08, ze + 0.28)],
+           [(-xw, ye - 0.6, ze - 0.04), (xw, ye - 0.6, ze - 0.04), (xw, ye + 0.08, ze - 0.04), (-xw, ye + 0.08, ze - 0.04)])
+    for v, h, depth, mat in (("Wing", 0.55, 0.7, "Body"), ("GT", 1.1, 1.0, "Dark")):
+        for s in (-1, 1):
+            sbox(kind(S, v, mat), s * (xw - 0.6) - 0.06, ye - 0.3, ze, s * (xw - 0.6) + 0.06, ye, ze + h)
+        sbox(kind(S, v, mat), -xw - 0.1, ye - depth + 0.2, ze + h, xw + 0.1, ye + 0.2, ze + h + 0.1, bev=0.03)
+        if v == "GT":
+            for s in (-1, 1):
+                sbox(kind(S, v, mat), s * (xw + 0.1) - 0.03, ye - depth + 0.1, ze + h - 0.2, s * (xw + 0.1) + 0.03, ye + 0.3, ze + h + 0.3)
+
+
+def skirts():
+    S = "Skirts"
+    a0, a1 = WY_F + ARCH + 0.1, WY_R - ARCH - 0.1
+    for s in (-1, 1):
+        sbox(kind(S, "Rocker", "Body"), s * (W - 0.05), a0, ZB - 0.12, s * (W + 0.12), a1, ZB + 0.3, bev=0.05)
+        if TRUCKISH:
+            sbox(kind(S, "Steps", "Dark"), s * (W - 0.05), a0 + 0.1, ZB - 0.35, s * (W + 0.55), a1 - 0.1, ZB - 0.22, bev=0.03)
+            for i in range(3):
+                y = a0 + 0.6 + i * (a1 - a0 - 1.2) / 2
+                sbox(kind(S, "Steps", "Chrome"), s * (W + 0.05), y - 0.4, ZB - 0.21, s * (W + 0.5), y + 0.4, ZB - 0.18)
+
+
+def mirrors():
+    S = "Mirrors"
+    y = A0 + 0.55
+    z = BELT + 0.3
+    for s in (-1, 1):
+        x = s * (W + 0.05)
+        sbeam(kind(S, "Rect", "Dark"), (s * (W - 0.1), y, BELT + 0.08), (x + s * 0.15, y, z), 0.12, 0.08)
+        sbox(kind(S, "Rect", "Body"), x + s * 0.05, y - 0.08, z - 0.22, x + s * 0.65, y + 0.16, z + 0.22, bev=0.05)
+        sbox(kind(S, "Rect", "Glass"), x + s * 0.1, y + 0.16, z - 0.17, x + s * 0.6, y + 0.18, z + 0.17)
+        sbeam(kind(S, "Sport", "Body"), (s * (W - 0.1), y + 0.1, BELT + 0.08), (x + s * 0.2, y + 0.05, z), 0.06, 0.1)
+        scyl(kind(S, "Sport", "Body"), (x + s * 0.35, y - 0.12, z), (x + s * 0.35, y + 0.12, z), 0.2, seg=16, r2=0.16)
+        scyl(kind(S, "Sport", "Glass"), (x + s * 0.35, y + 0.12, z), (x + s * 0.35, y + 0.14, z), 0.16, seg=16)
+
+
+def exhausts():
+    S = "Exhaust"
+    y = L1 + 0.25
+    z = BZ0 + 0.18
+    for s in (-1, 1):
+        scyl(kind(S, "Dual", "Chrome"), (s * 1.2, y - 0.5, z), (s * 1.2, y, z), 0.14, seg=16)
+        for dx in (0.95, 1.4):
+            scyl(kind(S, "Quad", "Chrome"), (s * dx, y - 0.5, z), (s * dx, y, z), 0.12, seg=14)
+        if not TRUCKISH:
+            scyl(kind(S, "Side", "Chrome"), (s * (W + 0.15), WY_F + ARCH + 0.3, ZB + 0.08), (s * (W + 0.15), WY_R - ARCH - 0.3, ZB + 0.08), 0.12, seg=14)
+        elif BED:
+            scyl(kind(S, "Side", "Chrome"), (s * (W - 0.3), BED[0] + 0.25, BELT - 0.3), (s * (W - 0.3), BED[0] + 0.25, ROOF + 0.6), 0.14, seg=14)   # stacks
+
+
+def tops():
+    S = "Top"
+    xt = gx(ROOF)
+    yr0, yr1 = A1 + 0.2, C0 - 0.2
+    sbox(kind(S, "Sunroof", "Glass"), -xt * 0.55, yr0 + 0.3, ROOF + 0.13, xt * 0.55, yr0 + 0.3 + min(2.4, (yr1 - yr0) * 0.5), ROOF + 0.16)
+    sbox(kind(S, "Sunroof", "Dark"), -xt * 0.58, yr0 + 0.25, ROOF + 0.12, xt * 0.58, yr0 + 0.35 + min(2.4, (yr1 - yr0) * 0.5), ROOF + 0.14)
+    if TRUCKISH:
+        for s in (-1, 1):
+            sbox(kind(S, "Rack", "Dark"), s * (xt - 0.15) - 0.06, yr0, ROOF + 0.14, s * (xt - 0.15) + 0.06, yr1, ROOF + 0.3)
+        n = max(2, int((yr1 - yr0) / 1.2))
+        for i in range(n + 1):
+            y = yr0 + i * (yr1 - yr0) / n
+            sbox(kind(S, "Rack", "Dark"), -(xt - 0.15), y - 0.05, ROOF + 0.3, xt - 0.15, y + 0.05, ROOF + 0.38)
+    sbox(kind(S, "Lightbar", "Dark"), -(xt - 0.2), A1 + 0.05, ROOF + 0.16, xt - 0.2, A1 + 0.3, ROOF + 0.42, bev=0.03)
+    for i in range(6):
+        x = -(xt - 0.5) + i * (2 * (xt - 0.5)) / 5
+        sbox(kind(S, "Lightbar", "Light"), x - 0.18, A1 + 0.02, ROOF + 0.2, x + 0.18, A1 + 0.05, ROOF + 0.38)
+
+
+def underglow():
+    for s in (-1, 1):
+        sbox(kind("Glow", "On", "Neon"), s * (W - 0.6), WY_F, ZB - 0.05, s * (W - 0.5), WY_R, ZB)
+    sbox(kind("Glow", "On", "Neon"), -(W - 0.8), L0 + 0.6, ZB - 0.05, W - 0.8, L0 + 0.7, ZB)
+    sbox(kind("Glow", "On", "Neon"), -(W - 0.8), L1 - 0.7, ZB - 0.05, W - 0.8, L1 - 0.6, ZB)
+
+
+def beds():
+    if not BED:
+        return
+    S = "Bed"
+    bf = ZB + 0.75
+    y0, y1 = BED[0], L1 - 0.3
+    sbox(kind(S, "Cover", "Dark"), -(W - 0.1), y0 - 0.05, BELT + 0.02, W - 0.1, y1 + 0.1, BELT + 0.1, bev=0.03)
+    k = kind(S, "Rollbar", "Chrome")
+    for s in (-1, 1):
+        sbeam(k, (s * (W - 0.35), y0 + 0.4, BELT), (s * (W - 0.6), y0 + 0.4, ROOF - 0.2), 0.16, 0.16)
+        sbeam(k, (s * (W - 0.6), y0 + 0.4, ROOF - 0.2), (s * (W - 0.35), y0 + 1.6, BELT), 0.14, 0.14)
+        scyl(kind(S, "Rollbar", "Light"), (s * 0.8, y0 + 0.3, ROOF - 0.05), (s * 0.8, y0 + 0.2, ROOF - 0.05), 0.18, seg=14)
+    sbeam(k, (-(W - 0.6), y0 + 0.4, ROOF - 0.2), (W - 0.6, y0 + 0.4, ROOF - 0.2), 0.16, 0.16)
+    k = kind(S, "Rack", "Dark")
+    for s in (-1, 1):
+        for y in (y0 + 0.3, y1 - 0.3):
+            sbox(k, s * (W - 0.3) - 0.07, y - 0.07, BELT, s * (W - 0.3) + 0.07, y + 0.07, ROOF + 0.2)
+        sbox(k, s * (W - 0.3) - 0.07, y0 + 0.3, ROOF + 0.15, s * (W - 0.3) + 0.07, y1 - 0.3, ROOF + 0.25)
+    for y in (y0 + 0.3, (y0 + y1) / 2, y1 - 0.3):
+        sbox(k, -(W - 0.3), y - 0.07, ROOF + 0.15, W - 0.3, y + 0.07, ROOF + 0.25)
+
+
+# ================================================================================================ interior
+def seats():
+    S = "Seats"
+    rear = S_REAR_Y()
+    for v in ("Buckets", "Racing", "Rolls", "Diamond"):
+        mat = "Seat"
+        for s in (-1, 1):
+            x = s * W * 0.42
+            w = 0.62 if v in ("Buckets", "Racing") else W * 0.42 + 0.5
+            xc = x if v in ("Buckets", "Racing") else s * (W * 0.42 + 0.5) / 2
+            if v in ("Rolls", "Diamond") and s < 0:
+                continue
+            xc = xc if v in ("Buckets", "Racing") else 0.0
+            w = w if v in ("Buckets", "Racing") else W - 0.6
+            sbox(kind(S, v, mat), xc - w, SY - 0.6, FLOOR + 0.1, xc + w, SY + 0.55, FLOOR + 0.55, bev=0.1)              # cushion
+            sbox(kind(S, v, mat), xc - w, SY + 0.45, FLOOR + 0.5, xc + w, SY + 0.75, FLOOR + 1.75, bev=0.1)              # back
+            if v == "Racing":
+                sbox(kind(S, v, "SeatTrim"), xc - w - 0.08, SY - 0.5, FLOOR + 0.5, xc - w + 0.06, SY + 0.7, FLOOR + 1.3)  # bolsters
+                sbox(kind(S, v, "SeatTrim"), xc + w - 0.06, SY - 0.5, FLOOR + 0.5, xc + w + 0.08, SY + 0.7, FLOOR + 1.3)
+                sbox(kind(S, v, "SeatTrim"), xc - 0.18, SY + 0.43, FLOOR + 1.3, xc + 0.18, SY + 0.47, FLOOR + 1.7)
+            if v == "Buckets":
+                sbox(kind(S, v, mat), xc - 0.35, SY + 0.5, FLOOR + 1.8, xc + 0.35, SY + 0.7, FLOOR + 2.15, bev=0.06)    # headrest
+            for k in range(5 if v != "Diamond" else 0):
+                z = FLOOR + 0.7 + k * 0.2
+                sbox(kind(S, v, "SeatTrim"), xc - w + 0.06, SY + 0.43, z, xc + w - 0.06, SY + 0.46, z + 0.04)
+            if v == "Diamond":
+                for i in range(int(w * 2 / 0.35)):
+                    for j in range(4):
+                        xx = xc - w + 0.2 + i * 0.35 + (0.17 if j % 2 else 0)
+                        scyl(kind(S, v, "SeatTrim"), (xx, SY + 0.42, FLOOR + 0.8 + j * 0.25), (xx, SY + 0.46, FLOOR + 0.8 + j * 0.25), 0.04, seg=6)
+        if rear:
+            sbox(kind(S, v, mat), -(W - 0.6), rear - 0.55, FLOOR + 0.1, W - 0.6, rear + 0.45, FLOOR + 0.55, bev=0.1)
+            sbox(kind(S, v, mat), -(W - 0.6), rear + 0.4, FLOOR + 0.5, W - 0.6, rear + 0.7, FLOOR + 1.65, bev=0.1)
+            for k in range(5 if v != "Diamond" else 0):
+                z = FLOOR + 0.7 + k * 0.18
+                sbox(kind(S, v, "SeatTrim"), -(W - 0.7), rear + 0.38, z, W - 0.7, rear + 0.41, z + 0.04)
+    sbox(kind(S, "Buckets", "Dash"), -0.35, SY - 1.2, FLOOR, 0.35, SY + 0.4, FLOOR + 0.6, bev=0.05)                      # console
+    sbox(kind(S, "Racing", "Dash"), -0.35, SY - 1.2, FLOOR, 0.35, SY + 0.4, FLOOR + 0.6, bev=0.05)
+
+
+def S_REAR_Y():
+    if Q:
+        return (B + Q) / 2 + 0.55
+    if FLAV == "muscle":
+        return SY + 2.5
+    return None
+
+
+def door_cards():
+    S = "Doors"
+    for (nm, s, y0, y1) in DOORS:
+        xi = s * (W - 0.55)
+        z0, z1 = FLOOR + 0.15, BELT - 0.08
+        for v in ("Smooth", "Rolls", "Diamond", "Channel"):
+            sbox(kind(S, v, "Seat"), xi - 0.1, y0 + 0.12, z0, xi + 0.1, y1 - 0.12, z1)
+        xf = xi - s * 0.11
+        sbox(kind(S, "Smooth", "Chrome"), xf - 0.02, y0 + 0.2, z1 - 0.35, xf + 0.02, y1 - 0.2, z1 - 0.3)
+        sbox(kind(S, "Smooth", "SeatTrim"), xf - s * 0.15, (y0 + y1) / 2 - 0.5, z0 + 0.6, xf + s * 0.02, (y0 + y1) / 2 + 0.5, z0 + 0.78, bev=0.04)
+        for k in range(5):
+            z = z0 + 0.25 + k * (z1 - z0 - 0.5) / 4
+            sbox(kind(S, "Rolls", "SeatTrim"), xf - 0.02, y0 + 0.25, z, xf + 0.02, y1 - 0.25, z + 0.05)
+        nyb = int((y1 - y0 - 0.5) / 0.5)
+        for i in range(nyb):
+            for j in range(3):
+                y = y0 + 0.4 + i * 0.5 + (0.25 if j % 2 else 0)
+                scyl(kind(S, "Diamond", "SeatTrim"), (xf + s * 0.01, y, z0 + 0.35 + j * 0.3), (xf - s * 0.02, y, z0 + 0.35 + j * 0.3), 0.04, seg=6)
+        for i in range(int((y1 - y0 - 0.4) / 0.55)):
+            y = y0 + 0.3 + i * 0.55
+            sbox(kind(S, "Channel", "SeatTrim"), xf - 0.02, y, z0 + 0.15, xf + 0.02, y + 0.05, z1 - 0.15)
+
+
+def dashes():
+    S = "Dash"
+    y0, y1 = A0 + 0.12, A0 + 0.85
+    x = W - 0.5
+    z1 = BELT + 0.05
+    z0 = z1 - 0.6
+    for v in ("Classic", "Digital", "Wood", "Billet"):
+        sbox(kind(S, v, "Dash"), -x, y0, z0, x, y1, z1, bev=0.08)
+        sbox(kind(S, v, "Dash"), -0.45, y1 - 0.1, FLOOR, 0.45, y1 + 0.3, z0 + 0.1)                  # centre stack
+    sbox(kind(S, "Classic", "Chrome"), -x + 0.1, y1, z0 + 0.2, x - 0.1, y1 + 0.03, z0 + 0.26)
+    sbox(kind(S, "Digital", "Neon"), -x + 0.3, y1 + 0.005, z0 + 0.3, x - 0.3, y1 + 0.02, z0 + 0.36)
+    sbox(kind(S, "Digital", "Gauge"), -0.4, y1 + 0.3, z0 - 0.4, 0.4, y1 + 0.32, z0 + 0.05)
+    sbox(kind(S, "Wood", "Wood"), -x + 0.1, y1, z0 + 0.12, x - 0.1, y1 + 0.03, z0 + 0.38)
+    for i in range(int(2 * x / 0.25)):
+        xx = -x + 0.15 + i * 0.25
+        sbox(kind(S, "Billet", "Chrome"), xx - 0.03, y1, z0 + 0.1, xx + 0.03, y1 + 0.03, z0 + 0.45)
+
+
+def steering():
+    S = "Steering"
+    p = Vector((W * 0.42, A0 + 1.25, BELT - 0.2))
+    ax = Vector((0, 1, -0.55)).normalized()
+    col0 = Vector((W * 0.42, A0 + 0.8, BELT - 0.4))
+    for v in ("Sport", "Wood", "Chain"):
+        scyl(kind(S, v, "Dash"), col0, p - ax * 0.05, 0.06, seg=10)
+    torus(kind(S, "Sport", "Dash"), p, ax, 0.42, 0.05, seg=28, seg2=8, style=PREFIX)
+    torus(kind(S, "Wood", "Wood"), p, ax, 0.44, 0.055, seg=28, seg2=8, style=PREFIX)
+    torus(kind(S, "Chain", "Chrome"), p, ax, 0.36, 0.045, seg=24, seg2=6, style=PREFIX)
+    for i in range(16):
+        a = 2 * math.pi * i / 16
+        q = p + axis_rot(ax) @ Vector((0.36 * math.cos(a), 0.36 * math.sin(a), 0))
+        torus(kind(S, "Chain", "Chrome"), q, axis_rot(ax) @ Vector((-math.sin(a), math.cos(a), 0)), 0.06, 0.015, seg=8, seg2=4, style=PREFIX)
+    for v, mat, r in (("Sport", "Dash", 0.42), ("Wood", "Chrome", 0.44), ("Chain", "Chrome", 0.36)):
+        for i in range(3):
+            a = 2 * math.pi * i / 3 - math.pi / 2
+            q = p + axis_rot(ax) @ Vector((r * math.cos(a), r * math.sin(a), 0))
+            sbeam(kind(S, v, mat), p, q, 0.06, 0.03, up=tuple(ax))
+
+
+def shifters():
+    S = "Shifter"
+    p = Vector((0, SY - 0.9, FLOOR + 0.6))
+    for v, mat in (("THandle", "Chrome"), ("WoodKnob", "Wood"), ("Crystal", "Neon"), ("Chain", "Chrome")):
+        scyl(kind(S, v, "Chrome"), p, p + Vector((0, 0, 0.5)), 0.03, seg=8)
+    sbeam(kind(S, "THandle", "Dark"), p + Vector((-0.18, 0, 0.52)), p + Vector((0.18, 0, 0.52)), 0.07, 0.07)
+    scyl(kind(S, "WoodKnob", "Wood"), p + Vector((0, 0, 0.45)), p + Vector((0, 0, 0.62)), 0.09, seg=14)
+    cube(kind(S, "Crystal", "Neon"), p + Vector((0, 0, 0.58)), (0.16, 0.16, 0.16), 0.03, PREFIX)
+    for i in range(5):
+        torus(kind(S, "Chain", "Chrome"), p + Vector((0, 0, 0.12 + i * 0.09)), (1, 0, 0) if i % 2 else (0, 1, 0), 0.05, 0.015, seg=8, seg2=4, style=PREFIX)
+
+
+def headliner():
+    S = "Headliner"
+    xt = gx(ROOF) - 0.1
+    z = ROOF - 0.05
+    y0, y1 = A1 + 0.1, C0 - 0.1
+    for v in ("Plain", "Pleated", "Stars"):
+        sbox(kind(S, v, "Seat"), -xt, y0, z - 0.04, xt, y1, z)
+    for i in range(int(2 * xt / 0.45)):
+        x = -xt + 0.2 + i * 0.45
+        sbox(kind(S, "Pleated", "SeatTrim"), x - 0.03, y0 + 0.1, z - 0.07, x + 0.03, y1 - 0.1, z - 0.04)
+    import random as _r
+    rnd = _r.Random(7)
+    for i in range(70):
+        cube(kind(S, "Stars", "Neon"), Vector((rnd.uniform(-xt + 0.1, xt - 0.1), rnd.uniform(y0 + 0.1, y1 - 0.1), z - 0.05)), (0.035, 0.035, 0.02), 0, PREFIX)
+
+
+def build_parts():
+    front_bumpers()
+    rear_bumpers()
+    grilles()
+    headlights()
+    taillights()
+    hoods()
+    spoilers()
+    skirts()
+    mirrors()
+    exhausts()
+    tops()
+    underglow()
+    beds()
+    seats()
+    door_cards()
+    dashes()
+    steering()
+    shifters()
+    headliner()
+
+
+# ================================================================================================ wheels
+def build_wheels(ox):
+    """the lowrider's rims / knock-offs / tyres (built at its size in their own namespace) + off-road tyres,
+    then everything scaled to this vehicle's wheel"""
+    ns = dict(globals())
+    exec(compile(open(os.path.join(HERE, "build_lowrider_parts.py")).read(), "build_lowrider_parts.py", "exec"), ns)
+    ns["WR"] = 1.17
+    ns["wheel_rims"](ox)
+    ns["wheel_knockoffs"](ox)
+    ns["wheel_tyres"](ox)
+    WHEEL_INFO.update(ns["WHEEL_INFO"])
+    st = "LowriderWheel"
+    c = Vector((ox, 0, 0))
+    k = ns["wopt"]("Tire", "Offroad", "Rubber")
+    WHEEL_INFO[k] = ns["WHEEL_INFO"][k]
+    hw = 0.4
+    revolve(k, c, [(0.7, -hw + 0.04), (0.95, -hw), (1.08, -hw + 0.02), (1.12, -0.3), (1.12, 0.3), (1.08, hw - 0.02), (0.95, hw), (0.7, hw - 0.04), (0.7, -hw + 0.04)], style=st)
+    for i in range(28):
+        a = 2 * math.pi * i / 28
+        for side in (-1, 1):
+            off = 0.05 if (i % 2) else 0.0
+            p0 = c + Vector((side * (0.17 + off), 1.145 * math.cos(a), 1.145 * math.sin(a)))
+            cube(k, p0, (0.24, 0.2, 0.07), 0.0, st, rot=Matrix.Rotation(a - math.pi / 2, 3, "X"))
+            cube(k, c + Vector((side * 0.36, 1.06 * math.cos(a + 0.1), 1.06 * math.sin(a + 0.1))), (0.06, 0.16, 0.14), 0.0, st,
+                 rot=Matrix.Rotation(a + 0.1 - math.pi / 2, 3, "X"))
+    sr, sw = WR / 1.17, TW / 0.68
+    m = Matrix.Translation(c) @ Matrix.Diagonal((sw, sr, sr, 1)) @ Matrix.Translation(-c)
+    for ob in list(OBJS):
+        if ob.get("style") == st:
+            bake(ob)
+            ob.data.transform(m)
+
+
+# ================================================================================================ previews
+BASE_BUILD = {
+    "muscle": {"FrontBumper": "Classic", "RearBumper": "Classic", "Grille": "Bars", "Headlights": "Dual", "Taillights": "Bar", "Mirrors": "Rect",
+               "Seats": "Buckets", "Doors": "Smooth", "Dash": "Classic", "Steering": "Wood", "Shifter": "THandle", "Headliner": "Plain",
+               "Rim": "Steelie", "KO": "Cap", "Tire": "Classic", "Hood": "Scoop", "Exhaust": "Dual"},
+    "sports": {"FrontBumper": "Sport", "RearBumper": "Sport", "Grille": "Mesh", "Headlights": "Slim", "Taillights": "Slim", "Mirrors": "Sport",
+               "Seats": "Racing", "Doors": "Smooth", "Dash": "Digital", "Steering": "Sport", "Shifter": "THandle", "Headliner": "Plain",
+               "Rim": "Split", "KO": "Cap", "Tire": "Classic", "Exhaust": "Quad", "Spoiler": "Ducktail"},
+    "truck": {"FrontBumper": "Classic", "RearBumper": "Classic", "Grille": "Billet", "Headlights": "Square", "Taillights": "Bar", "Mirrors": "Rect",
+              "Seats": "Buckets", "Doors": "Smooth", "Dash": "Classic", "Steering": "Sport", "Shifter": "THandle", "Headliner": "Plain",
+              "Rim": "Star", "KO": "Cap", "Tire": "Offroad", "Skirts": "Steps"},
+    "suv": {"FrontBumper": "Stock", "RearBumper": "Stock", "Grille": "Eggcrate", "Headlights": "Square", "Taillights": "Bar", "Mirrors": "Rect",
+            "Seats": "Buckets", "Doors": "Smooth", "Dash": "Classic", "Steering": "Sport", "Shifter": "THandle", "Headliner": "Plain",
+            "Rim": "Steelie", "KO": "Cap", "Tire": "Offroad", "Top": "Rack"},
+}[FLAV]
+SHOWCASE = {
+    "muscle": [("build_street", {"FrontBumper": "Sport", "RearBumper": "Sport", "Hood": "Cowl", "Spoiler": "Wing", "Rim": "Star", "Exhaust": "Side", "Skirts": "Rocker"}, "stripes", (0.05, 0.05, 0.06)),
+               ("build_show", {"Grille": "Billet", "Rim": "Wire100", "KO": "Bar2", "Band": "ClassicThin", "Hood": "", "Glow": "On"}, "flames", (0.55, 0.03, 0.08))],
+    "sports": [("build_track", {"Spoiler": "GT", "Hood": "Vents", "Rim": "Mesh", "Skirts": "Rocker", "Top": "Sunroof"}, "checker", (0.95, 0.95, 0.95)),
+               ("build_night", {"Spoiler": "Wing", "Grille": "Bars", "Headlights": "Quad", "Rim": "Turbine", "Glow": "On"}, "lightning", (0.06, 0.02, 0.15))],
+    "truck": [("build_offroad", {"FrontBumper": "Bull", "RearBumper": "Tube", "Top": "Lightbar", "Bed": "Rollbar", "Rim": "Steelie"}, "tropical", (0.85, 0.85, 0.82)),
+              ("build_street", {"FrontBumper": "Stock", "RearBumper": "Stock", "Tire": "Classic", "Rim": "Split", "Bed": "Cover", "Skirts": "Rocker", "Exhaust": "Dual"}, "sunset_fade", (0.05, 0.05, 0.06))],
+    "suv": [("build_trail", {"FrontBumper": "Bull", "RearBumper": "Tube", "Top": "Lightbar", "Skirts": "Steps", "Rim": "Star"}, "retro_waves", (0.9, 0.6, 0.15)),
+            ("build_city", {"FrontBumper": "Sport", "RearBumper": "Sport", "Tire": "Classic", "Rim": "Mesh", "Spoiler": "Roof", "Top": "Sunroof", "Headlights": "Slim"}, "scallops", (0.05, 0.05, 0.06))],
+}[FLAV]

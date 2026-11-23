@@ -320,6 +320,9 @@ local function spawnCar(player, vid)
 	-- swing open by themselves for a moment when someone gets in or out on that side.
 	local PROMPT = {
 		trunk = { "Pop the trunk", "Close the trunk" },
+		hatch = { "Open the hatch", "Close the hatch" },
+		liftgate = { "Open the liftgate", "Close the liftgate" },
+		tailgate = { "Drop the tailgate", "Close the tailgate" },
 		hood = { "Pop the hood", "Close the hood" },
 		fuel = { "Open the gas door", "Close the gas door" },
 		door = { "Open the door", "Close the door" },

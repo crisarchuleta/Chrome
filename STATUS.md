@@ -544,3 +544,16 @@ Full notes and install steps in `LOWRIDER.md`.
   Parts are in `build_lowrider_parts.py`; options and prices are in `NCLowriderConfig.Mods`.
   Roofs: hardtop, landau, full vinyl, convertible top down. 3 saved build slots, random build, back to stock.
   Headlight, taillight and side trim styles; 6 seat styles, door panels, headliners, rear deck speakers, pedals.
+
+## Every vehicle on the lowrider's customization system (pass 11; written, not yet tested in Studio)
+
+Full notes in `VEHICLES.md`.
+- `NCVehicles.lua` lists every vehicle (the lowrider, 4 new builds, and the city's existing lineup by name). The shop,
+  saves (per vehicle), driving and the Garage list at Low & Slow Kustoms work for any of them.
+- `build_vehicles.py` + `build_vehicle_parts.py` build a vehicle from a spec: Ironclad SS (muscle), Ironhorn TRX
+  (pickup), Kestrel GT (sports), Dunewalker (SUV) so far, each with every swappable part, all wheel designs and vinyls.
+- Every vehicle (the lowrider too) has hinged doors, hood, rear (trunk / hatch / liftgate / tailgate) and a gas door;
+  doors swing open on enter / exit and every panel has a prompt (`Kit.SetOpen`). Cabins are open and there is an
+  engine bay under each hood.
+- Still to do: rebuild the rest of the existing lineup under the same names, then hook CarSpawner / HomeService /
+  PoliceAI / PhoneService up to the new system (needs the PC).

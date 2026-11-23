@@ -11,7 +11,8 @@ local RS = game:GetService("ReplicatedStorage")
 local V = {}
 V.Default = "royale"
 
--- drive = changes to NCLowriderConfig.Drive for this vehicle; suspensions = the kits it can run
+-- drive = changes to NCLowriderConfig.Drive for this vehicle; suspensions = the kits it can run;
+-- defaults = its stock parts (look keys -> option ids) where they differ from the lowrider's
 V.List = {
 	{
 		id = "royale", name = "Royale Lowrider", price = 2500, data = "NCLowriderData", prefix = "Lowrider", class = "lowrider",
@@ -22,22 +23,34 @@ V.List = {
 		id = "Ironclad", name = "Ironclad SS", price = 4000, class = "muscle",
 		blurb = "Big-block two-door muscle coupe. Fast in a straight line, loud everywhere.",
 		drive = { TopSpeed = 82, Accel = 32, RearGrip = 8 },
+		defaults = { part_FrontBumper = "Classic", part_RearBumper = "Classic", part_Grille = "Bars", part_Headlights = "Dual", part_Taillights = "Bar",
+			part_Mirrors = "Rect", part_Hood = "Scoop", part_Exhaust = "Dual", part_Seats = "Buckets", part_Doors = "Smooth", part_Steering = "Wood",
+			part_Shifter = "THandle", part_Rim = "Steelie", part_KO = "Cap", part_Tire = "Classic", ww = "" },
 	},
 	{
 		id = "IronhornTRX", name = "Ironhorn TRX", price = 3500, class = "pickup",
 		blurb = "Full-size pickup. Lay it on bags or lift it up.",
 		drive = { TopSpeed = 68, Accel = 24, SpringSag = 0.32 },
+		defaults = { part_FrontBumper = "Classic", part_RearBumper = "Classic", part_Grille = "Billet", part_Headlights = "Square", part_Taillights = "Bar",
+			part_Mirrors = "Rect", part_Hood = "", part_Skirts = "Steps", part_Seats = "Buckets", part_Doors = "Smooth", part_Steering = "Sport",
+			part_Shifter = "THandle", part_Rim = "Star", part_KO = "Cap", part_Tire = "Offroad", ww = "" },
 	},
 	{
 		id = "KestrelGT", name = "Kestrel GT", price = 9000, class = "sports",
 		blurb = "Low sports coupe. The quickest thing on the coast.",
 		drive = { TopSpeed = 98, Accel = 40, Grip = 14, RearGrip = 12, SteerMax = 32 },
 		suspensions = { "stock", "bags" },
+		defaults = { part_FrontBumper = "Sport", part_RearBumper = "Sport", part_Grille = "Mesh", part_Headlights = "Slim", part_Taillights = "Slim",
+			part_Mirrors = "Sport", part_Hood = "", part_Spoiler = "Ducktail", part_Exhaust = "Quad", part_Seats = "Racing", part_Doors = "Smooth",
+			part_Dash = "Digital", part_Steering = "Sport", part_Shifter = "THandle", part_Rim = "Split", part_KO = "Cap", part_Tire = "Classic", ww = "" },
 	},
 	{
 		id = "Dunewalker", name = "Dunewalker", price = 5500, class = "suv",
 		blurb = "Boxy four-door off-roader with room for the whole crew.",
 		drive = { TopSpeed = 70, Accel = 25, SpringSag = 0.36, Damping = 0.5 },
+		defaults = { part_FrontBumper = "Stock", part_RearBumper = "Stock", part_Grille = "Eggcrate", part_Headlights = "Square", part_Taillights = "Bar",
+			part_Mirrors = "Rect", part_Hood = "", part_Top = "Rack", part_Seats = "Buckets", part_Doors = "Smooth", part_Steering = "Sport",
+			part_Shifter = "THandle", part_Rim = "Steelie", part_KO = "Cap", part_Tire = "Offroad", ww = "" },
 	},
 	-- the rest of the city's lineup, rebuilt on this system under their existing names (CarTemplates)
 	{ id = "VantorStrada", name = "Vantor Strada", price = 3000, class = "sedan", blurb = "Everyday four-door sedan." },

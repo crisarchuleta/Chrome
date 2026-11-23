@@ -181,22 +181,23 @@ C.Mods = {
 		{ key = "art", name = "Livery", options = fromList(C.Art), default = "none" },
 	} },
 	{ id = "body", name = "Body kit", cam = "front34", mods = {
-		{ key = "part_Top", name = "Roof", default = "", options = opts({ { "", "Hardtop" }, { "Landau", "Landau vinyl top + S-bars", 900 }, { "Vinyl", "Full vinyl top", 1100 }, { "Down", "Convertible, top down", 2500 } }) },
+		{ key = "part_Top", name = "Roof", default = "", options = opts({ { "", "Hardtop" }, { "Landau", "Landau vinyl top + S-bars", 900 }, { "Vinyl", "Full vinyl top", 1100 }, { "Down", "Convertible, top down", 2500 }, { "Sunroof", "Sunroof", 900 }, { "Rack", "Roof rack", 700 }, { "Lightbar", "LED light bar", 1100 } }) },
 		{ key = "col_Top", name = "Vinyl / soft top colour", default = "black", custom = C.CustomColorPrice, options = opts({ { "black", "Black", 0, rgb(14, 14, 16) }, { "white", "White", 150, rgb(236, 234, 226) }, { "burgundy", "Burgundy", 200, rgb(90, 14, 26) }, { "tan", "Tan", 200, rgb(170, 128, 84) }, { "navy", "Navy", 200, rgb(20, 28, 70) } }) },
-		{ key = "part_FrontBumper", name = "Front bumper", default = "Classic", options = opts({ { "Classic", "Classic chrome" }, { "Bullet", "Bullet guards", 900 }, { "Split", "Split with plate frame", 1000 }, { "Tube", "Tube push bar", 700 }, { "Shaved", "Shaved roll pan", 1200 } }) },
-		{ key = "part_RearBumper", name = "Rear bumper", default = "Classic", options = opts({ { "Classic", "Classic chrome" }, { "Bullet", "Bullet guards", 900 }, { "Tube", "Tube bar", 700 }, { "Shaved", "Shaved roll pan", 1200 } }) },
+		{ key = "part_FrontBumper", name = "Front bumper", default = "Classic", options = opts({ { "Classic", "Classic chrome" }, { "Bullet", "Bullet guards", 900 }, { "Split", "Split with plate frame", 1000 }, { "Tube", "Tube push bar", 700 }, { "Shaved", "Shaved roll pan", 1200 }, { "Stock", "Stock painted" }, { "Sport", "Sport + splitter", 900 }, { "Bull", "Bull bar + lamps", 1300 } }) },
+		{ key = "part_RearBumper", name = "Rear bumper", default = "Classic", options = opts({ { "Classic", "Classic chrome" }, { "Bullet", "Bullet guards", 900 }, { "Tube", "Tube bar + hitch", 700 }, { "Shaved", "Shaved roll pan", 1200 }, { "Stock", "Stock painted" }, { "Sport", "Sport + diffuser", 900 } }) },
 		{ key = "fin_Bumpers", name = "Bumper finish", options = FIN, default = "chrome" },
 		{ key = "part_SideTrim", name = "Side trim", default = "Classic", options = opts({ { "Classic", "Classic spear + rocker" }, { "Double", "Double spear", 600 }, { "Sweep", "Sweep spear", 700 }, { "Belt", "Full-length belt strip", 500 }, { "Wide", "Wide rocker panel", 900 }, { "", "Shaved (no trim)", 300 } }) },
 		{ key = "part_Grille", name = "Grille", default = "Bars", options = opts({ { "Bars", "Classic bars" }, { "Eggcrate", "Eggcrate", 600 }, { "Waterfall", "Waterfall", 900 }, { "Mesh", "Diamond mesh", 700 }, { "Billet", "Billet bars", 800 } }) },
 		{ key = "fin_Grille", name = "Grille finish", options = FIN, default = "chrome" },
-		{ key = "part_Hood", name = "Hood", default = "Spear", options = opts({ { "Spear", "Chrome spear" }, { "", "Smooth (shaved)", 0 }, { "Louvers", "Louvers", 900 }, { "Cowl", "Cowl bulge", 1100 }, { "Scoop", "Scoop", 1300 } }) },
+		{ key = "part_Hood", name = "Hood", default = "Spear", options = opts({ { "Spear", "Chrome spear" }, { "", "Smooth (shaved)", 0 }, { "Louvers", "Louvers", 900 }, { "Cowl", "Cowl bulge", 1100 }, { "Scoop", "Scoop", 1300 }, { "Vents", "Heat vents", 1000 } }) },
 		{ key = "part_Ornament", name = "Hood ornament", default = "", options = opts({ { "", "None" }, { "Sun", "Sunburst", 400 }, { "Wings", "Wings", 500 }, { "Comet", "Comet", 450 } }) },
-		{ key = "part_Spoiler", name = "Spoiler", default = "", options = opts({ { "", "None" }, { "Ducktail", "Ducktail", 700 }, { "Wing", "Wing", 1200 }, { "Fins", "Tail fins + fin lights", 1500 } }) },
-		{ key = "part_Skirts", name = "Side skirts", default = "", options = opts({ { "", "None" }, { "Rocker", "Rocker panels", 700 }, { "Chrome", "Chrome rocker plates", 900 }, { "Fender", "Rear fender skirts", 1100 } }) },
-		{ key = "part_Mirrors", name = "Side mirrors", default = "Bullet", options = opts({ { "Bullet", "Driver bullet" }, { "Dual", "Dual bullets", 300 }, { "Rect", "Square", 400 }, { "Stem", "Tall stems", 500 } }) },
+		{ key = "part_Spoiler", name = "Spoiler", default = "", options = opts({ { "", "None" }, { "Ducktail", "Ducktail", 700 }, { "Wing", "Wing", 1200 }, { "Fins", "Tail fins + fin lights", 1500 }, { "GT", "GT wing", 1800 }, { "Roof", "Roof spoiler", 800 } }) },
+		{ key = "part_Skirts", name = "Side skirts", default = "", options = opts({ { "", "None" }, { "Rocker", "Rocker panels", 700 }, { "Chrome", "Chrome rocker plates", 900 }, { "Fender", "Rear fender skirts", 1100 }, { "Steps", "Running boards", 900 } }) },
+		{ key = "part_Mirrors", name = "Side mirrors", default = "Bullet", options = opts({ { "Bullet", "Driver bullet" }, { "Dual", "Dual bullets", 300 }, { "Rect", "Square", 400 }, { "Stem", "Tall stems", 500 }, { "Sport", "Sport", 400 } }) },
 		{ key = "fin_Mirrors", name = "Mirror finish", options = FIN, default = "chrome" },
 		{ key = "part_Visor", name = "Sun visor", default = "", options = opts({ { "", "None" }, { "Chrome", "Chrome visor", 900 }, { "Body", "Painted visor", 800 } }) },
-		{ key = "part_Exhaust", name = "Exhaust", default = "", options = opts({ { "", "Hidden" }, { "Dual", "Dual tips", 500 }, { "Turndown", "Turndowns", 400 }, { "Side", "Side pipes", 1200 } }) },
+		{ key = "part_Exhaust", name = "Exhaust", default = "", options = opts({ { "", "Hidden" }, { "Dual", "Dual tips", 500 }, { "Turndown", "Turndowns", 400 }, { "Side", "Side pipes / stacks", 1200 }, { "Quad", "Quad tips", 800 } }) },
+		{ key = "part_Bed", name = "Truck bed", default = "", options = opts({ { "", "Open bed" }, { "Cover", "Hard cover", 900 }, { "Rollbar", "Roll bar + lamps", 1200 }, { "Rack", "Ladder rack", 800 } }) },
 		{ key = "fin_Exhaust", name = "Exhaust finish", options = FIN_NO_PAINT, default = "chrome" },
 		{ key = "part_Continental", name = "Continental kit", default = "", options = opts({ { "", "None" }, { "Kit", "Continental kit", 900 } }) },
 		{ key = "fin_Trim", name = "Body trim finish", options = FIN, default = "chrome" },
@@ -207,12 +208,12 @@ C.Mods = {
 		{ key = "fin_Rim", name = "Rim lip + dish", options = FIN, default = "chrome" },
 		{ key = "part_KO", name = "Knock-off", default = "Bar2", options = opts({ { "Bar2", "Two-bar spinner" }, { "Bar3", "Three-bar spinner", 300 }, { "Cap", "Smooth cap", 200 }, { "", "None" } }) },
 		{ key = "fin_KO", name = "Knock-off finish", options = FIN, default = "chrome" },
-		{ key = "part_Tire", name = "Tyres", default = "Classic", options = opts({ { "Classic", "Classic low profile" }, { "Balloon", "Fat balloon", 600 }, { "Skinny", "Skinny vintage", 500 } }) },
+		{ key = "part_Tire", name = "Tyres", default = "Classic", options = opts({ { "Classic", "Classic low profile" }, { "Balloon", "Fat balloon", 600 }, { "Skinny", "Skinny vintage", 500 }, { "Offroad", "Off-road", 900 } }) },
 		{ key = "ww", name = "Whitewalls", default = "Thin", options = opts({ { "Thin", "Thin whitewall" }, { "Wide", "Wide whitewall", 300 }, { "Double", "Double stripe", 350 }, { "", "Blackwall" } }) },
 		{ key = "col_Band", name = "Whitewall colour", default = "white", custom = C.CustomColorPrice, options = opts({ { "white", "White", 0, rgb(244, 244, 240) }, { "cream", "Cream", 150, rgb(238, 226, 196) }, { "red", "Red line", 250, rgb(200, 20, 30) }, { "blue", "Blue line", 250, rgb(30, 80, 220) }, { "gold", "Gold line", 300, rgb(226, 176, 60) } }) },
 	} },
 	{ id = "interior", name = "Interior", cam = "interior", mods = {
-		{ key = "part_Seats", name = "Seats", default = "Rolls", options = opts({ { "Rolls", "Tuck-and-roll benches" }, { "Diamond", "Diamond tufted benches", 1100 }, { "SplitBench", "Split bench + armrest", 900 }, { "Buckets", "Bucket seats + console", 1300 }, { "Channel", "Channel-stitched benches", 800 }, { "Pillow", "Pillow-top benches", 1000 } }) },
+		{ key = "part_Seats", name = "Seats", default = "Rolls", options = opts({ { "Rolls", "Tuck-and-roll benches" }, { "Diamond", "Diamond tufted benches", 1100 }, { "SplitBench", "Split bench + armrest", 900 }, { "Buckets", "Bucket seats + console", 1300 }, { "Racing", "Racing buckets", 1500 }, { "Channel", "Channel-stitched benches", 800 }, { "Pillow", "Pillow-top benches", 1000 } }) },
 		{ key = "part_Doors", name = "Door panels", default = "Rolls", options = opts({ { "Rolls", "Tuck-and-roll" }, { "Diamond", "Diamond tufted", 800 }, { "Channel", "Channel stitched", 500 }, { "Smooth", "Smooth + chrome strip + armrest", 600 }, { "WoodInsert", "Wood insert", 900 } }) },
 		{ key = "part_Headliner", name = "Headliner", default = "Plain", options = opts({ { "Plain", "Plain" }, { "Pleated", "Pleated", 500 }, { "Diamond", "Diamond tufted", 800 }, { "Stars", "Star ceiling (glows in the neon colour)", 1500 } }) },
 		{ key = "mat_Seat", name = "Seat material", default = "vinyl", options = opts({ { "vinyl", "Pleated vinyl" }, { "leather", "Leather", 600 }, { "velour", "Crushed velour", 500 }, { "suede", "Suede", 700 }, { "fabric", "Woven fabric", 300 } }) },
@@ -230,8 +231,8 @@ C.Mods = {
 		{ key = "fin_Cabin", name = "Interior chrome", options = FIN, default = "chrome" },
 	} },
 	{ id = "lights", name = "Lights + glass", cam = "front", mods = {
-		{ key = "part_Headlights", name = "Headlight style", default = "Quad", options = opts({ { "Quad", "Quad rounds" }, { "Dual", "Dual big rounds", 600 }, { "Square", "Square quads", 700 }, { "Frenched", "Frenched (tunnelled)", 1000 }, { "Hooded", "Hooded eyebrows", 800 } }) },
-		{ key = "part_Taillights", name = "Taillight style", default = "Triple", options = opts({ { "Triple", "Triple rounds" }, { "Twin", "Twin big rounds", 500 }, { "Oval", "Oval pods", 700 }, { "Stacked", "Stacked pairs", 600 }, { "Bar", "Full-width light bar", 1100 } }) },
+		{ key = "part_Headlights", name = "Headlight style", default = "Quad", options = opts({ { "Quad", "Quad rounds" }, { "Dual", "Dual big rounds", 600 }, { "Square", "Square quads", 700 }, { "Frenched", "Frenched (tunnelled)", 1000 }, { "Hooded", "Hooded eyebrows", 800 }, { "Slim", "Slim LED", 900 } }) },
+		{ key = "part_Taillights", name = "Taillight style", default = "Triple", options = opts({ { "Triple", "Triple rounds" }, { "Twin", "Twin big rounds", 500 }, { "Oval", "Oval pods", 700 }, { "Stacked", "Stacked pairs", 600 }, { "Bar", "Full-width light bar", 1100 }, { "Slim", "Slim LED", 900 } }) },
 		{ key = "fin_Lights", name = "Light bezel finish", options = FIN, default = "chrome" },
 		{ key = "headlights", name = "Headlights", default = "warm", options = opts({ { "warm", "Warm halogen", 0, rgb(255, 238, 200) }, { "xenon", "Xenon white", 300, rgb(230, 240, 255) }, { "yellow", "Yellow", 300, rgb(255, 214, 80) }, { "ice", "Ice blue", 400, rgb(150, 200, 255) } }) },
 		{ key = "taillights", name = "Taillights", default = "red", options = opts({ { "red", "Red", 0, rgb(220, 15, 15) }, { "smoke", "Smoked red", 300, rgb(110, 10, 14) }, { "candy", "Candy red", 300, rgb(255, 40, 70) }, { "amber", "Amber", 300, rgb(255, 130, 20) } }) },
@@ -379,7 +380,7 @@ function C.ModsFor(vid)
 				end)
 			end
 			if list and #list > 0 and not (#list == 1 and list[1].id == "") then
-				local default = m.default
+				local default = (veh.defaults and veh.defaults[m.key]) or m.default -- a vehicle's own stock parts
 				local ok = false
 				for _, o in list do
 					ok = ok or o.id == default

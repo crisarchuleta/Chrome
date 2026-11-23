@@ -1,0 +1,774 @@
+# Neon Coast vehicles on the lowrider's customization system, Blender headless, one vehicle per run:
+#   NC_VEHICLE=Ironclad blender --background --factory-startup --python build_vehicles.py
+# Every vehicle is built from a spec (SPECS below) by one shared builder:
+#   - a body lofted from cross sections, tubbed wheel wells, an open cabin, an engine bay
+#   - opening panels on hinges: 2 or 4 doors, the hood, the rear (trunk lid, hatch, liftgate or tailgate) and a gas
+#     door. Door glass, mirrors and door cards ride on their door (pieces named <kind>__DoorL etc.)
+#   - every swappable part (bumpers, grille, hood, spoiler, skirts, mirrors, exhaust, lights, roof, seats, door cards,
+#     dash, steering, shifter, headliner, underglow, bed) as Opt<Slot><Variant><Mat> pieces, sized to the vehicle
+#   - the lowrider's wheel designs (every rim, knock-off, tyre, whitewall) plus off-road tyres, scaled to the vehicle
+#   - paint panels UV-mapped to the same vinyl images as the lowrider, so every vinyl works on every vehicle
+# All names are original (no real makes or models). Same frames as build_lowrider.py: 1 unit = 1 stud, front = -Y,
+# origin on the ground between the axles; car-local Roblox frame (X, Y, Z) = (-x, z, y).
+# Out (NC_OUT): <id>.glb (pieces <id>_*, wheel <id>Wheel_*), <id>Vinyls.glb, NCVehicleData_<id>.lua,
+#      previews/<id>_*.png
+import sys, json, os, math
+HERE = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else r"C:\Users\Crisa\Documents\NeonCoast_Blender"
+sys.path.insert(0, HERE)
+import importlib, nc_kit, nc_extra
+from nc_kit import lin, COLORS
+from nc_extra import setup_render
+import bpy, bmesh
+from mathutils import Vector, Matrix
+
+OUT = os.environ.get("NC_OUT", nc_kit.OUT)
+PREV = os.path.join(OUT, "previews")
+os.makedirs(PREV, exist_ok=True)
+nc_kit.reset()
+
+COLORS.update({
+    "Body": (0.55, 0.03, 0.08), "Chrome": (0.86, 0.87, 0.90), "Glass": (0.30, 0.38, 0.44), "Dash": (0.12, 0.12, 0.13),
+    "Carpet": (0.10, 0.10, 0.11), "Seam": (0.05, 0.05, 0.05), "Under": (0.06, 0.06, 0.07), "Lid": (0.55, 0.03, 0.08),
+    "Dark": (0.05, 0.05, 0.06), "Light": (1.0, 0.97, 0.86), "Head": (1.0, 0.97, 0.86), "Tail": (0.85, 0.05, 0.05),
+    "Seat": (0.12, 0.12, 0.13), "SeatTrim": (0.25, 0.25, 0.27), "Wood": (0.42, 0.22, 0.1), "Gauge": (0.02, 0.02, 0.03),
+    "Neon": (0.9, 0.2, 0.8), "Rubber": (0.07, 0.07, 0.08), "Spokes": (0.86, 0.87, 0.90), "Dish": (0.86, 0.87, 0.90),
+    "Band": (0.96, 0.96, 0.94), "Rim": (0.86, 0.87, 0.90), "Hub": (0.86, 0.87, 0.90), "Top": (0.04, 0.04, 0.045),
+    "Dark": (0.08, 0.08, 0.09),
+})
+
+# ------------------------------------------------------------------ the vehicles
+# W half width, L0/L1 nose/tail y, WB wheelbase, WR wheel radius, WX wheel centre |x|, TW tyre width, ZB rocker,
+# BELT belt line, NOSE/HOOD hood height at the nose/cowl, TAIL rear deck height, CROWN deck crown,
+# cab: A0/A1 windshield base/top y, C0/C1 roof rear / rear glass base y, ROOF roof z, TUCK glass inset at the roof,
+# B door pillar y, Q rear door end (4 doors), rear: trunk / hatch / liftgate / tailgate, BED pickup bed y range.
+SPECS = {
+    "Ironclad": dict(name="Ironclad SS", flavour="muscle", W=3.7, L0=-10.6, L1=9.6, WB=11.4, WR=1.22, WX=3.0, TW=0.85,
+                     ZB=0.85, BELT=2.85, NOSE=2.6, HOOD=3.0, TAIL=3.0, CROWN=0.08,
+                     A0=-2.3, A1=-0.3, C0=2.7, C1=5.0, ROOF=4.6, TUCK=0.5, B=1.9, doors=2, rear="trunk",
+                     paint=(0.75, 0.32, 0.02)),
+    "IronhornTRX": dict(name="Ironhorn TRX", flavour="truck", W=3.9, L0=-11.0, L1=11.2, WB=13.6, WR=1.6, WX=3.15, TW=1.15,
+                        ZB=1.55, BELT=4.0, NOSE=3.85, HOOD=4.05, TAIL=4.0, CROWN=0.04,
+                        A0=-3.0, A1=-1.2, C0=2.3, C1=2.5, ROOF=6.3, TUCK=0.35, B=0.9, Q=2.3, doors=4, rear="tailgate",
+                        BED=(2.9, 11.0), paint=(0.08, 0.1, 0.12)),
+    "KestrelGT": dict(name="Kestrel GT", flavour="sports", W=3.75, L0=-9.6, L1=8.9, WB=10.6, WR=1.12, WX=3.05, TW=0.95,
+                      ZB=0.6, BELT=2.48, NOSE=1.95, HOOD=2.62, TAIL=2.72, CROWN=0.12,
+                      A0=-2.6, A1=-0.2, C0=1.6, C1=5.6, ROOF=3.98, TUCK=0.7, B=1.4, doors=2, rear="hatch",
+                      paint=(0.02, 0.25, 0.75)),
+    "Dunewalker": dict(name="Dunewalker", flavour="suv", W=3.9, L0=-9.8, L1=9.4, WB=12.0, WR=1.55, WX=3.15, TW=1.1,
+                       ZB=1.5, BELT=3.85, NOSE=3.65, HOOD=3.9, TAIL=3.85, CROWN=0.04,
+                       A0=-3.6, A1=-1.9, C0=9.0, C1=9.15, ROOF=6.4, TUCK=0.3, B=-0.1, Q=3.4, doors=4, rear="liftgate",
+                       paint=(0.36, 0.42, 0.28)),
+}
+VID = os.environ.get("NC_VEHICLE", "Ironclad")
+S = SPECS[VID]
+PREFIX = VID
+for k, v in S.items():
+    globals()[k] = v
+WY_F, WY_R = -WB / 2, WB / 2
+ARCH = min(WR + 0.22, BELT - 0.12 - WR)                 # the arch stays under the belt line
+assert ARCH >= WR + 0.1, "wheel too big for the body: raise BELT or shrink WR"
+FLAV = S["flavour"]
+COLORS["Body"] = COLORS["Lid"] = S["paint"]
+BED = S.get("BED")
+Q = S.get("Q")
+
+exec(compile(open(os.path.join(HERE, "nc_car_kit.py")).read(), "nc_car_kit.py", "exec"), globals())
+OPT_INFO, WHEEL_INFO = {}, {}
+
+
+def opt(slot, variant, mat):
+    kind = f"Opt{slot}{variant}{mat}"
+    OPT_INFO[kind] = {"slot": slot, "variant": variant, "mat": mat}
+    return kind
+
+
+def mat_color(kind):
+    info = OPT_INFO.get(kind) or WHEEL_INFO.get(kind)
+    if info:
+        m = info["mat"]
+        return {"Hub": "Chrome", "Rim": "Chrome"}.get(m, m)
+    base = kind.split("__")[0]
+    if base == "HoodInner" or base.startswith("DoorJamb"):
+        return "Body"
+    return {"RoofGlass": "Glass", "RoofBody": "Body", "RoofChrome": "Chrome"}.get(base, base)
+
+
+# ------------------------------------------------------------------ body
+def ztop(x, top, crown, w):
+    t = min(1.0, abs(x) / (0.93 * w))
+    return top + crown * (1 - t * t)
+
+
+def section(w, zb, belt, top, crown):
+    top = max(top, belt + 0.06)
+    sh = min(0.3, (belt - zb) * 0.2)
+    half = [(0.0, zb), (w * 0.86, zb), (w * 0.965, zb + 0.15), (w, zb + 0.45), (w, belt - sh), (w * 0.99, belt - sh * 0.35),
+            (w * 0.965, belt + 0.02)]
+    for k in range(5):
+        x = w * 0.93 * (1 - k / 5)
+        half.append((x, ztop(x, top, crown, w) - (0.03 if k == 0 else 0.0)))
+    half.append((0.0, top + crown))
+    return half + [(-x, z) for (x, z) in reversed(half[1:-1])]
+
+
+def make_stations():
+    """y, half width, rocker, belt, deck, crown from the nose to the tail"""
+    nb = NOSE - 0.25
+    st = [(L0, W - 0.5, ZB + 0.35, nb - 0.2, nb - 0.12, 0.0), (L0 + 0.2, W - 0.22, ZB + 0.15, nb, NOSE - 0.05, CROWN * 0.4),
+          (L0 + 0.8, W - 0.05, ZB, nb + 0.05, NOSE + (HOOD - NOSE) * 0.1, CROWN), (A0 - 0.6, W, ZB, BELT - 0.1, HOOD - 0.02, CROWN),
+          (A0, W, ZB, BELT, HOOD, CROWN)]
+    cab_end = C1 if REAR != "liftgate" else L1 - 0.8
+    st.append(((A0 + cab_end) / 2, W, ZB, BELT, BELT + 0.1, CROWN * 0.6))
+    if REAR in ("trunk", "hatch"):
+        st += [(C1, W, ZB, BELT, TAIL - 0.04, CROWN), (L1 - 0.8, W - 0.03, ZB, BELT - 0.05, TAIL, CROWN)]
+    else:
+        st += [(L1 - 0.8, W - 0.02, ZB, BELT, BELT + 0.06, CROWN)]
+    tb = (TAIL if REAR in ("trunk", "hatch") else BELT) - 0.2
+    st += [(L1 - 0.2, W - 0.2, ZB + 0.12, tb, tb + 0.12, CROWN * 0.4), (L1, W - 0.45, ZB + 0.3, tb - 0.15, tb - 0.05, 0.0)]
+    return st
+
+
+REAR = S["rear"]
+STATIONS = make_stations()
+
+
+def deck_z(x, y):
+    for a, b in zip(STATIONS, STATIONS[1:]):
+        if a[0] <= y <= b[0]:
+            t = (y - a[0]) / (b[0] - a[0])
+            v = [a[i] + (b[i] - a[i]) * t for i in range(6)]
+            return ztop(x, v[4], v[5], v[1])
+    return STATIONS[-1][4]
+
+
+def belt_at(y):
+    for a, b in zip(STATIONS, STATIONS[1:]):
+        if a[0] <= y <= b[0]:
+            t = (y - a[0]) / (b[0] - a[0])
+            return a[3] + (b[3] - a[3]) * t
+    return BELT
+
+
+def loft_body():
+    bm = bmesh.new()
+    rings = []
+    dense = []
+    for a, b in zip(STATIONS, STATIONS[1:]):
+        n = max(1, int(math.ceil((b[0] - a[0]) / 0.5)))
+        for k in range(n):
+            t = k / n
+            dense.append(tuple(a[i] + (b[i] - a[i]) * t for i in range(6)))
+    dense.append(STATIONS[-1])
+    for (y, w, zb, belt, top, crown) in dense:
+        rings.append([bm.verts.new((x, y, z)) for (x, z) in section(w, zb, belt, top, crown)])
+    n = len(rings[0])
+    for A, B in zip(rings, rings[1:]):
+        for i in range(n):
+            j = (i + 1) % n
+            bm.faces.new((A[i], A[j], B[j], B[i]))
+    bm.faces.new(list(reversed(rings[0])))
+    bm.faces.new(rings[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    return new_obj(bm, "Body", style=PREFIX, smooth=35.0)
+
+
+def sbox(kind, *a, **k):
+    k.setdefault("style", PREFIX)
+    return box(kind, *a, **k)
+
+
+def scyl(kind, *a, **k):
+    k.setdefault("style", PREFIX)
+    return cyl(kind, *a, **k)
+
+
+def sbeam(kind, *a, **k):
+    k.setdefault("style", PREFIX)
+    return beam(kind, *a, **k)
+
+
+def sprism(kind, outer, inner):
+    return prism(kind, outer, inner, style=PREFIX)
+
+
+# doors: name, side (+1 = car's left, x > 0), front y, rear y
+DOOR_Z0 = ZB + 0.45
+DOORS = []
+for s in (1, -1):
+    sd = "L" if s > 0 else "R"
+    DOORS.append(("Door" + sd, s, A0 + 0.12, B - 0.03))
+    if S["doors"] == 4:
+        DOORS.append(("DoorR" + sd, s, B + 0.1, Q))
+FUEL_Y = (WY_R + ARCH + 0.35, WY_R + ARCH + 0.95)
+FUEL_Z = (belt_at(FUEL_Y[0]) - 0.95, belt_at(FUEL_Y[0]) - 0.4)
+if FLAV == "sports":
+    FUEL_Z = (FUEL_Z[0] - 0.1, FUEL_Z[1] - 0.1)
+HINGES, HINGE_OF = {}, {"PanelHood": "Hood", "HoodInner": "Hood", "Lid": "Lid", "PanelFuel": "Fuel", "LidInner": "Lid"}
+HINGE_SLOTS = {"Hood": "Hood", "Spoiler": "Lid"}
+for (nm, s, y0, y1) in DOORS:
+    HINGES[nm] = {"pivot": (s * (W - 0.02), y0, (DOOR_Z0 + BELT) / 2), "axis": (0, 0, 1), "open": -s * 66, "kind": "door"}
+HINGES["Hood"] = {"pivot": (0.0, A0 - 0.05, deck_z(0, A0 - 0.05)), "axis": (1, 0, 0), "open": -55 if FLAV != "sports" else -50, "kind": "hood"}
+HINGES["Fuel"] = {"pivot": (W + 0.03, FUEL_Y[0], sum(FUEL_Z) / 2), "axis": (0, 0, 1), "open": -80, "kind": "fuel"}
+
+
+def cutters_and_body():
+    body = loft_body()
+    body["loft"] = True
+    src = body.data.copy()
+    col = bpy.data.collections.new("Cutters")
+    bpy.context.scene.collection.children.link(col)
+
+    def cut_box(x0, y0, z0, x1, y1, z1):
+        bm = bmesh.new()
+        x0, x1 = sorted((x0, x1))
+        m = Matrix.Translation(((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)) @ Matrix.Diagonal((x1 - x0, y1 - y0, z1 - z0, 1))
+        bmesh.ops.create_cube(bm, size=1.0, matrix=m)
+        me = bpy.data.meshes.new("cut")
+        bm.to_mesh(me)
+        bm.free()
+        ob = bpy.data.objects.new("cut", me)
+        col.objects.link(ob)
+
+    def cut_cyl(p0, p1, r):
+        p0, p1 = Vector(p0), Vector(p1)
+        bm = bmesh.new()
+        m = Matrix.Translation((p0 + p1) / 2) @ axis_rot(p1 - p0).to_4x4()
+        bmesh.ops.create_cone(bm, cap_ends=True, segments=40, radius1=r, radius2=r, depth=(p1 - p0).length, matrix=m)
+        me = bpy.data.meshes.new("cut")
+        bm.to_mesh(me)
+        bm.free()
+        ob = bpy.data.objects.new("cut", me)
+        col.objects.link(ob)
+
+    tub = WX - TW / 2 - 0.2
+    for wy in (WY_F, WY_R):
+        for s in (-1, 1):
+            cut_cyl((s * tub, wy, WR), (s * (W + 0.8), wy, WR), ARCH)
+    floor = ZB + 0.3
+    xin = W - 0.45
+    cab_end = BED[0] - 0.25 if BED else (L1 - 0.5 if REAR == "liftgate" else C1 - 0.1)
+    cut_box(-xin, A0 + 0.05, floor, xin, cab_end, 20)                          # open cabin (+ cargo bay)
+    for (nm, s, y0, y1) in DOORS:                                             # door openings
+        cut_box(s * (xin - 0.05), y0 - 0.03, DOOR_Z0 - 0.03, s * (W + 0.6), y1 + 0.03, 20)
+    if REAR in ("trunk", "hatch"):
+        cut_box(-(W - 0.55), C1 + 0.15, TAIL - 0.9, W - 0.55, L1 - 0.45, 20)
+    elif REAR == "liftgate":
+        cut_box(-(W - 0.55), L1 - 0.6, ZB + 0.75, W - 0.55, L1 + 1.0, 20)
+    if BED:
+        bf = ZB + 0.75
+        cut_box(-(W - 0.3), BED[0], bf, W - 0.3, BED[1] - 0.3, 20)
+        cut_box(-(W - 0.32), BED[1] - 0.35, bf, W - 0.32, L1 + 1.0, 20)
+    col.hide_render = True
+    m = body.modifiers.new("cut", "BOOLEAN")
+    m.operation, m.operand_type, m.collection, m.solver = "DIFFERENCE", "COLLECTION", col, "EXACT"
+    bake(body)
+    for ob in list(col.objects):
+        bpy.data.objects.remove(ob)
+    bpy.data.collections.remove(col)
+    # linings: wheel wells, cabin floor, trunk tub, bed
+    for wy in (WY_F, WY_R):
+        for s in (-1, 1):
+            scyl("Under", (s * (tub + 0.01), wy, WR), (s * (tub + 0.05), wy, WR), ARCH, seg=32)
+    sbox("Carpet", -xin, A0 + 0.1, floor - 0.02, xin, cab_end - 0.05, floor + 0.06)
+    if REAR in ("trunk", "hatch"):
+        sbox("Under", -(W - 0.6), C1 + 0.15, TAIL - 0.95, W - 0.6, L1 - 0.45, TAIL - 0.9)
+    if BED:
+        bf = ZB + 0.75
+        sbox("Dark", -(W - 0.3), BED[0], bf - 0.05, W - 0.3, L1 - 0.35, bf + 0.02)
+        for i in range(7):                                                     # bed floor ribs
+            x = -(W - 0.6) + i * (2 * (W - 0.6)) / 6
+            sbox("Dark", x - 0.06, BED[0] + 0.1, bf + 0.02, x + 0.06, L1 - 0.4, bf + 0.06)
+    return src
+
+
+def hinge_panel_shell(bm, kind, t, hinge):
+    new_obj(shell(bm, t), kind, style=PREFIX, smooth=35.0)
+    HINGE_OF[kind] = hinge
+
+
+def build_doors(src):
+    for (nm, s, y0, y1) in DOORS:
+        bm = bmesh.new()
+        bm.from_mesh(src)
+        xin = W - 0.5
+        for co, no in (((0, y0, 0), (0, 1, 0)), ((0, y1, 0), (0, 1, 0)), ((0, 0, DOOR_Z0), (0, 0, 1)), ((s * xin, 0, 0), (1, 0, 0))):
+            bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=co, plane_no=no)
+        drop = [f for f in bm.faces if not (y0 < f.calc_center_median().y < y1 and f.calc_center_median().z > DOOR_Z0 and s * f.calc_center_median().x > xin)]
+        bmesh.ops.delete(bm, geom=drop, context="FACES")
+        sd = nm[4:]
+        new_obj(shell(bm, 0.12), "DoorJamb" + sd, style=PREFIX, smooth=35.0)
+        new_obj(bm, "PanelDoor" + sd, style=PREFIX, smooth=35.0)
+        HINGE_OF["PanelDoor" + sd] = HINGE_OF["DoorJamb" + sd] = nm
+        for yy in (y0 - 0.015, y1 + 0.015):                                   # shut lines
+            sbox("Seam", s * (W - 0.25), yy - 0.012, DOOR_Z0 - 0.03, s * (W - 0.01), yy + 0.012, belt_at(yy) + 0.05)
+        sbox("Chrome", s * (W + 0.02) - 0.04, y1 - 0.75, BELT - 0.42, s * (W + 0.02) + 0.04, y1 - 0.3, BELT - 0.34, bev=0.02)   # handle
+
+
+# ------------------------------------------------------------------ greenhouse
+def gx(z):
+    zb = BELT + 0.05
+    return (W - 0.32) - TUCK * (z - zb) / (ROOF - zb)
+
+
+def greenhouse():
+    zb = BELT + 0.05
+    xt = gx(ROOF)
+    roof_rear = C0
+    sbox("PanelRoof", -xt - 0.08, A1 - 0.1, ROOF, xt + 0.08, roof_rear + 0.1, ROOF + 0.14, bev=0.06)
+    xb = gx(zb)
+    sprism("Glass", [(-xb, A0, zb), (xb, A0, zb), (xt - 0.06, A1, ROOF), (-(xt - 0.06), A1, ROOF)],
+           [(-xb, A0 + 0.06, zb - 0.04), (xb, A0 + 0.06, zb - 0.04), (xt - 0.06, A1 + 0.06, ROOF - 0.04), (-(xt - 0.06), A1 + 0.06, ROOF - 0.04)])
+    # rear glass: on the body (trunk), on the hatch / liftgate (Lid), or the cab's back window (pickup)
+    if REAR == "trunk" or BED:
+        k = "RoofGlass"
+        y_top, y_bot = (C0, C1) if not BED else (C0, C1)
+        sprism(k, [(-(xt - 0.06), y_top, ROOF), (xt - 0.06, y_top, ROOF), (xb, y_bot, zb), (-xb, y_bot, zb)],
+               [(-(xt - 0.06), y_top - 0.06, ROOF - 0.04), (xt - 0.06, y_top - 0.06, ROOF - 0.04), (xb, y_bot - 0.06, zb - 0.04), (-xb, y_bot - 0.06, zb - 0.04)])
+    for s in (-1, 1):
+        sbeam("RoofBody", (s * xb, A0, zb), (s * xt, A1, ROOF), 0.18, 0.18)                        # A pillar
+        sbeam("RoofBody", (s * (xt + 0.04), A1, ROOF + 0.02), (s * (xt + 0.04), roof_rear, ROOF + 0.02), 0.08, 0.12)  # roof rail
+        # windows between the pillars: front door, rear door (4 doors), quarter
+        def win(pts):
+            outer = [(s * gx(z), y, z) for (y, z) in pts]
+            inner = [(s * (gx(z) - 0.05), y, z) for (y, z) in pts]
+            sprism("RoofGlass", outer, inner)
+        ya = lambda z: A0 + (A1 - A0) * (z - zb) / (ROOF - zb)
+        top = ROOF - 0.08
+        win([(ya(zb + 0.03) + 0.3, zb), (ya(top) + 0.08, top), (B - 0.12, top), (B - 0.12, zb)])
+        sbeam("RoofBody", (s * gx(zb), B, zb), (s * gx(ROOF), B, ROOF), 0.12, 0.26)                 # B pillar
+        if S["doors"] == 4:
+            win([(B + 0.14, zb), (B + 0.14, top), (Q - 0.1, top), (Q - 0.1, zb)])
+            last = Q
+            sbeam("RoofBody", (s * gx(zb), Q + 0.02, zb), (s * gx(ROOF), Q + 0.02, ROOF), 0.12, 0.22)
+        else:
+            last = B
+        if REAR == "trunk" or REAR == "hatch":
+            # quarter window up to the C pillar line, then a body-colour sail
+            yc = lambda z: C1 + (C0 - C1) * (z - zb) / (ROOF - zb)
+            if yc(top) - last > 0.6:
+                win([(last + 0.15, zb), (last + 0.15, top), (yc(top) - 0.25, top), (yc(zb + 0.4) - 0.3, zb + 0.4), (yc(zb + 0.4) - 0.3, zb)])
+            sbeam("RoofBody", (s * gx(ROOF), C0, ROOF), (s * gx(zb), C1, zb), 0.16, 0.3)
+        elif REAR == "liftgate":
+            win([(last + 0.15, zb), (last + 0.15, top), (C0 - 0.2, top), (C0 - 0.2, zb)])
+            sbeam("RoofBody", (s * gx(zb), C0, zb), (s * gx(ROOF), C0, ROOF), 0.16, 0.3)             # D pillar
+        elif BED:
+            sbeam("RoofBody", (s * gx(zb), C1, zb), (s * gx(ROOF), C0, ROOF), 0.16, 0.24)
+
+
+# ------------------------------------------------------------------ hood, rear opening, gas door, engine bay
+def build_rear():
+    xw = W - 0.57
+    if REAR in ("trunk", "hatch"):
+        lid = bmesh.new()
+        nx, ny = 12, 10
+        y0, y1 = C1 + 0.17, L1 - 0.47
+        top, bot = [], []
+        for j in range(ny + 1):
+            y = y0 + (y1 - y0) * j / ny
+            rt, rb = [], []
+            for i in range(nx + 1):
+                x = -xw + 2 * xw * i / nx
+                z = deck_z(x, y)
+                rt.append(lid.verts.new((x, y, z + 0.005)))
+                rb.append(lid.verts.new((x, y, z - 0.09)))
+            top.append(rt)
+            bot.append(rb)
+        for j in range(ny):
+            for i in range(nx):
+                lid.faces.new((top[j][i], top[j][i + 1], top[j + 1][i + 1], top[j + 1][i]))
+                lid.faces.new((bot[j][i], bot[j + 1][i], bot[j + 1][i + 1], bot[j][i + 1]))
+        for i in range(nx):
+            lid.faces.new((top[0][i], bot[0][i], bot[0][i + 1], top[0][i + 1]))
+            lid.faces.new((top[ny][i], top[ny][i + 1], bot[ny][i + 1], bot[ny][i]))
+        for j in range(ny):
+            lid.faces.new((top[j][0], top[j + 1][0], bot[j + 1][0], bot[j][0]))
+            lid.faces.new((top[j][nx], bot[j][nx], bot[j + 1][nx], top[j + 1][nx]))
+        bmesh.ops.recalc_face_normals(lid, faces=lid.faces[:])
+        new_obj(lid, "Lid", style=PREFIX, smooth=30.0)
+        if REAR == "trunk":
+            HINGES["Lid"] = {"pivot": (0.0, y0, deck_z(0, y0)), "axis": (1, 0, 0), "open": 60, "kind": "trunk"}
+        else:
+            # hatch: the rear glass rides on the lid, hinged at the roof
+            zb, xt = BELT + 0.05, gx(ROOF)
+            xb = gx(zb)
+            k = "RoofGlass__Lid"
+            HINGE_OF[k] = "Lid"
+            sprism(k, [(-(xt - 0.06), C0, ROOF), (xt - 0.06, C0, ROOF), (xb - 0.1, y0, deck_z(0, y0) + 0.02), (-(xb - 0.1), y0, deck_z(0, y0) + 0.02)],
+                   [(-(xt - 0.06), C0 - 0.06, ROOF - 0.04), (xt - 0.06, C0 - 0.06, ROOF - 0.04), (xb - 0.1, y0 - 0.06, deck_z(0, y0) - 0.03), (-(xb - 0.1), y0 - 0.06, deck_z(0, y0) - 0.03)])
+            HINGES["Lid"] = {"pivot": (0.0, C0, ROOF), "axis": (1, 0, 0), "open": 48, "kind": "hatch"}
+    elif REAR == "liftgate":
+        z0, z1 = ZB + 0.78, BELT + 0.1
+        yb = L1 - 0.05
+        sbox("Lid", -xw, yb - 0.16, z0, xw, yb, z1, bev=0.04)
+        sbox("Chrome__Lid", -0.6, yb - 0.02, z1 - 0.65, 0.6, yb + 0.03, z1 - 0.55)
+        HINGE_OF["Chrome__Lid"] = "Lid"
+        zb, xt = BELT + 0.05, gx(ROOF)
+        k = "RoofGlass__Lid"
+        HINGE_OF[k] = "Lid"
+        sprism(k, [(-(xt - 0.1), C0 + 0.15, ROOF - 0.05), (xt - 0.1, C0 + 0.15, ROOF - 0.05), (xw, yb - 0.08, z1 + 0.05), (-xw, yb - 0.08, z1 + 0.05)],
+               [(-(xt - 0.1), C0 + 0.09, ROOF - 0.09), (xt - 0.1, C0 + 0.09, ROOF - 0.09), (xw, yb - 0.14, z1 + 0.02), (-xw, yb - 0.14, z1 + 0.02)])
+        sbox("Lid", -(xt + 0.05), C0 - 0.05, ROOF - 0.1, xt + 0.05, C0 + 0.35, ROOF + 0.12, bev=0.04)   # gate header
+        HINGES["Lid"] = {"pivot": (0.0, C0 + 0.1, ROOF + 0.05), "axis": (1, 0, 0), "open": 78, "kind": "liftgate"}
+    elif REAR == "tailgate":
+        bf = ZB + 0.75
+        yb = L1 - 0.08
+        sbox("Lid", -(W - 0.35), yb - 0.18, bf, W - 0.35, yb, BELT - 0.02, bev=0.04)
+        sbox("Chrome__Lid", -0.5, yb - 0.02, BELT - 0.5, 0.5, yb + 0.03, BELT - 0.35)
+        HINGE_OF["Chrome__Lid"] = "Lid"
+        HINGES["Lid"] = {"pivot": (0.0, yb - 0.09, bf), "axis": (1, 0, 0), "open": -88, "kind": "tailgate"}
+
+
+def build_fuel_door():
+    y0, y1 = FUEL_Y
+    z0, z1 = FUEL_Z
+    sbox("Under", W - 0.04, y0 + 0.06, z0 + 0.06, W - 0.005, y1 - 0.06, z1 - 0.06)
+    scyl("Chrome", (W - 0.005, (y0 + y1) / 2, (z0 + z1) / 2), (W + 0.01, (y0 + y1) / 2, (z0 + z1) / 2), 0.15, seg=16)
+    sbox("PanelFuel", W + 0.015, y0, z0, W + 0.035, y1, z1, bev=0.03)
+
+
+def build_engine_bay():
+    ap = WX - TW / 2 - 0.3
+    fl = ZB + 0.4
+    y0, y1 = L0 + 0.7, A0 - 0.12
+    top = min(deck_z(0, y0), deck_z(0, y1)) - 0.25
+    sbox("Under", -ap, y0, fl - 0.04, ap, y1, fl)
+    for s in (-1, 1):
+        sbox("Under", s * (ap - 0.05), y0, fl, s * ap, y1, top)
+    sbox("Under", -ap, y1 - 0.06, fl, ap, y1, top)
+    sbox("Dark", -(ap - 0.3), y0 + 0.05, fl + 0.1, ap - 0.3, y0 + 0.25, top - 0.1)              # radiator
+    cy = (y0 + y1) / 2
+    eh = min(1.0, top - fl - 0.35)
+    sbox("Dark", -0.9, cy - 1.6, fl + 0.05, 0.9, cy + 1.6, fl + eh, bev=0.06)                    # engine
+    for s in (-1, 1):
+        sbox("Chrome", s * 0.5, cy - 1.4, fl + eh, s * 1.1, cy + 1.4, fl + eh + 0.22, bev=0.06)
+    scyl("Chrome", (0, cy, fl + eh), (0, cy, fl + eh + 0.25), 0.55, seg=24, bev=0.04)
+    sbox("Dark", ap - 0.85, y1 - 1.2, fl, ap - 0.2, y1 - 0.3, fl + 0.6, bev=0.04)              # battery
+
+
+def split_onto_doors():
+    """trim, glass, mirrors and door cards that sit on a door move onto that door"""
+    def rule(kind):
+        info = OPT_INFO.get(kind)
+        if info:
+            if info["slot"] == "Doors":
+                return W - 0.85, ZB + 0.2, BELT + 0.3
+            if info["slot"] in ("Mirrors",):
+                return W - 0.4, DOOR_Z0, ROOF
+            return None
+        if kind == "RoofGlass":
+            return W - 0.32 - TUCK - 0.2, BELT, ROOF
+        return None
+    for ob in list(OBJS):
+        if ob.get("style") != PREFIX or "__" in ob["kind"]:
+            continue
+        r = rule(ob["kind"])
+        if not r:
+            continue
+        xmin, zmin, zmax = r
+        bake(ob)
+        me = ob.data
+        me.transform(ob.matrix_world)
+        ob.matrix_world = Matrix.Identity(4)
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        for (nm, s, y0, y1) in DOORS:
+            for y in (y0, y1):
+                bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=(0, y, 0), plane_no=(0, 1, 0))
+        bm.faces.index_update()
+        bm.to_mesh(me)
+        moved = set()
+        for (nm, s, y0, y1) in DOORS:
+            sel = set()
+            for f in bm.faces:
+                c = f.calc_center_median()
+                if f.index not in moved and y0 < c.y < y1 and s * c.x > xmin and zmin < c.z < zmax:
+                    sel.add(f.index)
+            if not sel:
+                continue
+            part = bmesh.new()
+            part.from_mesh(me)
+            part.faces.ensure_lookup_table()
+            bmesh.ops.delete(part, geom=[f for f in part.faces if f.index not in sel], context="FACES")
+            kind = ob["kind"] + "__" + nm
+            if ob["kind"] in OPT_INFO:
+                OPT_INFO[kind] = dict(OPT_INFO[ob["kind"]], hinge=nm)
+            else:
+                HINGE_OF[kind] = nm
+            new_obj(part, kind, style=PREFIX, smooth=ob.get("smooth", 0.0))
+            moved |= sel
+        bm.faces.ensure_lookup_table()
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.index in moved], context="FACES")
+        bm.to_mesh(me)
+        bm.free()
+    for k, v in OPT_INFO.items():
+        if v["slot"] in HINGE_SLOTS and "hinge" not in v and HINGE_SLOTS[v["slot"]] in HINGES:
+            v["hinge"] = HINGE_SLOTS[v["slot"]]
+
+
+exec(compile(open(os.path.join(HERE, "build_vehicle_parts.py")).read(), "build_vehicle_parts.py", "exec"), globals())
+
+
+# ------------------------------------------------------------------ paint panels
+PANELS = {
+    "side": ("yz", (L0 - 0.1, L1 + 0.1), (ZB - 0.1, BELT + 0.35)),
+    "hood": ("xy", (-W - 0.05, W + 0.05), (L0 - 0.1, A0)),
+    "roof": ("xy", (-gx(ROOF) - 0.1, gx(ROOF) + 0.1), (A1 - 0.1, C0 + 0.1)),
+}
+if REAR in ("trunk", "hatch"):
+    PANELS["trunk"] = ("xy", (-W + 0.5, W - 0.5), (C1, L1 - 0.4))
+else:
+    PANELS["trunk"] = ("xz", (-W + 0.3, W - 0.3), (ZB + 0.7, BELT + 0.1))
+PANEL_OF = {"PanelSideL": "side", "PanelSideR": "side", "PanelHood": "hood", "Lid": "trunk", "PanelRoof": "roof", "PanelFuel": "side"}
+for (nm, s, y0, y1) in DOORS:
+    PANEL_OF["PanelDoor" + nm[4:]] = "side"
+SOURCE_OF = {"side": "PanelSideL", "hood": "PanelHood", "trunk": "Lid", "roof": "PanelRoof"}
+
+
+def panel_uv(panel, co):
+    ax, (a0, a1), (b0, b1) = PANELS[panel]
+    if ax == "yz":
+        return ((co.y - a0) / (a1 - a0), (co.z - b0) / (b1 - b0))
+    if ax == "xz":
+        return ((a1 - co.x) / (a1 - a0), (co.z - b0) / (b1 - b0))
+    return ((a1 - co.x) / (a1 - a0), 1 - (co.y - b0) / (b1 - b0))
+
+
+def set_uv(ob, panel):
+    bake(ob)
+    me = ob.data
+    for layer in list(me.uv_layers):
+        me.uv_layers.remove(layer)
+    uv = me.uv_layers.new(name="UVMap")
+    for poly in me.polygons:
+        for li in poly.loop_indices:
+            uv.data[li].uv = panel_uv(panel, ob.matrix_world @ me.vertices[me.loops[li].vertex_index].co)
+    ob["uv"] = True
+
+
+def split_panels():
+    body = [o for o in OBJS if o.get("loft")][0]
+    bake(body)
+    regions = {}
+    for f in body.data.polygons:
+        c, n = f.center, f.normal
+        if abs(n.x) > 0.5 and abs(c.x) > W - 0.35:
+            r = "PanelSideL" if c.x > 0 else "PanelSideR"
+        elif n.z > 0.5 and L0 + 0.05 < c.y < A0 - 0.08 and abs(c.x) < W - 0.2:
+            r = "PanelHood"
+        else:
+            r = "Body"
+        regions.setdefault(r, set()).add(f.index)
+    moved = set()
+    for r, idx in regions.items():
+        if r == "Body":
+            continue
+        bm = bmesh.new()
+        bm.from_mesh(body.data)
+        bm.faces.ensure_lookup_table()
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.index not in idx], context="FACES")
+        ob = new_obj(bm, r, style=PREFIX, smooth=35.0)
+        set_uv(ob, PANEL_OF[r])
+        moved |= idx
+        if r == "PanelHood":
+            hb = bmesh.new()
+            hb.from_mesh(ob.data)
+            new_obj(shell(hb, 0.08), "HoodInner", style=PREFIX, smooth=35.0)
+            hb.free()
+    bm = bmesh.new()
+    bm.from_mesh(body.data)
+    bm.faces.ensure_lookup_table()
+    bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.index in moved], context="FACES")
+    bm.to_mesh(body.data)
+    bm.free()
+    for o in list(OBJS):
+        if o["kind"] in PANEL_OF and o["kind"] not in regions:
+            set_uv(o, PANEL_OF[o["kind"]])
+
+
+# ------------------------------------------------------------------ build
+src = cutters_and_body()
+build_doors(src)
+bpy.data.meshes.remove(src)
+greenhouse()
+build_rear()
+build_fuel_door()
+build_engine_bay()
+build_parts()
+split_onto_doors()
+split_panels()
+car, car_tris = join_style(PREFIX, PREFIX)
+
+# vinyls: the lowrider's images, printed on this vehicle's panels
+VINYLS = {}
+vd = os.path.join(OUT, "lowrider_vinyls") if os.path.isdir(os.path.join(OUT, "lowrider_vinyls")) else os.path.join(HERE, "lowrider_vinyls")
+if os.path.isdir(vd):
+    for fn in sorted(os.listdir(vd)):
+        if fn.endswith(".png") and "_" in fn:
+            liv, pan = fn[:-4].rsplit("_", 1)
+            if pan in PANELS:
+                VINYLS.setdefault(liv, {})[pan] = os.path.join(vd, fn)
+by_kind = {ob.name.split("_", 1)[1]: ob for ob in car}
+vinyl_objs = []
+for liv, panels in sorted(VINYLS.items()):
+    for pan, path in sorted(panels.items()):
+        srcp = by_kind.get(SOURCE_OF[pan])
+        if not srcp:
+            continue
+        cp = srcp.copy()
+        cp.data = srcp.data.copy()
+        cp.name = f"{PREFIX}Livery_{liv}_{pan}"
+        cp.data.name = cp.name
+        cp.data.materials.clear()
+        cp.data.materials.append(image_mat(cp.name, path))
+        bpy.context.scene.collection.objects.link(cp)
+        vinyl_objs.append(cp)
+if vinyl_objs:
+    export(vinyl_objs, f"{PREFIX}Vinyls.glb")
+for ob in vinyl_objs:
+    bpy.data.objects.remove(ob)
+
+# wheel: every lowrider rim / knock-off / tyre design + off-road tyres, scaled to this vehicle
+WHEEL_X = 30.0
+build_wheels(WHEEL_X)
+wheel, wheel_tris = join_style("LowriderWheel", PREFIX + "Wheel")
+export(car + wheel, f"{PREFIX}.glb")
+
+# ------------------------------------------------------------------ game data
+car_ext, wheel_ext = extents(car), extents(wheel)
+cmn, cmx = imp_ext(car_ext)
+wmn, wmx = imp_ext(wheel_ext)
+seat_z = ZB + 0.3 + 0.75
+sy = (A0 + B) / 2 + 0.9
+seats = {"Driver": car_pt((W * 0.42, sy, seat_z)), "Passenger": car_pt((-W * 0.42, sy, seat_z))}
+sy = SY
+seats = {"Driver": car_pt((W * 0.42, sy, seat_z)), "Passenger": car_pt((-W * 0.42, sy, seat_z))}
+if S_REAR_Y():
+    ry = S_REAR_Y()
+    seats["RearL"], seats["RearR"] = car_pt((W * 0.42, ry, seat_z)), car_pt((-W * 0.42, ry, seat_z))
+data = {
+    "Car": {
+        "ImportMin": cmn, "ImportMax": cmx, "Pieces": sorted(k.split("_", 1)[1] for k in car_tris),
+        "Wheels": {"FL": car_pt((WX, WY_F, WR)), "FR": car_pt((-WX, WY_F, WR)), "RL": car_pt((WX, WY_R, WR)), "RR": car_pt((-WX, WY_R, WR))},
+        "WheelRadius": WR,
+        "LidHinge": car_pt(HINGES["Lid"]["pivot"]),
+        "Hinges": {k: {"Pivot": car_pt(h["pivot"]), "Axis": car_pt(h["axis"]), "Open": h["open"], "Kind": h["kind"]} for k, h in HINGES.items()},
+        "HingeOf": {k: v for k, v in HINGE_OF.items() if f"{PREFIX}_{k}" in car_tris},
+        "Hull": [car_box((-W, L0 - 0.2, ZB), (W, L1 + 0.2, BELT + 0.1)), car_box((-gx(BELT), A0 + 0.3, BELT), (gx(BELT), (C1 if not BED else C1), ROOF + 0.1))],
+        "Seats": seats,
+        "FrontBumper": car_pt((0, L0 - 0.2, ZB + 0.5)), "RearBumper": car_pt((0, L1 + 0.2, ZB + 0.5)),
+        "PanelOf": PANEL_OF, "Vinyls": {liv: sorted(p) for liv, p in VINYLS.items()},
+        "OptInfo": {k: v for k, v in OPT_INFO.items() if f"{PREFIX}_{k}" in car_tris},
+        "Options": options_of(OPT_INFO, car_tris, PREFIX + "_"),
+        "Gauge": {"Centre": car_pt(GAUGE[0]), "Size": [1.4, 0.4], "Tilt": GAUGE[1]},
+        "Plaque": {"Centre": car_pt((0.0, C1 - 0.3, BELT + 0.5)), "Size": [1.8, 0.5]},
+    },
+    "Wheel": {"ImportMin": wmn, "ImportMax": wmx, "Centre": imp_pt((WHEEL_X, 0, 0)),
+              "Pieces": sorted(k.split("_", 1)[1] for k in wheel_tris),
+              "OptInfo": {k: v for k, v in WHEEL_INFO.items() if f"{PREFIX}Wheel_{k}" in wheel_tris},
+              "Options": options_of(WHEEL_INFO, wheel_tris, PREFIX + "Wheel_")},
+}
+with open(os.path.join(OUT, f"NCVehicleData_{VID}.lua"), "w") as f:
+    f.write(f"-- NCVehicleData_{VID} (ModuleScript, ReplicatedStorage). GENERATED by build_vehicles.py: do not edit by hand.\n")
+    f.write(f"-- {S['name']}: same layout as NCLowriderData.Car / .Wheel (car frame: front = -Z, origin on the ground between the axles).\n")
+    f.write("return " + lua(data) + "\n")
+
+# ------------------------------------------------------------------ previews
+scene, cam = setup_render()
+scene.render.resolution_x, scene.render.resolution_y = 1400, 820
+if os.environ.get("NC_PREVIEW_ENGINE", "").upper() == "CYCLES":
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
+    scene.cycles.samples = int(os.environ.get("NC_SAMPLES", "16"))
+    scene.cycles.use_denoising = False
+    scene.world.use_nodes = True
+    bgn = scene.world.node_tree.nodes.get("Background")
+    if bgn:
+        bgn.inputs["Color"].default_value = (0.55, 0.65, 0.8, 1)
+        bgn.inputs["Strength"].default_value = 0.9
+    sun = bpy.data.objects.new("Sun", bpy.data.lights.new("Sun", "SUN"))
+    sun.data.energy = 4.0
+    sun.rotation_euler = (math.radians(50), 0, math.radians(30))
+    scene.collection.objects.link(sun)
+    gp = bpy.data.meshes.new("Ground")
+    gbm = bmesh.new()
+    bmesh.ops.create_grid(gbm, x_segments=1, y_segments=1, size=400)
+    gbm.to_mesh(gp)
+    gbm.free()
+    g = bpy.data.objects.new("Ground", gp)
+    gm = bpy.data.materials.new("Ground")
+    gm.diffuse_color = (0.25, 0.25, 0.27, 1)
+    gp.materials.append(gm)
+    scene.collection.objects.link(g)
+previews = []
+for (wx, wy) in ((WX, WY_F), (-WX, WY_F), (WX, WY_R), (-WX, WY_R)):
+    for ob in wheel:
+        d = ob.copy()
+        d["pkind"] = ob["pkind"]
+        d["wheelcopy"] = True
+        scene.collection.objects.link(d)
+        d.matrix_world = Matrix.Translation((wx, wy, WR)) @ Matrix.Rotation(0 if wx > 0 else math.pi, 4, "Z") @ Matrix.Translation((-WHEEL_X, 0, 0))
+for ob in wheel:
+    ob.hide_render = True
+plain = {}
+
+
+def part_visible(ob, build):
+    k = ob.get("pkind", "")
+    info = OPT_INFO.get(k) or WHEEL_INFO.get(k)
+    return info is None or build.get(info["slot"]) == info["variant"]
+
+
+def show(build=None, liv=None, paint=None):
+    b = dict(BASE_BUILD, **(build or {}))
+    pc = lin(paint) if paint else lin(S["paint"])
+    for ob in scene.objects:
+        if ob.type != "MESH" or ob.name == "Ground" or (ob in wheel):
+            continue
+        ob.hide_render = not part_visible(ob, b)
+        kind = ob.get("pkind", "")
+        is_paint = kind in PANEL_OF or kind.split("__")[0] in ("Body", "RoofBody", "HoodInner") or kind.startswith("DoorJamb") or OPT_INFO.get(kind, {}).get("mat") == "Body"
+        if is_paint:
+            plain.setdefault(ob.name, ob.data.materials[0])
+            path = VINYLS.get(liv, {}).get(PANEL_OF.get(kind, "")) if liv else None
+            if path:
+                ob.data.materials[0] = image_mat(f"prev_{liv}_{kind}_{len(plain)}", path, pc)
+            else:
+                m = plain[ob.name].copy()
+                m.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (*pc, 1)
+                ob.data.materials[0] = m
+
+
+def pose(frac):
+    for ob in scene.objects:
+        k = ob.get("pkind")
+        h = HINGE_OF.get(k) or (OPT_INFO.get(k) or {}).get("hinge")
+        if not h or ob.get("wheelcopy"):
+            continue
+        hg = HINGES[h]
+        p = Vector(hg["pivot"])
+        ob.matrix_world = Matrix.Translation(p) @ Matrix.Rotation(math.radians(hg["open"] * frac), 4, Vector(hg["axis"])) @ Matrix.Translation(-p)
+
+
+def shot(name, loc, tgt):
+    cam.location = loc
+    cam.rotation_euler = (Vector(tgt) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
+    scene.render.filepath = os.path.join(PREV, f"{VID}_{name}.png")
+    bpy.ops.render.render(write_still=True)
+
+
+Lr = max(-L0, L1)
+fz = (ROOF * 0.4)
+show()
+shot("front34", (-Lr * 1.55, -Lr * 2.1, ROOF * 1.4 + 2), (0, -1.0, fz))
+shot("rear34", (Lr * 1.4, Lr * 2.2, ROOF * 1.4 + 2), (0, 1.0, fz))
+shot("side", (Lr * 2.6, 0.0, ROOF * 0.6), (0, 0, fz))
+for i, (nm, b, liv, paint) in enumerate(SHOWCASE):
+    show(b, liv, paint)
+    shot(nm, (-Lr * 1.55, -Lr * 2.1, ROOF * 1.4 + 2) if i % 2 == 0 else (Lr * 1.4, Lr * 2.2, ROOF * 1.4 + 2), (0, 0, fz))
+show()
+pose(1.0)
+shot("open_front34", (-Lr * 1.7, -Lr * 1.9, ROOF * 1.8 + 3), (0, -1.0, fz))
+shot("open_rear34", (Lr * 1.6, Lr * 2.0, ROOF * 1.8 + 3), (0, 1.5, fz))
+pose(0.0)
+print("NEONCOAST_DONE", json.dumps({"vehicle": VID, "car": sum(car_tris.values()), "wheel": sum(wheel_tris.values()),
+                                    "options": data["Car"]["Options"], "wheelOptions": data["Wheel"]["Options"]}))
