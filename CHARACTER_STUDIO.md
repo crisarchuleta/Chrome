@@ -128,8 +128,8 @@ that hugs the skin, so it looks like part of the skin, not a sticker.
   - A leg sleeve fills the thigh and calf.
   - `NCInk.Validate` and `NCInk.Price` are for the server.
 - **Studio setup.**
-  1. Import `ink/NCInkSwatches.glb`, which holds every PNG on a plane, so Studio uploads the images.
-  2. Run `require(game.ServerStorage.NCInkSetup).Prepare(workspace.NCInkSwatches)`. It saves each texture id into
+  1. Import `ink/NCInkSwatches_1.glb + NCInkSwatches_2.glb`, which holds every PNG on a plane, so Studio uploads the images.
+  2. Run `require(game.ServerStorage.NCInkSetup).Prepare(workspace.NCInkSwatches_1)` then `_2`. It saves each texture id into
      `ReplicatedStorage.NCInkIds`.
   3. Import the 10 `NC_Ink_<Body>.fbx` files into `ReplicatedStorage.NCInkRigs` as Models named after the body.
 - **Runtime.**

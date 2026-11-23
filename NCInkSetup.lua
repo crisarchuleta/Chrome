@@ -1,10 +1,11 @@
 --!nonstrict
 -- NCInkSetup (ModuleScript, Studio only): one-time setup for the tattoo textures.
 --
--- 1. File > Import 3D: NCInkSwatches.glb (every tattoo PNG on a plane named after the file). Studio uploads the
---    images as it imports.
--- 2. Command bar:
---      require(game.ServerStorage.NCInkSetup).Prepare(workspace.NCInkSwatches)
+-- 1. File > Import 3D: NCInkSwatches_1.glb and NCInkSwatches_2.glb (every tattoo PNG on a plane named after the
+--    file, split in two so each file stays under the 20 MB upload limit). Studio uploads the images as it imports.
+-- 2. Command bar (once per swatch model; the missing-list is only complete after the second):
+--      require(game.ServerStorage.NCInkSetup).Prepare(workspace.NCInkSwatches_1)
+--      require(game.ServerStorage.NCInkSetup).Prepare(workspace.NCInkSwatches_2)
 --    Each plane's texture asset id is saved to ReplicatedStorage.NCInkIds as a StringValue named after the file
 --    (e.g. "sl_rosas_nubes_L"). The report lists anything missing. Delete the swatch model afterwards.
 -- 3. Import NC_Ink_<Body>.fbx for each of the 10 bodies into ReplicatedStorage.NCInkRigs as Models named <Body>.

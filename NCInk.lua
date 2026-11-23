@@ -9,7 +9,7 @@
 -- Pieces:
 --   NC_Ink_<Body>.fbx      the 13 layers (Ink_LeftUpperArm ... Ink_Face) skinned to that body's rig. Import each
 --                          into ReplicatedStorage.NCInkRigs as a Model named <Body> (e.g. "Male_Average").
---   NCInkSwatches.glb      every tattoo PNG on its own plane. Import it once into Workspace, run
+--   NCInkSwatches_1.glb + NCInkSwatches_2.glb      every tattoo PNG on its own plane. Import it once into Workspace, run
 --                          NCInkSetup.Prepare(model) from the command bar: it saves each texture's asset id into
 --                          ReplicatedStorage.NCInkIds (StringValues named after the file) and you can delete the model.
 --   NCInkCatalog           the tattoo list (generated from ink_catalog.json).
