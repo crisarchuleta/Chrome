@@ -10,6 +10,8 @@ can be picked up from any session. Files keep the exact names and layout they ha
 Start with:
 - [`STATUS.md`](STATUS.md): everything built so far, pass by pass, with install notes and what still needs a Studio test.
 - [`STORY_AND_FITNESS.md`](STORY_AND_FITNESS.md): the design for the body stats, food, and the story chapters and crew.
+- [`CHARACTER_STUDIO.md`](CHARACTER_STUDIO.md): character customization (405 original items, 79 preset looks, the studio
+  screen), the research behind it, and the one-drag install.
 
 ## What's in here
 
@@ -18,7 +20,8 @@ Start with:
 | Server scripts | `*.server.lua` (Movement, Fitness, Basketball, Pool, Parachute, Elevator, BuildingDoors, HouseInteractables) | ServerScriptService |
 | Client scripts | `*.client.lua` (Movement, Fitness, Basketball, Pool, Parachute, House) | StarterPlayerScripts |
 | Modules | `BuildingKit.lua`, `BuildingKitData.lua`, `NCAnimPlayer.lua`, `NCAnimations.lua`, `NCAnimationsHuman.lua`, `NCFitnessConfig.lua`, `NCWallet.lua`, `AssembleHumanBody.lua` | ReplicatedStorage / ServerScriptService (see STATUS.md) |
-| Studio packages | `NeonCoastBuildingKit.rbxmx`, `NeonCoastAnimations.rbxmx` | Drag into Studio |
+| Studio packages | `NeonCoastBuildingKit.rbxmx`, `NeonCoastAnimations.rbxmx`, `NeonCoastCharacterStudio.rbxmx` | Drag into Studio (the Character Studio one into ServerScriptService) |
+| Character Studio | `NCLookCatalog.lua`, `NCLookBuilder.lua`, `LookStudioService.server.lua`, `LookStudioClient.client.lua` | See CHARACTER_STUDIO.md |
 | Blender build scripts | `build_*.py`, `nc_*.py`, `make_kit_data.py`, `qa_buildings.py` | Run with Blender 5.3 (commands in STATUS.md) |
 | Generated layout/data | `*.json` | Read by `make_kit_data.py` and the QA scripts |
 | 3D assets | `*.glb`, `NeonCoastHuman.fbx`, `*.blend` | Upload to Roblox as Models |
