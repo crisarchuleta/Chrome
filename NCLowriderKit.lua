@@ -51,7 +51,7 @@ end
 local function roleOf(inst, prefix)
 	local cur = inst
 	while cur do
-		local r = cur.Name:match("^" .. prefix .. "_(%w+)")
+		local r = cur.Name:match("^" .. prefix .. "_([%w_]+)") -- pieces on a door are <kind>__DoorL
 		if r then
 			return r
 		end
