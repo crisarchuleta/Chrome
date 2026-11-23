@@ -15,10 +15,18 @@ Renders are in the project files under `character-studio/heads/`.
   real one is. Skin fades thin out the same way down the sides. There is no raised rim and no see-through band.
   In Studio each hair piece has a SurfaceAppearance (AlphaMode Transparency) whose Color is set to the chosen hair
   colour, and the part sits at Transparency 0.02 so the soft alpha shows.
+  - The hairline follows the reference turnaround (`references/faces/faces_turnaround.jpg`), not MakeHuman's
+    scalp group, which recedes far at the temples. Men: nearly straight across, square temple corners, then
+    straight down to a sideburn in front of the ear, ending around mid-ear. Women: a rounder, lower arch that
+    curves down over the temple to just in front of the ear top, with the temples covered. The soft edge is kept
+    short on the temples and sideburns so those narrow strips stay solid, and wider behind the ears and at the nape
+    so dark hair blends into the skin there.
   - Men: Buzz, Crop, TaperFade, HighFade, SidePart, CurlyTop, Locs, Twists
   - Women: Pixie, Locs, LowBun, Ponytail, LongStraight, Bob
   - Long hair drapes over the back and falls behind the shoulders of the rest-pose body, so it never goes through
-    them. Locs collide with the head and body.
+    them. Locs collide with the head and body, grow out of the scalp (no cut ends at the roots) and never start
+    on or right above an ear. The ponytail leaves the tie in a short arc, hangs straight down the back and tapers
+    to a point.
   - Every style has a `_Cap` version pressed flat under a hat, which is worn automatically when a hat is on.
 - **Brows:** Natural, Thick, Arched, Straight, Thin. Each is a flat card on the brow ridge with a texture of short hairs that slant toward the tail and fade out at the top, bottom and inner end. The tail stops just past the outer corner of the eye. They're in a new required Brows slot, coloured from the hair palette.
 - **Eyes:** a new required Eyes slot with 18 eye colours (browns, hazel, amber, greens, greys, blues).
@@ -48,6 +56,7 @@ item with no mesh style for that body, and stock avatars, keep the older procedu
   replicates), and the brows, lips, lash line, stubble and eyeballs follow their bones.
 - `NCLookBuilder` calls NCHead for the `meshhair` and `meshface` families and for the Eyes slot. The slider list is
   `NCLookCatalog.FACE_SLIDERS`, and the server cleans what clients send with `NCLookCatalog.CleanFaceShape`.
+- `NCHead.lua` holds each piece on the Head with a classic `Weld` (C0 = the piece's offset from the point between the eyes), so a piece can't be left behind if the character is moved or teleported while it is being put on.
 
 ## Install in Studio
 

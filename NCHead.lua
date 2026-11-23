@@ -149,7 +149,7 @@ function H.frame(char)
 	local l, r = rest(L), rest(R) -- (part space: both sit directly in the Head; the eyes may have been moved by a face shape slider; the hair goes by the skull)
 	local mid = (l + r) / 2
 	local scale = (l - r).Magnitude / D[g].eyeSpan
-	return { char = char, head = head, cf = head.CFrame * CFrame.new(mid), scale = scale, g = g, D = D[g], assets = assets[g] }
+	return { char = char, head = head, cf = head.CFrame * CFrame.new(mid), rel = CFrame.new(mid), scale = scale, g = g, D = D[g], assets = assets[g] }
 end
 
 -- is there a mesh piece for this name on this body?
@@ -168,7 +168,8 @@ function H.put(fr, name, parent, props)
 	part.Size = template.Size * fr.scale
 	local follow = H.FOLLOW[info.kind]
 	local shift = follow and H.delta(fr.char, follow[1]) * follow[2] or Vector3.zero
-	part.CFrame = fr.cf * CFrame.new(info.offset * fr.scale + shift)
+	local rel = fr.rel * CFrame.new(info.offset * fr.scale + shift) -- where it sits in the Head's own frame
+	part.CFrame = fr.head.CFrame * rel
 	part.Anchored = false
 	part.CanCollide, part.CanTouch, part.CanQuery, part.Massless = false, false, false, true
 	part.Color = props.Color or part.Color
@@ -183,8 +184,12 @@ function H.put(fr, name, parent, props)
 		part.Transparency = math.max(part.Transparency, H.SOFT_T)
 	end
 	part.CastShadow = props.CastShadow or false
-	local w = Instance.new("WeldConstraint")
+	-- a classic Weld holds the exact offset from the Head (C0), whatever the parts' positions are when it is made;
+	-- a WeldConstraint would freeze whatever gap there was at that moment (e.g. mid-teleport on these rigs)
+	local w = Instance.new("Weld")
 	w.Part0, w.Part1 = fr.head, part
+	w.C0 = rel
+	w.C1 = CFrame.identity
 	w.Parent = part
 	part.Parent = parent
 	return part

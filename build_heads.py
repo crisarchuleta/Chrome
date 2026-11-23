@@ -107,7 +107,7 @@ def make_textures():
     u = (np.arange(n) + 0.5) / n
     strands = 170
     sid = (np.arange(n) * strands // n) % strands
-    start = rng.uniform(0.05, 0.8, strands) ** 1.4
+    start = rng.uniform(0.02, 0.6, strands) ** 1.3
     start = 0.5 * start + 0.5 * np.convolve(np.r_[start[-3:], start, start[:3]], np.ones(7) / 7, "same")[3:-3]
     shade = rng.uniform(0.72, 1.0, strands)
     pos = (np.arange(n) * strands / n) % 1.0                             # across one strand
@@ -115,7 +115,7 @@ def make_textures():
     st = start[sid][:, None]
     a = np.clip((u[None, :] - st) / 0.16, 0, 1)                           # each strand grows in over a short run
     thin = np.clip(core[:, None] * 1.6 + u[None, :] * 1.4, 0, 1)          # near the edge strands are separate
-    alpha = np.clip(a * thin + smoothstep(0.75, 0.95, u)[None, :], 0, 1)
+    alpha = np.clip(a * thin + smoothstep(0.6, 0.85, u)[None, :], 0, 1)
     col = (shade[sid][:, None] * (0.86 + 0.14 * core[:, None])) * np.ones((1, n))
     col = col * (0.92 + 0.08 * np.sin(u[None, :] * 40 + sid[:, None]))
     T["NC_HairEdge"] = np.dstack([col, col, col, alpha])
@@ -472,10 +472,29 @@ def drape(H, root, length, clear, body, step=0.035, seed=0, sway=0.0):
         a, rad, z = a_new, rad_new, z_new
     # smooth out any kinks (the root stays put), then keep it outside the head and body
     P = np.array(pts)
-    for _ in range(4):
+    for _ in range(10):
         P[1:-1] = 0.25 * P[:-2] + 0.5 * P[1:-1] + 0.25 * P[2:]
         P[-1] = 0.5 * P[-1] + 0.5 * P[-2] + (P[-2] - P[-3]) * 0.5
-    return [push_out(H, p, clear * 0.9, body) for p in P]
+    out = []
+    if not hasattr(H, "ear_kd"):
+        ears = H.co[H.mask["ears"]]
+        H.ear_kd = KDTree(len(ears))
+        for i, pe in enumerate(ears):
+            H.ear_kd.insert(pe, i)
+        H.ear_kd.balance()
+    for p in P:
+        if p[2] > neck_z and H.ear_kd.find(p)[2] < 0.12:
+            out.append(p)           # over an ear: the outline already keeps it off (pushing to the ear's nearest
+                                    # point would fold it round the rim)
+        elif p[2] > neck_z:
+            out.append(push_out(H, p, clear * 0.9, body))
+        else:                       # (the head reference still has A-pose shoulders: only the body counts down here)
+            q = Vector(p)
+            loc, nrm, fi, dist = body.find_nearest(q)
+            if loc is not None and (q - loc).dot(nrm) < clear * 0.9:
+                q = loc + nrm * clear * 0.9
+            out.append(np.array(q))
+    return out
 
 
 def strand(H, root, direction, length, step=0.04, gravity=0.18, clear=0.03, stiff=0.85, extra=None, wobble=0.0, seed=0):
@@ -595,7 +614,7 @@ def fade_band(name, V, F, N, hl, T, p, width=0.06):
     return shell(name, V, F, N, np.zeros(len(V)), field=field, lift=0.002)
 
 
-FRONT_RAISE = 0.06
+FRONT_RAISE = 0.0
 
 
 def cap_version(H, V, T, p):
@@ -608,9 +627,69 @@ def cap_version(H, V, T, p):
     return T2
 
 
+def front_hairline(H, V):
+    """the hairline across the forehead, the temples and down in front of the ears (sideburns), shaped like a real
+    one (references/faces): forehead about 3/4 of the brow-to-nose height, nearly straight across with soft
+    temple corners, then straight down in front of the ear. MakeHuman's scalp group recedes far at the temples."""
+    male = H.gender == "Male"
+    rel = V - H.centre
+    a = np.abs(np.arctan2(rel[:, 0], -rel[:, 1]))                  # 0 = straight ahead, pi/2 = the side
+    ears = H.co[H.mask["ears"]]
+    er = ears - H.centre
+    # where the ear joins the head at its front (the ear rim sticks out, so its own angle is too far forward)
+    if len(ears):
+        ax_ = np.abs(ears[:, 0] - H.anchor[0])
+        root = ears[ax_ < np.percentile(ax_, 30)]                    # the part of the ear that joins the head
+        front = root[np.argmin(root[:, 1])]
+        a_ear = math.atan2(abs(front[0] - H.anchor[0]), -(front[1] - H.centre[1]))
+    else:
+        a_ear = math.radians(80)
+    brow = H.anchor[2] + 0.1
+    nose_base = H.nose_tip[2] - 0.035
+    hz_c = brow + (0.55 if male else 0.44) * (H.top - brow)            # (measured on the reference turnaround)
+    # the temple corner sits above the outer end of the eyebrow; from there the hairline turns down to the sideburn
+    tail = np.array([abs(H.eyeL[0] - H.anchor[0]) + 0.085, H.eyeL[1] - H.centre[1]])
+    a_brow = math.atan2(tail[0], -tail[1])
+    a_t = a_brow + math.radians(4 if male else -18)
+    burn = H.ear_z + (0.0 if male else 0.06)                        # how low the sideburn comes
+    corner = hz_c + (0.02 if male else 0.0) * smoothstep(a_t - math.radians(20), a_t, a)
+    drop = np.clip((a - a_t) / math.radians(14 if male else 42), 0, 1)       # (the temple: nearly straight down)
+    # (women: a rounder curve down over the temple to just in front of the ear top, the temple itself covered)
+    hz = corner + (burn - corner) * (smoothstep(0.0, 1.0, drop) ** (0.55 if male else 0.8))
+    hz += 0.012 * noise(V, 30)                                      # a little irregular, like a real hairline
+    w = 0.03
+    fill = smoothstep(-w, w, V[:, 2] - hz)
+    # how much this hairline replaces the scalp group: all of the face side, fading out just in front of the ear
+    wgt = 1.0 - smoothstep(a_ear + math.radians(12), a_ear + math.radians(30), a)   # (on over the ear, hugging it)
+    # never onto the ear itself (the sideburn runs down just in front of it)
+    kd = KDTree(len(ears))
+    for i, pe in enumerate(ears):
+        kd.insert(pe, i)
+    kd.balance()
+    ear_d = np.array([kd.find(v)[2] for v in V])
+    fill = fill * smoothstep(0.02, 0.045, ear_d)
+    wgt = wgt * (1.0 - smoothstep(0.1 * H.R, 0.25 * H.R, rel[:, 1])) * smoothstep(burn - 0.1, burn - 0.03, V[:, 2])
+    if os.environ.get("NC_DEBUG"):
+        sel = (np.abs(rel[:, 0]) > 0.8 * np.abs(rel[:, 0]).max()) & (V[:, 2] > H.ear_z) & (V[:, 2] < H.ear_z + 0.25) & (rel[:, 1] < 0)
+        print("DBG n", sel.sum(), "a", np.percentile(np.degrees(a[sel]), [5, 50, 95]).round(1), "z-hz", np.percentile((V[:, 2] - hz)[sel], [5, 50, 95]).round(3),
+              "fill", np.percentile(fill[sel], [5, 50, 95]).round(2), "wgt", np.percentile(wgt[sel], [5, 50, 95]).round(2), "earz", round(float(H.ear_z), 3), "burn", round(float(burn), 3))
+    print("NC_HAIRLINE", H.gender, round(float(np.degrees(a_ear)), 1), round(float(np.degrees(a_t)), 1), round(float(hz_c - brow), 3))
+    return fill, wgt, a_ear
+
+
 def build_styles(H):
     """every hair style for this head -> {name: {"hair": obj, "fade": obj|None, "cap": obj, "kind": ...}}"""
     V, F, S, N = fine_surface(H, H.ear_z - 0.45, levels=2)
+    fill, wgt, A_EAR = front_hairline(H, V)
+    S0 = S.copy()
+    S = S * (1 - wgt) + np.maximum(S * 0.0, fill) * wgt
+    if os.environ.get("NC_DEBUG"):
+        rr = V - H.centre
+        az0 = np.degrees(np.abs(np.arctan2(rr[:, 0], -rr[:, 1])))
+        for lo_, hi_ in ((40, 55), (55, 65), (65, 75), (75, 85)):
+            sel = (az0 > lo_) & (az0 < hi_) & (V[:, 2] > H.ear_z + 0.05) & (V[:, 2] < H.ear_z + 0.3)
+            print("DBG2", lo_, hi_, sel.sum(), "S0", round(float((S0[sel] > 0.5).mean()), 2), "S", round(float((S[sel] > 0.5).mean()), 2),
+                  "fill", round(float((fill[sel] > 0.5).mean()), 2), "wgt", round(float(wgt[sel].mean()), 2))
     d = signed_hairline(V, F, S)
     out = {}
     male = H.gender == "Male"
@@ -622,11 +701,21 @@ def build_styles(H):
         # coverage across the hairline (0 at the very edge -> 1 where the hair is full) and, for skin fades,
         # down the faded sides: the texture turns it into single hairs thinning out onto the skin
         feather = p.get("feather", 0.06)
-        cov = np.clip(hl / (feather * 1.1), 0, 1)
+        # round the ears and at the nape the hair thins out over a much wider band (it is cut shorter there, so
+        # more and more skin shows), so dark hair blends into the skin instead of ending as a block
+        relv = V - H.centre
+        az = np.abs(np.arctan2(relv[:, 0], -relv[:, 1]))
+        # (only behind the front of the ear: the sideburns in front of it stay full)
+        low = smoothstep(H.ear_z + 0.14, H.ear_z - 0.12, V[:, 2]) * smoothstep(A_EAR, A_EAR + math.radians(18), az)
+        # temples and sideburns are narrow strips (between the hairline and the ear): a short fade there, or the
+        # whole strip would be see-through
+        burnz = smoothstep(math.radians(28), math.radians(42), az) * (1 - smoothstep(A_EAR + math.radians(4), A_EAR + math.radians(12), az)) * \
+            smoothstep(H.anchor[2] + 0.3, H.anchor[2] + 0.18, V[:, 2])
+        cov = np.clip(hl / (feather * (1 + 2.5 * low) * (1 - 0.6 * burnz)), 0, 1)
         field = hl + 0.004                                   # the surface runs just past the edge, flush on the skin
         if "fade_z" in p:
             fz = H.ear_z + p["fade_z"]
-            fc = smoothstep(fz - 0.13, fz + 0.06, V[:, 2] + 0.03 * noise(V, 9))
+            fc = smoothstep(fz - 0.2, fz + 0.12, V[:, 2] + 0.03 * noise(V, 9))
             cov = np.minimum(cov, fc)
             field = np.minimum(field, fc - 0.02)
         hair = shell(f"Hair_{key}", V, F, N, T, field=field, lift=0.002, uv=(cov, ev))
@@ -646,8 +735,8 @@ def build_styles(H):
 
     if male:
         add_short("Buzz", "Buzz Cut", dict(top=0.016, side=0.012, feather=0.05, groove=0.06, freq=40))
-        add_short("Crop", "Short Crop", dict(top=0.06, side=0.02, front_lift=0.025, feather=0.08, groove=0.08, freq=44))
-        add_short("TaperFade", "Low Taper Fade", dict(top=0.09, side=0.02, fade_z=0.02, feather=0.06, groove=0.1, freq=26))
+        add_short("Crop", "Short Crop", dict(top=0.06, side=0.02, front_lift=0.025, feather=0.06, groove=0.08, freq=44))
+        add_short("TaperFade", "Low Taper Fade", dict(top=0.09, side=0.022, fade_z=-0.07, feather=0.06, groove=0.1, freq=26))
         add_short("HighFade", "High Skin Fade", dict(top=0.10, side=0.02, fade_z=0.22, feather=0.06, groove=0.1, freq=24))
         add_short("SidePart", "Side Part", dict(top=0.10, side=0.025, part=0.32, sweep=0.03, feather=0.07, groove=0.12))
         add_short("CurlyTop", "Curly Top", dict(top=0.12, side=0.018, fade_z=0.05, curls=260, curl_r=0.028, curl_amp=0.25, feather=0.06))
@@ -658,7 +747,18 @@ def build_styles(H):
     def locs_extras(length, n_front, n_all, radius, front_len):
         def ex(b, T, capped=False):
             r2 = random.Random(11)
-            cand = np.where((T > 0.012))[0]
+            ears = H.co[H.mask["ears"]]
+            kde = KDTree(len(ears))
+            for ii, pe in enumerate(ears):
+                kde.insert(pe, ii)
+            kde.balance()
+            # no roots on the ears, nor straight above them (a loc falling onto the ear kinks round it)
+            kxy = KDTree(len(ears))
+            for ii, pe in enumerate(ears):
+                kxy.insert((pe[0], pe[1], 0.0), ii)
+            kxy.balance()
+            cand = np.array([i for i in np.where(T > 0.012)[0] if kde.find(V[i])[2] > 0.13
+                             and kxy.find((V[i][0], V[i][1], 0.0))[2] > 0.06])
             r2.shuffle(cand)
             rel = V - H.centre
             chosen = []
@@ -682,17 +782,20 @@ def build_styles(H):
                 flow /= max(np.linalg.norm(flow), 1e-9)
                 dir0 = flow * 0.9 + N[i] * 0.1
                 pts = drape(H, root, L, radius * 1.3, SHOULDERS[H.gender], seed=k, sway=0.25)
+                # each loc grows out of the scalp: start it inside the base, so no cut end shows at the root
+                pts = [V[i] - N[i] * 0.015, V[i] + N[i] * (T[i] * 0.5) + dir0 * 0.02] + list(pts[1:])
                 rad = [radius * (1.0 - 0.35 * (j / len(pts)) ** 2) for j in range(len(pts))]
+                rad[0] *= 0.8
                 vv, ff = tube(pts, rad, sides=7, twist=0.6, bumps=0.08, bump_freq=5.0)
                 b.add(vv, ff)
         return ex
 
     base = dict(top=0.03, side=0.02, feather=0.05, groove=0.2, freq=34)
     if male:
-        add_short("Locs", "Shoulder Locs", base, locs_extras(1.1, 12, 70, 0.034, 0.5))
+        add_short("Locs", "Shoulder Locs", base, locs_extras(1.1, 12, 70, 0.027, 0.5))
         add_short("Twists", "Short Twists Over Eyes", dict(base, fade_z=0.05), locs_extras(0.45, 14, 85, 0.03, 0.4))
     else:
-        add_short("Locs", "Long Locs", base, locs_extras(1.8, 10, 80, 0.032, 0.55))
+        add_short("Locs", "Long Locs", base, locs_extras(1.8, 10, 80, 0.026, 0.38))
 
     # --- women: slick centre part with a low bun (the reference), ponytail, long straight, bob
     if not male:
@@ -717,8 +820,15 @@ def build_styles(H):
 
         def ponytail(b, T, capped=False):
             root = np.array([0.0, H.centre[1] + 0.85 * H.R, H.anchor[2] + 0.12])
-            pts = strand(H, root, [0, 1.0, 0.2], 1.3, step=0.04, gravity=0.25, clear=0.07, stiff=0.75,
-                         extra=SHOULDERS[H.gender])
+            # out of the tie in a short arc, then it hangs straight down the back of the head, neck and upper back
+            # (resting on them, never kinked: drape follows the outline below it)
+            arc = strand(H, root, [0, 1.0, 0.25], 0.22, step=0.04, gravity=0.6, clear=0.07, stiff=0.6)
+            rest = drape(H, arc[-1], 1.08, 0.045, SHOULDERS[H.gender], step=0.04, seed=4)
+            P0 = np.array(list(arc) + list(rest[1:]))
+            for _ in range(6):
+                P0[1:-1] = 0.25 * P0[:-2] + 0.5 * P0[1:-1] + 0.25 * P0[2:]
+            pts = [push_out(H, q, 0.06, SHOULDERS[H.gender]) if q[2] > H.J["neck"][2] else q for q in P0]
+            pts[0] = root
             # a bundle of clumps, gathered at the tie and loosening towards the ends, instead of one smooth tube
             P = np.array(pts)
             n = len(P)
@@ -729,7 +839,7 @@ def build_styles(H):
             e1 /= np.maximum(np.linalg.norm(e1, axis=1), 1e-9)[:, None]
             e2 = np.cross(tang, e1)
             r3 = random.Random(5)
-            core = [0.06 * (1 - 0.55 * (j / n) ** 1.3) for j in range(n)]
+            core = [0.06 * (1 - 0.8 * (j / n) ** 1.6) for j in range(n)]
             vv, ff = tube(pts, [c * 0.8 for c in core], sides=10, twist=0.1)
             b.add(vv, ff)
             for k in range(14):
@@ -742,7 +852,7 @@ def build_styles(H):
                     a = a0 + spin * t
                     spread = core[j] * (0.75 + 0.35 * smoothstep(0.1, 1.0, t))
                     q.append(P[j] + (e1[j] * math.cos(a) + e2[j] * math.sin(a)) * spread)
-                    rr.append(0.026 * (1 - 0.75 * (j / ln) ** 1.6) + 0.003)
+                    rr.append(0.026 * (1 - 0.85 * (j / ln) ** 1.4) + 0.002)
                 vv, ff = tube(q, rr, sides=6, twist=0.4, bumps=0.06)
                 b.add(vv, ff)
             vv, ff = tube([root - np.array([0, 0.02, 0]), root + np.array([0, 0.05, 0])], [0.06, 0.06], sides=14)
@@ -1088,6 +1198,9 @@ for gender in ("Male", "Female"):
     me = dst_lib.meshes[0]
     co = np.array([v.co[:] for v in me.vertices])
     fs = [list(p.vertices) for p in me.polygons]
+    # without the hanging arms (below the shoulders), so long hair falls down the back and chest, not out over them
+    nz = H.J["neck"][2]
+    fs = [f for f in fs if not (abs(co[f, 0].mean()) > 0.62 and co[f, 2].mean() < nz - 0.4)]
     SHOULDERS[gender] = BVHTree.FromPolygons([tuple(v) for v in co], fs)
     styles, fine = build_styles(H)
     face = face_pieces(H)
