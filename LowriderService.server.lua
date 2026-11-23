@@ -17,6 +17,7 @@ local SSS = game:GetService("ServerScriptService")
 
 local Config = require(RS:WaitForChild("NCLowriderConfig"))
 local Kit = require(RS:WaitForChild("NCLowriderKit"))
+local Vehicles = require(RS:WaitForChild("NCVehicles"))
 local Wallet = require(SSS:WaitForChild("NCWallet"))
 
 local Remotes = RS:FindFirstChild("Remotes")
@@ -49,7 +50,9 @@ pcall(function()
 	store = DataStoreService:GetDataStore("NeonCoast_Garage_v1")
 end)
 
-local profiles = {} -- [player] = { owned = bool, look = {}, unlocked = { ["Paints:id"] = true }, bestHop = inches }
+-- [player] = { garage = { [vehicleId] = { owned, look, unlocked = { ["key=value"] = true } } }, builds = { [vehicleId] = {...} },
+--              active = vehicleId, bestHop = inches }
+local profiles = {}
 
 local function copy(t)
 	local o = {}
@@ -61,30 +64,71 @@ end
 
 local cleanLook = Config.CleanLook
 
+-- one vehicle's entry in a player's garage (created on first use)
+local function G(prof, vid)
+	vid = Vehicles.Get(vid).id
+	local g = prof.garage[vid]
+	if not g then
+		g = { owned = false, look = Config.StarterFor(vid), unlocked = {} }
+		prof.garage[vid] = g
+	end
+	return g, vid
+end
+
+local function publish(p)
+	local prof = profiles[p]
+	if not prof then
+		return
+	end
+	local any = false
+	for _, g in prof.garage do
+		any = any or g.owned
+	end
+	p:SetAttribute("OwnsLowrider", any) -- owns any vehicle
+	p:SetAttribute("Garage", HttpService:JSONEncode(prof.garage))
+	p:SetAttribute("LowriderBuilds", HttpService:JSONEncode(prof.builds))
+	p:SetAttribute("ActiveVehicle", prof.active)
+	p:SetAttribute("BestHop", prof.bestHop)
+end
+
+local function cleanBuilds(list, vid)
+	local out = {}
+	for i = 1, Config.BuildSlots do
+		local b = type(list) == "table" and list[i]
+		out[i] = type(b) == "table" and cleanLook(b, vid) or false
+	end
+	return out
+end
+
 local function load(p)
-	local prof = { owned = false, look = copy(Config.StarterLook), unlocked = {}, bestHop = 0, builds = {} }
+	local prof = { garage = {}, builds = {}, active = Vehicles.Default, bestHop = 0 }
 	if store then
 		local ok, data = pcall(function()
 			return store:GetAsync("u" .. p.UserId)
 		end)
 		if ok and type(data) == "table" and type(data.lowrider) == "table" then
 			local d = data.lowrider
-			prof.owned = d.owned == true
-			prof.look = cleanLook(d.look)
-			prof.unlocked = Config.MigrateUnlocked(d.unlocked)
 			prof.bestHop = tonumber(d.bestHop) or 0
-			for i = 1, Config.BuildSlots do -- saved builds (designs only; they still have to be bought)
-				local b = type(d.builds) == "table" and d.builds[i]
-				prof.builds[i] = type(b) == "table" and cleanLook(b) or false
+			if type(d.garage) == "table" then
+				for vid, g in d.garage do
+					if Vehicles.ById[vid] and type(g) == "table" then
+						prof.garage[vid] = { owned = g.owned == true, look = cleanLook(g.look, vid), unlocked = Config.MigrateUnlocked(g.unlocked) }
+					end
+				end
+				for vid, list in (type(d.builds) == "table" and d.builds or {}) do
+					if Vehicles.ById[vid] then
+						prof.builds[vid] = cleanBuilds(list, vid)
+					end
+				end
+				prof.active = Vehicles.ById[d.active] and d.active or Vehicles.Default
+			else -- the first versions saved just the Royale at the top level
+				prof.garage.royale = { owned = d.owned == true, look = cleanLook(d.look, "royale"), unlocked = Config.MigrateUnlocked(d.unlocked) }
+				prof.builds.royale = cleanBuilds(d.builds, "royale")
 			end
 		end
 	end
 	profiles[p] = prof
-	p:SetAttribute("OwnsLowrider", prof.owned)
-	p:SetAttribute("LowriderLook", HttpService:JSONEncode(prof.look))
-	p:SetAttribute("LowriderUnlocked", HttpService:JSONEncode(prof.unlocked))
-	p:SetAttribute("BestHop", prof.bestHop)
-	p:SetAttribute("LowriderBuilds", HttpService:JSONEncode(prof.builds))
+	publish(p)
 end
 
 local function save(p)
@@ -96,7 +140,7 @@ local function save(p)
 		local ok = pcall(function()
 			store:UpdateAsync("u" .. p.UserId, function(old)
 				old = type(old) == "table" and old or {}
-				old.lowrider = { owned = prof.owned, look = prof.look, unlocked = prof.unlocked, bestHop = prof.bestHop, builds = prof.builds }
+				old.lowrider = { garage = prof.garage, builds = prof.builds, active = prof.active, bestHop = prof.bestHop }
 				return old
 			end)
 		end)
@@ -214,11 +258,18 @@ local function despawn(player)
 	end
 end
 
-local function spawnCar(player)
+local function spawnCar(player, vid)
 	local prof = profiles[player]
-	if not prof or not prof.owned then
-		return false, "You don't own a lowrider yet."
+	if not prof then
+		return false, "Still loading."
 	end
+	local g
+	g, vid = G(prof, vid or prof.active)
+	if not g.owned or not Vehicles.Data(vid) then
+		return false, "You don't own that one yet."
+	end
+	prof.active = vid
+	player:SetAttribute("ActiveVehicle", vid)
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	local shop = root and nearestShop(root.Position)
@@ -238,12 +289,12 @@ local function spawnCar(player)
 			break
 		end
 	end
-	local car = Kit.BuildCar(spot * CFrame.new(0, 0.6, 0))
-	car.Name = player.Name .. "'s Lowrider"
+	local car = Kit.BuildCar(spot * CFrame.new(0, 0.6, 0), vid)
+	car.Name = player.Name .. "'s " .. Vehicles.Get(vid).name
 	car:SetAttribute("Owner", player.UserId)
-	car:SetAttribute("Look", HttpService:JSONEncode(prof.look))
-	car:SetAttribute("Susp", prof.look.susp)
-	Kit.ApplyLook(car, prof.look)
+	car:SetAttribute("Look", HttpService:JSONEncode(g.look))
+	car:SetAttribute("Susp", g.look.susp)
+	Kit.ApplyLook(car, g.look)
 	car.Parent = carsFolder
 	cars[player] = car
 	setSim(car, player)
@@ -294,11 +345,6 @@ local function spawnCar(player)
 end
 
 ---------------------------------------------------------------------------------------------------- shop purchases
--- what a new look costs on top of what the player already has unlocked (Config.Quote, shared with the client)
-local function quote(prof, look)
-	return Config.Quote(prof.look, look, prof.unlocked)
-end
-
 local function nearShop(player, radius)
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -314,67 +360,72 @@ ShopRF.OnServerInvoke = function(player, action, arg)
 	if not prof then
 		return false, "Still loading, try again."
 	end
-	if action == "buyCar" then
-		if prof.owned then
-			return true, "You already own it."
+	if action == "buyCar" then -- arg = vehicle id
+		local veh = Vehicles.ById[arg] or Vehicles.Get(nil)
+		local g, vid = G(prof, veh.id)
+		if g.owned then
+			return spawnCar(player, vid)
+		end
+		if not Vehicles.Data(vid) then
+			return false, "That one isn't in the shop yet."
 		end
 		if not nearShop(player, 80) then
 			return false, "Buy it at Low & Slow Kustoms."
 		end
-		if not Wallet.Spend(player, Config.CarPrice) then
-			return false, ("The %s costs $%d. Earn some more cash first."):format(Config.CarName, Config.CarPrice)
+		if not Wallet.Spend(player, veh.price) then
+			return false, ("The %s costs $%d. Earn some more cash first."):format(veh.name, veh.price)
 		end
-		prof.owned = true
-		player:SetAttribute("OwnsLowrider", true)
+		g.owned = true
+		publish(player)
 		task.spawn(save, player)
-		local ok, msg = spawnCar(player)
+		local ok, msg = spawnCar(player, vid)
 		return true, ok and "It's yours! Hop in." or msg
-	elseif action == "spawn" then
-		return spawnCar(player)
+	elseif action == "spawn" then -- arg = vehicle id (or nil for the last one)
+		return spawnCar(player, Vehicles.ById[arg] and arg or nil)
 	elseif action == "saveBuild" then
-		-- arg = { slot = 1..BuildSlots, look = {...} } or { slot = n } to clear it
+		-- arg = { slot = 1..BuildSlots, vehicle = id, look = {...} } or no look to clear it
 		local slot = type(arg) == "table" and tonumber(arg.slot)
 		if not slot or slot ~= math.floor(slot) or slot < 1 or slot > Config.BuildSlots then
 			return false, "?"
 		end
-		prof.builds[slot] = type(arg.look) == "table" and cleanLook(arg.look) or false
-		for i = 1, Config.BuildSlots do
-			prof.builds[i] = prof.builds[i] or false
-		end
-		player:SetAttribute("LowriderBuilds", HttpService:JSONEncode(prof.builds))
+		local vid = Vehicles.ById[arg.vehicle] and arg.vehicle or Vehicles.Of(cars[player])
+		local list = prof.builds[vid] or cleanBuilds(nil, vid)
+		list[slot] = type(arg.look) == "table" and cleanLook(arg.look, vid) or false
+		prof.builds[vid] = list
+		publish(player)
 		task.spawn(save, player)
-		return true, prof.builds[slot] and ("Saved to slot %d."):format(slot) or ("Slot %d cleared."):format(slot)
+		return true, list[slot] and ("Saved to slot %d."):format(slot) or ("Slot %d cleared."):format(slot)
 	elseif action == "quote" then
-		local total = quote(prof, cleanLook(arg))
-		return true, total
+		local car = cars[player]
+		local g, vid = G(prof, Vehicles.Of(car))
+		return true, (Config.Quote(g.look, cleanLook(arg, vid), g.unlocked))
 	elseif action == "buyLook" then
-		if not prof.owned then
-			return false, "Buy the car first."
-		end
 		local car = cars[player]
 		if not car or not nearShop(player, 80) then
-			return false, "Bring your lowrider to the shop."
+			return false, "Bring your ride to the shop."
 		end
-		local root = car.PrimaryPart
-		local shop, d = nearestShop(root.Position)
+		local g, vid = G(prof, Vehicles.Of(car))
+		if not g.owned then
+			return false, "Buy it first."
+		end
+		local shop, d = nearestShop(car.PrimaryPart.Position)
 		if not shop or d > Config.CustomizeRadius + 30 then
-			return false, "Park your lowrider in the shop first."
+			return false, "Park it in the shop first."
 		end
-		local look = cleanLook(arg)
-		local total, items = quote(prof, look)
+		local look = cleanLook(arg, vid)
+		local total, items = Config.Quote(g.look, look, g.unlocked)
 		if total > 0 and not Wallet.Spend(player, total) then
 			return false, ("That build costs $%d. You have $%d."):format(total, Wallet.Balance(player))
 		end
 		for tag in items do
-			prof.unlocked[tag] = true
+			g.unlocked[tag] = true
 		end
 		-- whatever you had on before stays unlocked, so you can switch back for free
-		for key, v in prof.look do
-			prof.unlocked[key .. "=" .. tostring(v)] = true
+		for key, v in g.look do
+			g.unlocked[key .. "=" .. tostring(v)] = true
 		end
-		prof.look = look
-		player:SetAttribute("LowriderLook", HttpService:JSONEncode(look))
-		player:SetAttribute("LowriderUnlocked", HttpService:JSONEncode(prof.unlocked))
+		g.look = look
+		publish(player)
 		car:SetAttribute("Look", HttpService:JSONEncode(look))
 		car:SetAttribute("Susp", look.susp)
 		Kit.ApplyLook(car, look)
@@ -452,7 +503,7 @@ HopRE.OnServerEvent:Connect(function(player, inches)
 	if not prof or not car or type(inches) ~= "number" or inches ~= inches then
 		return
 	end
-	local susp = Config.Susp(prof.look.susp)
+	local susp = Config.Susp(G(prof, Vehicles.Of(car)).look.susp)
 	if susp.hop <= 0 then
 		return
 	end

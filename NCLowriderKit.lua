@@ -21,6 +21,12 @@
 local RS = game:GetService("ReplicatedStorage")
 local Data = require(RS:WaitForChild("NCLowriderData"))
 local Config = require(RS:WaitForChild("NCLowriderConfig"))
+local Vehicles = require(RS:WaitForChild("NCVehicles"))
+
+-- a vehicle's generated data (NCLowriderData for the Royale; the shop always comes from NCLowriderData)
+local function VD(vid)
+	return Vehicles.Data(vid) or Data
+end
 
 local Kit = {}
 Kit.FixYaw = { Car = 0, Shop = 0 } -- degrees, if an import comes in turned
@@ -78,7 +84,7 @@ local function collect(import, prefix, minT, outName, rootName, rootOffset)
 	for _, p in import:GetDescendants() do
 		if p:IsA("MeshPart") then
 			local r = roleOf(p, prefix)
-			if r and not (prefix == "Lowrider" and p.Name:match("^LowriderWheel")) then
+			if r and not p.Name:match("^" .. prefix .. "Wheel") then
 				table.insert(list, { part = p, role = r })
 			end
 		end
@@ -113,42 +119,46 @@ function Kit.Prepare(import)
 	if yawCar ~= 0 then
 		import:PivotTo(import:GetPivot() * CFrame.Angles(0, yawCar, 0))
 	end
-	local car = collect(import, "Lowrider", Data.Car.ImportMin, "Car", "Origin")
-	if car then
-		local old = folder:FindFirstChild("Car")
-		if old then
-			old:Destroy()
+	for _, veh in Vehicles.List do
+		local vd = Vehicles.Data(veh.id)
+		local target = Kit.AssetsFor(veh.id, true)
+		local car = vd and collect(import, veh.prefix, vd.Car.ImportMin, "Car", "Origin")
+		if car then
+			local old = target:FindFirstChild("Car")
+			if old then
+				old:Destroy()
+			end
+			car.Parent = target
+			table.insert(made, veh.name .. " car")
 		end
-		car.Parent = folder
-		table.insert(made, "Car")
-	end
-	-- the wheel was built at its own offset; its root goes on the wheel centre
-	local wheelList = {}
-	for _, p in import:GetDescendants() do
-		if p:IsA("MeshPart") and roleOf(p, "LowriderWheel") then
-			table.insert(wheelList, p)
+		-- the wheel was built at its own offset; its root goes on the wheel centre
+		local wheelList = {}
+		for _, p in (vd and import:GetDescendants() or {}) do
+			if p:IsA("MeshPart") and roleOf(p, veh.prefix .. "Wheel") then
+				table.insert(wheelList, p)
+			end
 		end
-	end
-	if #wheelList > 0 then
-		local origin = worldMin(wheelList) - v3(Data.Wheel.ImportMin)
-		local wheel = Instance.new("Model")
-		wheel.Name = "Wheel"
-		local root = rootPart("Hub", CFrame.new(origin + v3(Data.Wheel.Centre)) * CFrame.Angles(0, math.pi, 0))
-		root.Parent = wheel
-		wheel.PrimaryPart = root
-		for _, p in wheelList do
-			local r = roleOf(p, "LowriderWheel")
-			p.Name = r
-			p:SetAttribute("Role", r)
-			p.Anchored = true
-			p.Parent = wheel
+		if #wheelList > 0 then
+			local origin = worldMin(wheelList) - v3(vd.Wheel.ImportMin)
+			local wheel = Instance.new("Model")
+			wheel.Name = "Wheel"
+			local root = rootPart("Hub", CFrame.new(origin + v3(vd.Wheel.Centre)) * CFrame.Angles(0, math.pi, 0))
+			root.Parent = wheel
+			wheel.PrimaryPart = root
+			for _, p in wheelList do
+				local r = roleOf(p, veh.prefix .. "Wheel")
+				p.Name = r
+				p:SetAttribute("Role", r)
+				p.Anchored = true
+				p.Parent = wheel
+			end
+			local old = target:FindFirstChild("Wheel")
+			if old then
+				old:Destroy()
+			end
+			wheel.Parent = target
+			table.insert(made, veh.name .. " wheel")
 		end
-		local old = folder:FindFirstChild("Wheel")
-		if old then
-			old:Destroy()
-		end
-		wheel.Parent = folder
-		table.insert(made, "Wheel")
 	end
 	-- vinyls: LowriderVinyls.glb holds every decal image on a copy of its panel. Studio uploads the images on
 	-- import; keep their ids (as attributes of LowriderAssets.Vinyls) and drop the copies.
@@ -160,7 +170,12 @@ function Kit.Prepare(import)
 		local liv, pan = nil, nil
 		local cur = p
 		while cur and not liv do
-			liv, pan = cur.Name:match("^Livery_(.+)_(%a+)$")
+			local pre
+			pre, liv, pan = cur.Name:match("^(%w-)Livery_(.+)_(%a+)$")
+			if liv and pre ~= "" then -- another vehicle's vinyls: "<Prefix>Livery_..." -> key "<id>:<livery>_<panel>"
+				local owner = Vehicles.ByPrefix[pre]
+				liv = owner and (owner.id .. ":" .. liv) or nil
+			end
 			cur = cur.Parent
 		end
 		if liv and p:IsA("MeshPart") then
@@ -194,7 +209,7 @@ function Kit.Prepare(import)
 		shop.Parent = folder
 		table.insert(made, "Shop")
 	end
-	assert(#made > 0, "NCLowriderKit.Prepare: no Lowrider_*, LowriderWheel_*, Livery_* or LowSlowShop_* pieces in " .. import:GetFullName())
+	assert(#made > 0, "NCLowriderKit.Prepare: no vehicle (<Prefix>_*, <Prefix>Wheel_*), Livery_* or LowSlowShop_* pieces in " .. import:GetFullName())
 	print("NCLowriderKit: prepared " .. table.concat(made, ", ") .. " in ReplicatedStorage.LowriderAssets")
 	return made
 end
@@ -420,10 +435,25 @@ local function fallbackShop()
 end
 
 ---------------------------------------------------------------------------------------------------- assembling
-local function source(name)
-	local f = RS:FindFirstChild("LowriderAssets")
+-- where a vehicle's prepared meshes live: LowriderAssets (the Royale) or LowriderAssets.<id>
+function Kit.AssetsFor(vid, create)
+	local f = create and assetsFolder() or RS:FindFirstChild("LowriderAssets")
+	if not f or (vid or Vehicles.Default) == Vehicles.Default then
+		return f
+	end
+	local sub = f:FindFirstChild(vid)
+	if not sub and create then
+		sub = Instance.new("Folder")
+		sub.Name = vid
+		sub.Parent = f
+	end
+	return sub
+end
+
+local function source(name, vid)
+	local f = name == "Shop" and RS:FindFirstChild("LowriderAssets") or Kit.AssetsFor(vid)
 	local m = f and f:FindFirstChild(name)
-	if m then
+	if m and m:IsA("Model") then
 		return m:Clone(), true
 	end
 	if name == "Car" then
@@ -455,8 +485,8 @@ end
 
 ---------------------------------------------------------------------------------------------------- dash gauge + plaque
 -- The dash's gauge face gets a live 60s-style ribbon speedometer (a SurfaceGui), the club plaque gets its name.
-local GAUGE = Data.Car.Gauge or { Centre = { -1.55, 2.62, -2.3 }, Size = { 1.6, 0.418 }, Tilt = 16.7 }
-local PLAQUE = Data.Car.Plaque or { Centre = { 0, 3.35, 4.68 }, Size = { 2.0, 0.6 } }
+local GAUGE0 = { Centre = { -1.55, 2.62, -2.3 }, Size = { 1.6, 0.418 }, Tilt = 16.7 }
+local PLAQUE0 = { Centre = { 0, 3.35, 4.68 }, Size = { 2.0, 0.6 } }
 local MAX_MPH = 120
 
 local function facePart(name, size, localCF, chassis, origin)
@@ -471,7 +501,8 @@ local function facePart(name, size, localCF, chassis, origin)
 	return p
 end
 
-local function buildSpeedo(car, chassis, origin)
+local function buildSpeedo(car, chassis, origin, vd)
+	local GAUGE = vd.Car.Gauge or GAUGE0
 	local t = math.rad(GAUGE.Tilt)
 	local n = Vector3.new(0, math.sin(t), math.cos(t))
 	local cf = CFrame.new(v3(GAUGE.Centre) + n * 0.02) * CFrame.Angles(-t, 0, 0)
@@ -534,7 +565,11 @@ local function buildSpeedo(car, chassis, origin)
 	digits.Parent = face
 end
 
-local function buildPlaque(car, chassis, origin)
+local function buildPlaque(car, chassis, origin, vd)
+	local PLAQUE = vd.Car.Plaque or PLAQUE0
+	if not vd.Car.Plaque and vd ~= Data then
+		return -- this vehicle has no plaque spot
+	end
 	local p = facePart("PlaqueFace", Vector3.new(PLAQUE.Size[1], PLAQUE.Size[2], 0.02), CFrame.new(v3(PLAQUE.Centre)), chassis, origin)
 	p.Parent = car
 	local g = Instance.new("SurfaceGui")
@@ -596,10 +631,13 @@ function Kit.SetSpeed(car, mph)
 end
 
 -- builds a car at cf (the ground point between the axles, facing cf.LookVector); unanchored, ready to drive
-function Kit.BuildCar(cf)
+function Kit.BuildCar(cf, vid)
+	vid = Vehicles.Get(vid).id
+	local vd = VD(vid)
 	local car = Instance.new("Model")
 	car.Name = "Lowrider"
-	local hull = Data.Car.Hull[1]
+	car:SetAttribute("Vehicle", vid)
+	local hull = vd.Car.Hull[1]
 	local mn, mx = Vector3.new(hull[1], hull[2], hull[3]), Vector3.new(hull[4], hull[5], hull[6])
 	local chassis = Instance.new("Part")
 	chassis.Name = "Chassis"
@@ -614,7 +652,7 @@ function Kit.BuildCar(cf)
 	origin.Name = "Origin"
 	origin.CFrame = CFrame.new(-(mn + mx) / 2)
 	origin.Parent = chassis
-	local cab = Data.Car.Hull[2]
+	local cab = vd.Car.Hull[2]
 	local cmn, cmx = Vector3.new(cab[1], cab[2], cab[3]), Vector3.new(cab[4], cab[5], cab[6])
 	local cabin = Instance.new("Part")
 	cabin.Name = "Cabin"
@@ -626,7 +664,7 @@ function Kit.BuildCar(cf)
 	weldTo(cabin, chassis, "CabinWeld")
 
 	-- body pieces
-	local body = source("Car")
+	local body = source("Car", vid)
 	local visual = Instance.new("Folder")
 	visual.Name = "Visual"
 	visual.Parent = car
@@ -634,7 +672,7 @@ function Kit.BuildCar(cf)
 	lidFolder.Name = "Lid"
 	lidFolder.Parent = car
 	body:PivotTo(cf)
-	local hingeCF = cf * CFrame.new(v3(Data.Car.LidHinge))
+	local hingeCF = cf * CFrame.new(v3(vd.Car.LidHinge))
 	local hinge = Instance.new("Part")
 	hinge.Name = "LidRoot"
 	hinge.Size = Vector3.new(6, 0.1, 0.1)
@@ -656,7 +694,7 @@ function Kit.BuildCar(cf)
 		if p:IsA("BasePart") and p.Name ~= "Origin" then
 			loose(p)
 			local role = p:GetAttribute("Role") or p.Name
-			if Data.Car.OptInfo and Data.Car.OptInfo[role] then
+			if vd.Car.OptInfo and vd.Car.OptInfo[role] then
 				p:Destroy() -- swappable parts come from ApplyLook
 			elseif LID_ROLES[role] then
 				p.Parent = lidFolder
@@ -670,8 +708,8 @@ function Kit.BuildCar(cf)
 	body:Destroy()
 
 	-- wheels (posed by the clients through their weld)
-	for name, pos in Data.Car.Wheels do
-		local w = source("Wheel")
+	for name, pos in vd.Car.Wheels do
+		local w = source("Wheel", vid)
 		w.Name = "W_" .. name
 		local right = pos[1] > 0
 		local wcf = cf * CFrame.new(v3(pos)) * (right and CFrame.Angles(0, math.pi, 0) or CFrame.identity)
@@ -680,7 +718,7 @@ function Kit.BuildCar(cf)
 		loose(hub)
 		for _, p in w:GetDescendants() do
 			if p:IsA("BasePart") and p ~= hub then
-				if Data.Wheel.OptInfo and Data.Wheel.OptInfo[p:GetAttribute("Role") or p.Name] then
+				if vd.Wheel.OptInfo and vd.Wheel.OptInfo[p:GetAttribute("Role") or p.Name] then
 					p:Destroy()
 				else
 					loose(p)
@@ -703,8 +741,8 @@ function Kit.BuildCar(cf)
 		w.Parent = car
 	end
 
-	buildSpeedo(car, chassis, origin)
-	buildPlaque(car, chassis, origin)
+	buildSpeedo(car, chassis, origin, vd)
+	buildPlaque(car, chassis, origin, vd)
 
 	-- seats
 	local function seat(name, pos, driver)
@@ -723,10 +761,12 @@ function Kit.BuildCar(cf)
 		weldTo(s, chassis, "SeatWeld")
 		return s
 	end
-	seat("DriveSeat", Data.Car.Seats.Driver, true)
-	seat("Seat_Passenger", Data.Car.Seats.Passenger)
-	seat("Seat_RearL", Data.Car.Seats.RearL)
-	seat("Seat_RearR", Data.Car.Seats.RearR)
+	seat("DriveSeat", vd.Car.Seats.Driver, true)
+	for sname, pos in vd.Car.Seats do
+		if sname ~= "Driver" then
+			seat("Seat_" .. sname, pos)
+		end
+	end
 
 	-- forces (the driver's client sets them every frame)
 	local com = Instance.new("Attachment")
@@ -760,18 +800,16 @@ end
 -- A built car only carries the variants its look picks: ApplyLook clones them from LowriderAssets into the car's
 -- (or wheel's) "Opt" folder and welds them on. Running it again only swaps the slots that changed, so it's cheap
 -- enough for the live preview in the shop (the client does it locally; the server's copy is what everyone sees).
-local OPT = Data.Car.OptInfo or {}
-local WOPT = Data.Wheel.OptInfo or {}
 local LID_SLOTS = { Spoiler = true } -- these ride on the trunk lid
 local templates = {}
 
-local function template(name, info)
-	local f = RS:FindFirstChild("LowriderAssets")
+local function template(vid, name, info)
+	local f = Kit.AssetsFor(vid)
 	local m = f and f:FindFirstChild(name)
-	if not m or not m.PrimaryPart then
+	if not m or not m:IsA("Model") or not m.PrimaryPart then
 		return nil
 	end
-	local t = templates[name]
+	local t = templates[vid .. "/" .. name]
 	if t and t.model == m then
 		return t
 	end
@@ -788,7 +826,7 @@ local function template(name, info)
 			end
 		end
 	end
-	templates[name] = t
+	templates[vid .. "/" .. name] = t
 	return t
 end
 
@@ -824,8 +862,8 @@ local function weldAt(c, part0, c0)
 	w.Parent = c
 end
 
-local function syncCarParts(car, look)
-	local t = template("Car", OPT)
+local function syncCarParts(car, look, vid, vd)
+	local t = template(vid, "Car", vd.Car.OptInfo or {})
 	local folder = car:FindFirstChild("Opt")
 	local ch = car.PrimaryPart
 	local origin = ch and ch:FindFirstChild("Origin")
@@ -834,7 +872,7 @@ local function syncCarParts(car, look)
 	end
 	local lid = car:FindFirstChild("Lid")
 	local hinge = lid and lid:FindFirstChild("LidRoot")
-	local hingeInv = CFrame.new(v3(Data.Car.LidHinge)):Inverse()
+	local hingeInv = CFrame.new(v3(vd.Car.LidHinge)):Inverse()
 	syncParts(folder, t, function(slot)
 		if (slot == "Visor" or slot == "Headliner") and look.part_Top == "Down" then
 			return "" -- nothing to hang a visor on with the top down
@@ -858,8 +896,8 @@ local function wheelWant(look)
 	end
 end
 
-local function syncWheelParts(car, look)
-	local t = template("Wheel", WOPT)
+local function syncWheelParts(car, look, vid, vd)
+	local t = template(vid, "Wheel", vd.Wheel.OptInfo or {})
 	if not t then
 		return
 	end
@@ -875,7 +913,7 @@ local function syncWheelParts(car, look)
 end
 
 ---------------------------------------------------------------------------------------------------- painting
-local PANEL_OF = Data.Car.PanelOf or { PanelSideL = "side", PanelSideR = "side", PanelHood = "hood", Lid = "trunk", PanelRoof = "roof" }
+local PANEL_OF0 = { PanelSideL = "side", PanelSideR = "side", PanelHood = "hood", Lid = "trunk", PanelRoof = "roof" }
 -- the fallback (part-made) car shows a vinyl as a Decal on this face of each panel part
 local DECAL_FACE = { PanelHood = Enum.NormalId.Top, PanelRoof = Enum.NormalId.Top, Lid = Enum.NormalId.Top, PanelSideL = Enum.NormalId.Left, PanelSideR = Enum.NormalId.Right }
 -- which finish key the chrome pieces of each slot follow (everything else: fin_Trim)
@@ -885,9 +923,12 @@ local FIN_GROUP = {
 	Headlights = "Lights", Taillights = "Lights", Rim = "Rim", KO = "KO",
 }
 
--- the uploaded image id for a livery's panel ("" if there's none)
-function Kit.VinylId(livery, panel)
+-- the uploaded image id for a livery's panel ("" if there's none). Other vehicles' images are keyed "<id>:..."
+function Kit.VinylId(livery, panel, vid)
 	local key = livery .. "_" .. panel
+	if vid and vid ~= Vehicles.Default then
+		key = vid .. ":" .. key
+	end
 	local id = Config.VinylIds[key]
 	if id and id ~= "" then
 		return id
@@ -927,7 +968,8 @@ end
 -- material, colour, reflectance, transparency for one piece
 local styleFor
 function styleFor(role, look, ctx)
-	local inf = OPT[role] or WOPT[role]
+	local inf = ctx.opt[role] or ctx.wopt[role]
+	local PANEL_OF = ctx.panelOf
 	local mat = inf and inf.mat or role
 	local function trim(key)
 		local f = Config.ById.TrimFinishes[look[key]] or Config.TrimFinishes[1]
@@ -1008,12 +1050,18 @@ end
 
 -- paints and builds a car to a look (Config.CleanLook makes one); safe to call on the client for a live preview
 function Kit.ApplyLook(car, look)
-	look = Config.CleanLook(look)
-	syncCarParts(car, look)
-	syncWheelParts(car, look)
+	local vid = Vehicles.Of(car)
+	local vd = VD(vid)
+	look = Config.CleanLook(look, vid)
+	syncCarParts(car, look, vid, vd)
+	syncWheelParts(car, look, vid, vd)
+	local OPT, PANEL_OF = vd.Car.OptInfo or {}, vd.Car.PanelOf or PANEL_OF0
 	local paint = Config.ColorOf("paint", look.paint) or Config.Paints[1].color
 	local seat = colorOf(look, "col_Seat", Color3.fromRGB(242, 238, 226))
 	local ctx = {
+		opt = OPT,
+		wopt = vd.Wheel.OptInfo or {},
+		panelOf = PANEL_OF,
 		paint = paint,
 		roof = look.paint2 == "same" and paint or (Config.ColorOf("paint2", look.paint2) or paint),
 		finish = Config.ById.Finishes[look.finish] or Config.Finishes[1],
@@ -1041,7 +1089,7 @@ function Kit.ApplyLook(car, look)
 			p.Material, p.Color, p.Reflectance, p.Transparency = m, c, r, tr
 		end
 		if PANEL_OF[role] then
-			printVinyl(p, role, art.id == "none" and "" or Kit.VinylId(art.id, PANEL_OF[role]))
+			printVinyl(p, role, art.id == "none" and "" or Kit.VinylId(art.id, PANEL_OF[role], vid))
 		end
 		-- convertible: the hardtop roof, rear glass and side glass go away
 		if ROOF_ROLES[role] then

@@ -323,9 +323,101 @@ end
 -- older saves: { paint, finish, art, wheels, whitewall, susp, continental, trunkSetup }
 local OLD_WHEELS = { wire_gold = { "gold", "gold" }, wire_gold_hub = { "chrome", "gold" }, wire_color = { "paint", "chrome" }, wire_black = { "black", "chrome" } }
 
--- a safe, complete look from anything a client (or an old save) sends
-function C.CleanLook(look)
+-- the tuning menu for one vehicle: only the parts its GLB has, only liveries drawn for it, its suspension kits
+local modsCache = {}
+function C.ModsFor(vid)
+	local Vehicles = require(game:GetService("ReplicatedStorage"):WaitForChild("NCVehicles"))
+	local veh = Vehicles.Get(vid)
+	if modsCache[veh.id] then
+		return modsCache[veh.id]
+	end
+	local data = Vehicles.Data(veh.id)
+	local carOpts = data and data.Car.Options or {}
+	local wheelOpts = data and data.Wheel.Options or {}
+	local vinyls = data and data.Car.Vinyls or {}
+	local susp = {}
+	for _, id in (veh.suspensions or {}) do
+		susp[id] = true
+	end
+	local function keep(list, test)
+		local out = {}
+		for _, o in list do
+			if test(o) then
+				table.insert(out, o)
+			end
+		end
+		return out
+	end
+	local cats = {}
+	for _, cat in C.Mods do
+		local mods = {}
+		for _, m in cat.mods do
+			local list = m.options
+			local slot = m.key:match("^part_(.+)$")
+			if slot then
+				local have = carOpts[slot] or wheelOpts[slot]
+				if have then
+					local set = {}
+					for _, v in have do
+						set[v] = true
+					end
+					list = keep(m.options, function(o)
+						return o.id == "" or set[o.id]
+					end)
+				else
+					list = nil
+				end
+			elseif m.key == "ww" or m.key == "col_Band" then
+				list = wheelOpts.Band and list or nil
+			elseif m.key == "art" then
+				list = keep(m.options, function(o)
+					return o.id == "none" or vinyls[o.id] ~= nil
+				end)
+			elseif m.key == "susp" and veh.suspensions then
+				list = keep(m.options, function(o)
+					return susp[o.id]
+				end)
+			end
+			if list and #list > 0 and not (#list == 1 and list[1].id == "") then
+				local default = m.default
+				local ok = false
+				for _, o in list do
+					ok = ok or o.id == default
+				end
+				table.insert(mods, { key = m.key, name = m.name, options = list, custom = m.custom, default = ok and default or list[1].id })
+			end
+		end
+		if #mods > 0 then
+			table.insert(cats, { id = cat.id, name = cat.name, cam = cat.cam, mods = mods })
+		end
+	end
+	local byKey, optionOf = {}, {}
+	for _, cat in cats do
+		for _, m in cat.mods do
+			byKey[m.key] = m
+			optionOf[m.key] = {}
+			for _, o in m.options do
+				optionOf[m.key][o.id] = o
+			end
+		end
+	end
+	modsCache[veh.id] = { cats = cats, byKey = byKey, optionOf = optionOf }
+	return modsCache[veh.id]
+end
+
+-- a vehicle's stock look
+function C.StarterFor(vid)
 	local out = table.clone(C.StarterLook)
+	for key, m in C.ModsFor(vid).byKey do
+		out[key] = m.default
+	end
+	return out
+end
+
+-- a safe, complete look for a vehicle from anything a client (or an old save) sends
+function C.CleanLook(look, vid)
+	local vm = C.ModsFor(vid)
+	local out = C.StarterFor(vid)
 	if type(look) ~= "table" then
 		return out
 	end
@@ -338,9 +430,9 @@ function C.CleanLook(look)
 		out.part_Continental = look.continental == true and "Kit" or ""
 		out.part_Trunk = look.trunkSetup == true and "Street" or ""
 	end
-	for key, m in C.ModByKey do
+	for key, m in vm.byKey do
 		local v = look[key]
-		if type(v) == "string" and (C.OptionOf[key][v] or (m.custom and C.CustomColor(v))) then
+		if type(v) == "string" and (vm.optionOf[key][v] or (m.custom and C.CustomColor(v))) then
 			out[key] = v
 		end
 	end

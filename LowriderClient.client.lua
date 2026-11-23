@@ -22,7 +22,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Config = require(RS:WaitForChild("NCLowriderConfig"))
-local Data = require(RS:WaitForChild("NCLowriderData"))
+local Vehicles = require(RS:WaitForChild("NCVehicles"))
 local Kit = require(RS:WaitForChild("NCLowriderKit"))
 local Remotes = RS:WaitForChild("Remotes")
 local ShopRF = Remotes:WaitForChild("LowriderShop")
@@ -32,14 +32,7 @@ local HopRE = Remotes:WaitForChild("LowriderHop")
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
-local D = Config.Drive
-local R = Data.Car.WheelRadius
 local CORNERS = { "FL", "FR", "RL", "RR" }
-local REST = {}
-for _, c in CORNERS do
-	local p = Data.Car.Wheels[c]
-	REST[c] = Vector3.new(p[1], p[2], p[3])
-end
 local RAY_UP = 2.5 -- the ray starts this far above the wheel centre's rest height
 
 local function notify(text, color)
@@ -63,6 +56,18 @@ local function st(car)
 		for _, c in CORNERS do
 			s.e[c], s.target[c], s.spin[c], s.vis[c], s.ground[c], s.landed[c] = 0, 0, 0, 0, false, -1
 		end
+		-- this car's own geometry + driving numbers (every vehicle has its own data module)
+		local vid = Vehicles.Of(car)
+		local vd = Vehicles.Data(vid) or Vehicles.Data(Vehicles.Default)
+		s.R = vd.Car.WheelRadius
+		s.REST = {}
+		for _, c in CORNERS do
+			local p = vd.Car.Wheels[c]
+			s.REST[c] = Vector3.new(p[1], p[2], p[3])
+		end
+		local fb = vd.Car.FrontBumper or { 0, vd.Car.Wheels.FL[2], vd.Car.Wheels.FL[3] - 3 }
+		s.bumper = Vector3.new(fb[1], fb[2], fb[3])
+		s.D = Vehicles.Drive(vid, Config.Drive)
 		state[car] = s
 	end
 	return s
@@ -93,6 +98,7 @@ end
 ---------------------------------------------------------------------------------------------------- wheels (everyone)
 -- casts every corner, poses the wheels; returns per-corner { hit, d, point, normal } in world space
 local function castWheels(car, s, origin, rp, sp)
+	local R, REST, D = s.R, s.REST, s.D
 	local up = origin.UpVector
 	local out = {}
 	local drop = sp.drop
@@ -115,6 +121,7 @@ local function castWheels(car, s, origin, rp, sp)
 end
 
 local function poseWheels(car, s, origin, casts, steerAngle, fwdSpeed, dt)
+	local R, REST = s.R, s.REST
 	local ch = car.PrimaryPart
 	for _, c in CORNERS do
 		local w = car:FindFirstChild("W_" .. c)
@@ -137,6 +144,7 @@ end
 
 ---------------------------------------------------------------------------------------------------- physics (the car I simulate)
 local function simulate(car, s, dt, input)
+	local REST, D = s.REST, s.D
 	local ch = car.PrimaryPart
 	local drive, turn = ch:FindFirstChild("Drive"), ch:FindFirstChild("Turn")
 	if not (drive and turn) then
@@ -385,7 +393,7 @@ local function hop(car, s, which)
 	s.lastHop = now
 	local power = sp.hop * (0.45 + 0.55 * s.charge) * bonus
 	if which == "front" then
-		local p = origin:PointToWorldSpace(Vector3.new(0, 1, REST.FL.Z))
+		local p = origin:PointToWorldSpace(Vector3.new(0, 1, s.REST.FL.Z))
 		ch:ApplyImpulseAtPosition(origin.UpVector * mass * power * 0.62, p)
 		s.e.FL, s.e.FR = sp.lift, sp.lift
 	else
@@ -712,8 +720,8 @@ local function hopMeter(car, s, dt)
 		return
 	end
 	local floorY = (zone.CFrame * CFrame.new(0, -zone.Size.Y / 2, 0)).Position.Y
-	local bumper = origin:PointToWorldSpace(Vector3.new(Data.Car.FrontBumper[1], Data.Car.FrontBumper[2], Data.Car.FrontBumper[3]))
-	local lift = bumper.Y - floorY - Data.Car.FrontBumper[2]
+	local bumper = origin:PointToWorldSpace(s.bumper)
+	local lift = bumper.Y - floorY - s.bumper.Y
 	if not (s.ground.FL or s.ground.FR) then
 		s.frontAirT += dt
 		s.hopPeak = math.max(s.hopPeak or 0, lift)
@@ -898,8 +906,40 @@ local function decode(attr)
 	return ok and type(v) == "table" and v or nil
 end
 
+-- the vehicle the menu is working on: the one I have out, else the last one I drove
+local function curVid()
+	local car = myLowrider()
+	if car then
+		return Vehicles.Of(car)
+	end
+	local a = player:GetAttribute("ActiveVehicle")
+	return Vehicles.ById[a] and a or Vehicles.Default
+end
+
+local function garageOf(vid)
+	local g = decode(player:GetAttribute("Garage")) or {}
+	return type(g[vid]) == "table" and g[vid] or {}
+end
+
+local function buildsOf(vid)
+	local b = decode(player:GetAttribute("LowriderBuilds")) or {}
+	return type(b[vid]) == "table" and b[vid] or {}
+end
+
+local function modsNow()
+	return Config.ModsFor(curVid())
+end
+
 local function unlockedNow()
-	return decode(player:GetAttribute("LowriderUnlocked")) or {}
+	return garageOf(curVid()).unlocked or {}
+end
+
+-- saved look + draft for whichever vehicle is out now (nil draft = nothing to customize)
+local function reloadDraft()
+	local vid = curVid()
+	local g = garageOf(vid)
+	saved = Config.CleanLook(g.look, vid)
+	draft = (g.owned and myLowrider()) and table.clone(saved) or nil
 end
 
 local function cashNow()
@@ -1162,30 +1202,47 @@ render = function()
 	local car = myLowrider()
 	buyB.Visible, resetB.Visible, cartL.Visible = draft ~= nil, draft ~= nil, draft ~= nil
 	backB.Visible = view.level ~= "cats"
-	if not owns or not draft or not car then
-		crumbL.Text = Config.CarName
-		if not owns then
-			row("Buy the " .. Config.CarName, "$" .. Config.CarPrice, GOLD, false, function()
-				local ok, msg = ShopRF:InvokeServer("buyCar")
-				notify(msg)
-				task.wait(0.5)
+	if view.level == "garage" or not owns or not draft or not car then
+		crumbL.Text = "Garage"
+		backB.Visible = draft ~= nil and car ~= nil
+		buyB.Visible, resetB.Visible, cartL.Visible = false, false, false
+		local out = car and Vehicles.Of(car)
+		for _, veh in Vehicles.Available() do
+			local g = garageOf(veh.id)
+			local sub, col
+			if out == veh.id then
+				sub, col = "OUT", CYAN
+			elseif g.owned then
+				sub, col = "owned", Color3.fromRGB(150, 230, 140)
+			else
+				sub, col = "$" .. veh.price, GOLD
+			end
+			row(veh.name, sub, col, out == veh.id, function()
+				if out == veh.id then
+					return
+				end
+				local ok, msg = ShopRF:InvokeServer(g.owned and "spawn" or "buyCar", veh.id)
+				if msg then
+					notify(msg)
+				elseif not ok then
+					notify("Couldn't get it out.")
+				end
+				task.wait(0.6)
+				reloadDraft()
+				view = { level = draft and "cats" or "garage" }
 				render()
 			end)
-			note("Long, low two-door hardtop on stock springs and Classic Wire 100-Spoke wheels. Change everything here after: body kit, wheels, interior, lights, hydraulics.", 74)
-		else
-			row("Bring my lowrider out", nil, nil, false, function()
-				local ok, msg = ShopRF:InvokeServer("spawn")
-				if not ok then
-					notify(msg or "Couldn't get it out.")
-				end
-			end)
-			note("Park it on the turntable (left bay) to customize. The hop pit (right bay) measures your hops.", 56)
 		end
+		note("Every ride here takes the same full customization: body kit, wheels, interior, lights, suspension. Park it on the turntable (left bay) to customize. The hop pit (right bay) measures your hops.", 74)
 		return
 	end
 	if view.level == "cats" then
-		crumbL.Text = "Pick a category"
-		for _, cat in Config.Mods do
+		crumbL.Text = Vehicles.Get(curVid()).name .. "  >  pick a category"
+		row("Garage (buy or switch rides)", nil, nil, false, function()
+			view.level = "garage"
+			render()
+		end)
+		for _, cat in modsNow().cats do
 			local changed = 0
 			for _, m in cat.mods do
 				if draft[m.key] ~= saved[m.key] then
@@ -1200,7 +1257,7 @@ render = function()
 		-- saved designs + quick builds
 		local hdr = label(list, "MY BUILDS", UDim2.new(), UDim2.new(1, -6, 0, 24), CYAN, Enum.Font.GothamBlack)
 		hdr.LayoutOrder = nextOrder()
-		local builds = decode(player:GetAttribute("LowriderBuilds")) or {}
+		local builds = buildsOf(curVid())
 		for i = 1, Config.BuildSlots do
 			local b = builds[i]
 			row(("Build %d"):format(i), type(b) == "table" and "saved" or "empty", type(b) == "table" and CYAN or Color3.fromRGB(160, 160, 176), false, function()
@@ -1209,7 +1266,7 @@ render = function()
 			end, type(b) == "table" and Config.ColorOf("paint", b.paint) or nil)
 		end
 		row("Surprise me (random build)", "preview", Color3.fromRGB(160, 160, 176), false, function()
-			for key, m in Config.ModByKey do
+			for key, m in modsNow().byKey do
 				if key ~= "susp" and key ~= "engine" then
 					draft[key] = m.options[math.random(1, #m.options)].id
 				end
@@ -1217,7 +1274,7 @@ render = function()
 			render()
 		end)
 		row("Back to stock", "preview", Color3.fromRGB(160, 160, 176), false, function()
-			for key, m in Config.ModByKey do
+			for key, m in modsNow().byKey do
 				if key ~= "susp" and key ~= "engine" then
 					draft[key] = m.default
 				end
@@ -1227,25 +1284,26 @@ render = function()
 	elseif view.level == "build" then
 		local i = view.slot
 		crumbL.Text = ("My builds  >  Build %d"):format(i)
-		local builds = decode(player:GetAttribute("LowriderBuilds")) or {}
+		local vid = curVid()
+		local builds = buildsOf(vid)
 		local b = type(builds[i]) == "table" and builds[i] or nil
 		if b then
-			local cost = Config.Quote(saved, Config.CleanLook(b), unlockedNow())
+			local cost = Config.Quote(saved, Config.CleanLook(b, vid), unlockedNow())
 			row("Load it (preview + cart)", cost > 0 and ("$" .. cost) or "owned", cost > 0 and GOLD or Color3.fromRGB(150, 230, 140), false, function()
-				draft = Config.CleanLook(b)
+				draft = Config.CleanLook(b, vid)
 				view.level, view.slot = "cats", nil
 				render()
 			end, Config.ColorOf("paint", b.paint))
 		end
 		row(b and "Save what's on my car now over it" or "Save what's on my car now", nil, nil, false, function()
-			local ok, msg = ShopRF:InvokeServer("saveBuild", { slot = i, look = draft })
+			local ok, msg = ShopRF:InvokeServer("saveBuild", { slot = i, vehicle = vid, look = draft })
 			notify(msg or (ok and "Saved." or "Couldn't save."))
 			task.wait(0.2)
 			render()
 		end)
 		if b then
 			row("Clear this slot", nil, nil, false, function()
-				local ok, msg = ShopRF:InvokeServer("saveBuild", { slot = i })
+				local ok, msg = ShopRF:InvokeServer("saveBuild", { slot = i, vehicle = vid })
 				notify(msg or "")
 				task.wait(0.2)
 				render()
@@ -1265,12 +1323,14 @@ render = function()
 		end
 		if view.cat.id == "vinyls" then
 			local missing = false
-			for liv, panels in (Data.Car.Vinyls or {}) do
-				if panels[1] and Kit.VinylId(liv, panels[1]) == "" then
+			local vid = curVid()
+			local vd = Vehicles.Data(vid)
+			for liv, panels in (vd and vd.Car.Vinyls or {}) do
+				if panels[1] and Kit.VinylId(liv, panels[1], vid) == "" then
 					missing = true
 				end
 			end
-			note(missing and "Some vinyl images aren't uploaded yet (import LowriderVinyls.glb in Studio and run NCLowriderKit.Prepare on it)." or "Printed right on the paint. Clear parts show your candy colour through, so every vinyl works with every paint.", 60)
+			note(missing and "Some vinyl images aren't uploaded yet (import this ride's Vinyls GLB in Studio and run NCLowriderKit.Prepare on it)." or "Printed right on the paint. Clear parts show your candy colour through, so every vinyl works with every paint.", 60)
 		elseif view.cat.id == "hydraulics" then
 			note("Air bags lay the frame and lift smoothly. Hydraulics lift fast and hop. 3-pump adds three-wheel; the 4-pump competition setup hops highest and dances.", 60)
 		end
@@ -1313,11 +1373,13 @@ local CAMS = {
 	rear34 = { Vector3.new(-13, 7, 21), Vector3.new(0, 2, 5) },
 	interior = { Vector3.new(-6.8, 4.6, 0.8), Vector3.new(0.6, 2.4, -1.2) },
 }
-do
-	local fl = Data.Car.Wheels.FL
+-- the wheel close-up depends on where this vehicle's front wheel sits
+local function wheelCam(car)
+	local vd = Vehicles.Data(Vehicles.Of(car)) or Vehicles.Data(Vehicles.Default)
+	local fl = vd.Car.Wheels.FL
 	local w = Vector3.new(fl[1], fl[2], fl[3])
 	local out = w.X >= 0 and 1 or -1
-	CAMS.wheel = { w + Vector3.new(out * 7, 1.2, -2.8), w }
+	return { w + Vector3.new(out * 7, 1.2, -2.8), w }
 end
 local CAM_OF_MOD = { -- a few mods look somewhere else than their category
 	part_RearBumper = "rear34", part_Spoiler = "rear34", part_Exhaust = "rear34", part_Continental = "rear34", part_Skirts = "side",
@@ -1372,12 +1434,8 @@ local function closeShop()
 end
 
 local function openShop(shop)
-	saved = Config.CleanLook(decode(player:GetAttribute("LowriderLook")))
-	draft = table.clone(saved)
-	if not player:GetAttribute("OwnsLowrider") then
-		draft = nil
-	end
-	view = { level = "cats" }
+	reloadDraft()
+	view = { level = draft and "cats" or "garage" }
 	yaw = 0
 	local car = myLowrider()
 	shopOpen = true
@@ -1393,7 +1451,8 @@ local function openShop(shop)
 				return
 			end
 			local o = Kit.Origin(car)
-			local preset = CAMS[camKey()] or CAMS.front34
+			local key = camKey()
+			local preset = key == "wheel" and wheelCam(car) or CAMS[key] or CAMS.front34
 			local tgtL = preset[2]
 			local eyeL = tgtL + CFrame.Angles(0, yaw, 0):VectorToWorldSpace(preset[1] - tgtL)
 			local eye, tgt = o:PointToWorldSpace(eyeL), o:PointToWorldSpace(tgtL)
