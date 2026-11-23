@@ -149,6 +149,7 @@ I("hair_modern_mullet", "Hair", "Modern Mullet", 260, "mullet", { th = 0.14, fad
 I("hair_classic_mullet", "Hair", "80s Mullet", 220, "mullet", { th = 0.1, len = 1.3 }, H, "#8E5B3C", nil, nil, { "retro" })
 I("hair_sponge_twists", "Hair", "Sponge Twists", 220, "twists", { fade = true, len = 0.2 }, H, "#0B0908", nil, nil, { "hood", "street" }, T)
 I("hair_twists_long", "Hair", "Two-Strand Twists", 260, "twists", { len = 0.45 }, H, "#0B0908", nil, nil, { "hood", "rap" })
+I("hair_flat_twists", "Hair", "Flat Twists", 260, "twists", { fade = true, len = 0.12 }, H, "#0B0908", nil, nil, { "hood", "street" }, T)
 I("hair_messy_twists", "Hair", "Messy Twists Over the Eyes", 320, "locs", { len = 0.85, n = 18, d = 0.15, front = true }, H, "#0B0908", nil, nil, { "hood", "tiktok" }, TN)
 I("hair_curly_top", "Hair", "Curly Top Taper", 240, "curlytop", { n = 16, vol = 0.12 }, H, "#1C1512", nil, nil, { "street", "tiktok" }, T)
 I("hair_high_top", "Hair", "High Top Fade", 220, "hightop", { h = 0.9 }, H, "#0B0908", nil, nil, { "retro", "street" })
@@ -847,7 +848,7 @@ local MESH = {
 	hair_high_fade_part = { Male = "HighFade" }, hair_burst_fade = { Male = "HighFade" },
 	hair_french_crop = { Male = "Crop", Female = "Pixie" }, hair_side_part = { Male = "SidePart", Female = "Pixie" },
 	hair_slick_back = { Male = "SidePart" }, hair_curly_top = { Male = "CurlyTop" },
-	hair_sponge_twists = { Male = "Twists" }, hair_twists_long = { Male = "Twists" },
+	hair_sponge_twists = { Male = "Twists" }, hair_twists_long = { Male = "Twists" }, hair_flat_twists = { Male = "FlatTwists" },
 	hair_messy_twists = { Male = "Twists" },
 	hair_locs_short = { Male = "Locs", Female = "Locs" }, hair_locs_long = { Male = "Locs", Female = "Locs" },
 	hair_locs_front = { Male = "Locs", Female = "Locs" }, hair_freeform = { Male = "Locs", Female = "Locs" },
@@ -5262,7 +5263,7 @@ end
 --
 -- The pieces are made by build_heads.py from each head's own scalp and face, so the hair grows out of a soft
 -- hairline instead of sitting on top like a helmet, and every piece fits that head exactly:
---   Hair_<Style>        the hair (Male: Buzz, Crop, TaperFade, HighFade, SidePart, CurlyTop, Locs, Twists;
+--   Hair_<Style>        the hair (Male: Buzz, Crop, TaperFade, HighFade, SidePart, CurlyTop, Locs, Twists, FlatTwists;
 --                       Female: Pixie, Locs, LowBun, Ponytail, LongStraight, Bob)
 --   Hair_<Style>_Cap    the same style pressed flat and trimmed, worn under a hat
 --   Brows_<Shape>       Natural, Thick, Arched, Straight, Thin
@@ -5522,8 +5523,8 @@ D.Male = {
 		["Hair_Buzz_Cap"] = { kind = "HairCap", key = "Buzz", label = "Buzz Cut", offset = Vector3.new(0.0001, 0.0723, 0.3323), size = Vector3.new(0.5867, 0.7221, 0.7286) },
 		["Hair_Crop"] = { kind = "Hair", key = "Crop", label = "Short Crop", offset = Vector3.new(0.0006, 0.0974, 0.3453), size = Vector3.new(0.6410, 0.7723, 0.7547) },
 		["Hair_Crop_Cap"] = { kind = "HairCap", key = "Crop", label = "Short Crop", offset = Vector3.new(0.0006, 0.0723, 0.3453), size = Vector3.new(0.6410, 0.7221, 0.7547) },
-		["Hair_TaperFade"] = { kind = "Hair", key = "TaperFade", label = "Low Taper Fade", offset = Vector3.new(0.0004, 0.1084, 0.3579), size = Vector3.new(0.6965, 0.7944, 0.7798) },
-		["Hair_TaperFade_Cap"] = { kind = "HairCap", key = "TaperFade", label = "Low Taper Fade", offset = Vector3.new(0.0004, 0.0723, 0.3579), size = Vector3.new(0.6965, 0.7221, 0.7798) },
+		["Hair_TaperFade"] = { kind = "Hair", key = "TaperFade", label = "Textured Crop, Mid Fade", offset = Vector3.new(0.0003, 0.1878, 0.3275), size = Vector3.new(0.6380, 0.6434, 0.7861) },
+		["Hair_TaperFade_Cap"] = { kind = "HairCap", key = "TaperFade", label = "Textured Crop, Mid Fade", offset = Vector3.new(-0.0002, 0.1497, 0.3442), size = Vector3.new(0.6369, 0.5673, 0.7526) },
 		["Hair_HighFade"] = { kind = "Hair", key = "HighFade", label = "High Skin Fade", offset = Vector3.new(0.0003, 0.2160, 0.3624), size = Vector3.new(0.7145, 0.6005, 0.7890) },
 		["Hair_HighFade_Cap"] = { kind = "HairCap", key = "HighFade", label = "High Skin Fade", offset = Vector3.new(0.0003, 0.1746, 0.3624), size = Vector3.new(0.7145, 0.5176, 0.7890) },
 		["Hair_SidePart"] = { kind = "Hair", key = "SidePart", label = "Side Part", offset = Vector3.new(0.0150, 0.1262, 0.3713), size = Vector3.new(0.7308, 0.8299, 0.8066) },
@@ -5532,8 +5533,10 @@ D.Male = {
 		["Hair_CurlyTop_Cap"] = { kind = "HairCap", key = "CurlyTop", label = "Curly Top", offset = Vector3.new(0.0014, 0.1248, 0.3779), size = Vector3.new(0.7990, 0.6656, 0.8200) },
 		["Hair_Locs"] = { kind = "Hair", key = "Locs", label = "Shoulder Locs", offset = Vector3.new(0.0014, -0.4721, 0.3468), size = Vector3.new(0.9966, 1.8655, 1.1313) },
 		["Hair_Locs_Cap"] = { kind = "HairCap", key = "Locs", label = "Shoulder Locs", offset = Vector3.new(-0.0003, -0.4703, 0.4176), size = Vector3.new(1.0000, 1.8072, 0.9920) },
-		["Hair_Twists"] = { kind = "Hair", key = "Twists", label = "Short Twists Over Eyes", offset = Vector3.new(0.0059, -0.0513, 0.2945), size = Vector3.new(0.7602, 1.0393, 0.9395) },
-		["Hair_Twists_Cap"] = { kind = "HairCap", key = "Twists", label = "Short Twists Over Eyes", offset = Vector3.new(0.0033, -0.0397, 0.3661), size = Vector3.new(0.7030, 0.9461, 0.7962) },
+		["Hair_Twists"] = { kind = "Hair", key = "Twists", label = "Hanging Twists", offset = Vector3.new(0.0051, 0.1687, 0.3043), size = Vector3.new(0.6609, 0.5447, 0.8466) },
+		["Hair_Twists_Cap"] = { kind = "HairCap", key = "Twists", label = "Hanging Twists", offset = Vector3.new(-0.0038, 0.1652, 0.3486), size = Vector3.new(0.6276, 0.5363, 0.7613) },
+		["Hair_FlatTwists"] = { kind = "Hair", key = "FlatTwists", label = "Flat Twists", offset = Vector3.new(-0.0004, 0.1617, 0.3364), size = Vector3.new(0.6222, 0.6049, 0.7369) },
+		["Hair_FlatTwists_Cap"] = { kind = "HairCap", key = "FlatTwists", label = "Flat Twists", offset = Vector3.new(0.0003, 0.1460, 0.3367), size = Vector3.new(0.5930, 0.5736, 0.7375) },
 		["Brows_Natural"] = { kind = "Brows", key = "Natural", label = "Natural", offset = Vector3.new(0.0000, 0.1242, -0.0511), size = Vector3.new(0.4132, 0.0750, 0.0958) },
 		["Brows_Thick"] = { kind = "Brows", key = "Thick", label = "Thick", offset = Vector3.new(-0.0000, 0.1236, -0.0507), size = Vector3.new(0.4147, 0.0952, 0.0978) },
 		["Brows_Arched"] = { kind = "Brows", key = "Arched", label = "Arched", offset = Vector3.new(-0.0000, 0.1395, -0.0487), size = Vector3.new(0.4063, 0.0831, 0.0974) },
@@ -5573,8 +5576,8 @@ D.Female = {
 		["Hair_Pixie_Cap"] = { kind = "HairCap", key = "Pixie", label = "Pixie Cut", offset = Vector3.new(0.0132, 0.0705, 0.2915), size = Vector3.new(0.6509, 0.6883, 0.6986) },
 		["Hair_Locs"] = { kind = "Hair", key = "Locs", label = "Long Locs", offset = Vector3.new(0.0015, -0.8093, 0.2652), size = Vector3.new(0.8241, 2.5165, 0.9512) },
 		["Hair_Locs_Cap"] = { kind = "HairCap", key = "Locs", label = "Long Locs", offset = Vector3.new(0.0063, -0.8470, 0.2835), size = Vector3.new(0.8177, 2.4989, 0.9179) },
-		["Hair_LowBun"] = { kind = "Hair", key = "LowBun", label = "Slick Low Bun", offset = Vector3.new(0.0017, 0.0284, 0.3226), size = Vector3.new(0.5674, 0.7661, 0.7609) },
-		["Hair_LowBun_Cap"] = { kind = "HairCap", key = "LowBun", label = "Slick Low Bun", offset = Vector3.new(0.0017, 0.0227, 0.3226), size = Vector3.new(0.5674, 0.7547, 0.7609) },
+		["Hair_LowBun"] = { kind = "Hair", key = "LowBun", label = "Slick Low Bun", offset = Vector3.new(0.0015, 0.0524, 0.3218), size = Vector3.new(0.5603, 0.7140, 0.7593) },
+		["Hair_LowBun_Cap"] = { kind = "HairCap", key = "LowBun", label = "Slick Low Bun", offset = Vector3.new(0.0015, 0.0489, 0.3218), size = Vector3.new(0.5603, 0.7069, 0.7593) },
 		["Hair_Ponytail"] = { kind = "Hair", key = "Ponytail", label = "High Ponytail", offset = Vector3.new(0.0019, -0.3251, 0.3453), size = Vector3.new(0.5790, 1.4959, 0.8063) },
 		["Hair_Ponytail_Cap"] = { kind = "HairCap", key = "Ponytail", label = "High Ponytail", offset = Vector3.new(0.0019, -0.3354, 0.3453), size = Vector3.new(0.5790, 1.4754, 0.8063) },
 		["Hair_LongStraight"] = { kind = "Hair", key = "LongStraight", label = "Long Straight", offset = Vector3.new(0.0012, -0.5455, 0.3439), size = Vector3.new(0.9386, 1.9391, 0.8034) },

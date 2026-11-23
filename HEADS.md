@@ -21,7 +21,15 @@ Renders are in the project files under `character-studio/heads/`.
     curves down over the temple to just in front of the ear top, with the temples covered. The soft edge is kept
     short on the temples and sideburns so those narrow strips stay solid, and wider behind the ears and at the nape
     so dark hair blends into the skin there.
-  - Men: Buzz, Crop, TaperFade, HighFade, SidePart, CurlyTop, Locs, Twists
+  - Men: Buzz, Crop, TaperFade, HighFade, SidePart, CurlyTop, Locs, Twists, FlatTwists
+  - Three styles copy the person's hair references (project files `hair_ref_1..3`): TaperFade is a textured crop
+    with a mid skin fade (top brushed up with a small front lift, the length grows gradually from the fade to the
+    top); FlatTwists are 11 rows of two-strand twists pressed flat from the hairline over the crown to a mid fade,
+    with clean scalp parts on top; Twists hang from a centre part (the forehead shows in a V), ending at the brows,
+    the ear tops and the fade line, with a squared edge-up and a high skin fade. The women's LowBun is slicked
+    straight back with no part, ears showing, into a wrapped bun about 8 cm across just below ear level.
+  - A fade thins the hair out with denser, finer single hairs, so it stays the hair colour instead of washing out
+    brown over the skin.
   - Women: Pixie, Locs, LowBun, Ponytail, LongStraight, Bob
   - Long hair drapes over the back and falls behind the shoulders of the rest-pose body, so it never goes through
     them. Locs collide with the head and body, grow out of the scalp (no cut ends at the roots) and never start

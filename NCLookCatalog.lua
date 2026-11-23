@@ -149,6 +149,7 @@ I("hair_modern_mullet", "Hair", "Modern Mullet", 260, "mullet", { th = 0.14, fad
 I("hair_classic_mullet", "Hair", "80s Mullet", 220, "mullet", { th = 0.1, len = 1.3 }, H, "#8E5B3C", nil, nil, { "retro" })
 I("hair_sponge_twists", "Hair", "Sponge Twists", 220, "twists", { fade = true, len = 0.2 }, H, "#0B0908", nil, nil, { "hood", "street" }, T)
 I("hair_twists_long", "Hair", "Two-Strand Twists", 260, "twists", { len = 0.45 }, H, "#0B0908", nil, nil, { "hood", "rap" })
+I("hair_flat_twists", "Hair", "Flat Twists", 260, "twists", { fade = true, len = 0.12 }, H, "#0B0908", nil, nil, { "hood", "street" }, T)
 I("hair_messy_twists", "Hair", "Messy Twists Over the Eyes", 320, "locs", { len = 0.85, n = 18, d = 0.15, front = true }, H, "#0B0908", nil, nil, { "hood", "tiktok" }, TN)
 I("hair_curly_top", "Hair", "Curly Top Taper", 240, "curlytop", { n = 16, vol = 0.12 }, H, "#1C1512", nil, nil, { "street", "tiktok" }, T)
 I("hair_high_top", "Hair", "High Top Fade", 220, "hightop", { h = 0.9 }, H, "#0B0908", nil, nil, { "retro", "street" })
@@ -847,7 +848,7 @@ local MESH = {
 	hair_high_fade_part = { Male = "HighFade" }, hair_burst_fade = { Male = "HighFade" },
 	hair_french_crop = { Male = "Crop", Female = "Pixie" }, hair_side_part = { Male = "SidePart", Female = "Pixie" },
 	hair_slick_back = { Male = "SidePart" }, hair_curly_top = { Male = "CurlyTop" },
-	hair_sponge_twists = { Male = "Twists" }, hair_twists_long = { Male = "Twists" },
+	hair_sponge_twists = { Male = "Twists" }, hair_twists_long = { Male = "Twists" }, hair_flat_twists = { Male = "FlatTwists" },
 	hair_messy_twists = { Male = "Twists" },
 	hair_locs_short = { Male = "Locs", Female = "Locs" }, hair_locs_long = { Male = "Locs", Female = "Locs" },
 	hair_locs_front = { Male = "Locs", Female = "Locs" }, hair_freeform = { Male = "Locs", Female = "Locs" },
