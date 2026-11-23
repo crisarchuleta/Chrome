@@ -495,6 +495,7 @@ BASE_BUILD = {
             "Seats": "Buckets", "Doors": "Smooth", "Dash": "Classic", "Steering": "Sport", "Shifter": "THandle", "Headliner": "Plain",
             "Rim": "Steelie", "KO": "Cap", "Tire": "Offroad", "Top": "Rack"},
 }[FLAV]
+BASE_BUILD = dict(BASE_BUILD, **S.get("stock", {}))   # a vehicle can change its own stock parts
 SHOWCASE = {
     "muscle": [("build_street", {"FrontBumper": "Sport", "RearBumper": "Sport", "Hood": "Cowl", "Spoiler": "Wing", "Rim": "Star", "Exhaust": "Side", "Skirts": "Rocker"}, "stripes", (0.05, 0.05, 0.06)),
                ("build_show", {"Grille": "Billet", "Rim": "Wire100", "KO": "Bar2", "Band": "ClassicThin", "Hood": "", "Glow": "On"}, "flames", (0.55, 0.03, 0.08))],

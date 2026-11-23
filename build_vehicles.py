@@ -33,7 +33,7 @@ COLORS.update({
     "Seat": (0.12, 0.12, 0.13), "SeatTrim": (0.25, 0.25, 0.27), "Wood": (0.42, 0.22, 0.1), "Gauge": (0.02, 0.02, 0.03),
     "Neon": (0.9, 0.2, 0.8), "Rubber": (0.07, 0.07, 0.08), "Spokes": (0.86, 0.87, 0.90), "Dish": (0.86, 0.87, 0.90),
     "Band": (0.96, 0.96, 0.94), "Rim": (0.86, 0.87, 0.90), "Hub": (0.86, 0.87, 0.90), "Top": (0.04, 0.04, 0.045),
-    "Dark": (0.08, 0.08, 0.09),
+    "PoliceRed": (1.0, 0.05, 0.05), "PoliceBlue": (0.05, 0.2, 1.0),
 })
 
 # ------------------------------------------------------------------ the vehicles
@@ -58,6 +58,53 @@ SPECS = {
                        ZB=1.5, BELT=3.85, NOSE=3.65, HOOD=3.9, TAIL=3.85, CROWN=0.04,
                        A0=-3.6, A1=-1.9, C0=9.0, C1=9.15, ROOF=6.4, TUCK=0.3, B=-0.1, Q=3.4, doors=4, rear="liftgate",
                        paint=(0.36, 0.42, 0.28)),
+    # the rest of the city's lineup, rebuilt under their existing names (ServerStorage.CarTemplates)
+    "VantorStrada": dict(name="Vantor Strada", flavour="muscle", W=3.6, L0=-9.8, L1=9.4, WB=11.2, WR=1.12, WX=2.95, TW=0.8,
+                         ZB=0.8, BELT=2.8, NOSE=2.45, HOOD=2.85, TAIL=2.85, CROWN=0.07,
+                         A0=-2.6, A1=-0.6, C0=3.0, C1=4.9, ROOF=4.6, TUCK=0.5, B=0.75, Q=3.0, doors=4, rear="trunk",
+                         stock={"Hood": "", "Rim": "Split", "Exhaust": ""}, paint=(0.55, 0.57, 0.6)),
+    "AurexHalcyon": dict(name="Aurex Halcyon", flavour="muscle", W=3.75, L0=-10.6, L1=10.2, WB=12.4, WR=1.18, WX=3.05, TW=0.85,
+                         ZB=0.8, BELT=2.95, NOSE=2.6, HOOD=3.0, TAIL=3.0, CROWN=0.07,
+                         A0=-2.8, A1=-0.7, C0=3.6, C1=5.6, ROOF=4.8, TUCK=0.45, B=0.9, Q=3.5, doors=4, rear="trunk",
+                         stock={"Hood": "", "Grille": "Billet", "Rim": "Star", "Seats": "Rolls", "Dash": "Wood"}, paint=(0.06, 0.06, 0.08)),
+    "KazumiK2": dict(name="Kazumi K2", flavour="sports", W=3.3, L0=-7.2, L1=6.6, WB=9.0, WR=1.0, WX=2.7, TW=0.7,
+                     ZB=0.7, BELT=2.75, NOSE=2.2, HOOD=2.75, TAIL=2.95, CROWN=0.08,
+                     A0=-2.9, A1=-0.9, C0=4.6, C1=5.6, ROOF=4.7, TUCK=0.4, B=0.6, Q=2.9, doors=4, rear="hatch",
+                     stock={"Grille": "Eggcrate", "Headlights": "Square", "Spoiler": "", "Seats": "Buckets",
+                            "Dash": "Classic", "Exhaust": "Dual", "Rim": "Steelie"}, paint=(0.9, 0.75, 0.1)),
+    "KazeRS8": dict(name="Kaze RS8", flavour="sports", W=3.7, L0=-9.2, L1=8.6, WB=10.4, WR=1.1, WX=3.0, TW=0.95,
+                    ZB=0.6, BELT=2.5, NOSE=1.9, HOOD=2.6, TAIL=2.8, CROWN=0.1,
+                    A0=-2.2, A1=0.0, C0=2.2, C1=5.2, ROOF=4.0, TUCK=0.65, B=1.6, doors=2, rear="trunk",
+                    stock={"Rim": "Mesh", "Spoiler": "Wing"}, paint=(0.75, 0.05, 0.05)),
+    "HayatoTypeZ": dict(name="Hayato Type Z", flavour="sports", W=3.6, L0=-9.0, L1=8.4, WB=10.2, WR=1.08, WX=2.95, TW=0.9,
+                        ZB=0.6, BELT=2.45, NOSE=1.85, HOOD=2.5, TAIL=2.6, CROWN=0.1,
+                        A0=-1.9, A1=0.3, C0=2.0, C1=6.0, ROOF=3.9, TUCK=0.6, B=1.7, doors=2, rear="hatch",
+                        stock={"Rim": "Turbine", "Headlights": "Quad"}, paint=(0.92, 0.92, 0.9)),
+    "NorrbyDL84": dict(name="Norrby DL84", flavour="muscle", W=3.55, L0=-9.6, L1=9.4, WB=11.0, WR=1.08, WX=2.9, TW=0.78,
+                       ZB=0.8, BELT=2.85, NOSE=2.6, HOOD=2.85, TAIL=2.9, CROWN=0.02,
+                       A0=-2.5, A1=-1.0, C0=3.2, C1=4.4, ROOF=4.85, TUCK=0.25, B=0.7, Q=2.9, doors=4, rear="trunk",
+                       stock={"Hood": "", "Exhaust": "", "Headlights": "Square", "Steering": "Sport"}, paint=(0.12, 0.3, 0.55)),
+    "PoliceCruiser": dict(name="Police Cruiser", flavour="muscle", W=3.65, L0=-10.0, L1=9.8, WB=11.6, WR=1.12, WX=3.0, TW=0.85,
+                          ZB=0.85, BELT=2.9, NOSE=2.65, HOOD=2.95, TAIL=2.95, CROWN=0.03,
+                          A0=-2.6, A1=-1.0, C0=3.3, C1=4.6, ROOF=4.85, TUCK=0.3, B=0.75, Q=3.0, doors=4, rear="trunk",
+                          police=True, stock={"Hood": "", "Exhaust": "", "Steering": "Sport"}, paint=(0.04, 0.04, 0.05)),
+    "MarloweDeville61": dict(name="Marlowe 61", flavour="muscle", W=3.85, L0=-11.2, L1=11.0, WB=12.6, WR=1.15, WX=3.15, TW=0.8,
+                             ZB=0.8, BELT=2.7, NOSE=2.5, HOOD=2.85, TAIL=2.9, CROWN=0.06,
+                             A0=-2.4, A1=-0.6, C0=3.0, C1=5.2, ROOF=4.5, TUCK=0.5, B=2.0, doors=2, rear="trunk",
+                             fins=True, stock={"Hood": "", "Rim": "Wire100", "KO": "Bar2", "Band": "ClassicThin", "Seats": "Rolls", "Doors": "Rolls", "Steering": "Chain"},
+                             paint=(0.55, 0.85, 0.82)),
+    "DusterRidge54": dict(name="Duster Ridge 54", flavour="truck", W=3.6, L0=-9.6, L1=9.6, WB=11.4, WR=1.3, WX=2.85, TW=0.8,
+                          ZB=1.2, BELT=3.6, NOSE=3.3, HOOD=3.75, TAIL=3.6, CROWN=0.1,
+                          A0=-2.4, A1=-1.3, C0=1.0, C1=1.2, ROOF=5.6, TUCK=0.3, B=1.15, doors=2, rear="tailgate",
+                          BED=(1.6, 9.4), stock={"Grille": "Bars", "Headlights": "Dual", "Rim": "Steelie", "Tire": "Classic"}, paint=(0.75, 0.2, 0.12)),
+    "ShorelineSix": dict(name="Shoreline Six", flavour="suv", W=3.85, L0=-9.2, L1=10.0, WB=12.4, WR=1.25, WX=3.15, TW=0.85,
+                         ZB=1.1, BELT=3.6, NOSE=3.2, HOOD=3.6, TAIL=3.6, CROWN=0.05,
+                         A0=-4.2, A1=-2.6, C0=9.6, C1=9.75, ROOF=6.9, TUCK=0.2, B=-1.0, Q=2.6, doors=4, rear="liftgate",
+                         paint=(0.25, 0.65, 0.75)),
+    "ArmoredTruck": dict(name="Coast Patrol Armored Truck", flavour="suv", W=4.1, L0=-10.0, L1=11.0, WB=13.0, WR=1.5, WX=3.3, TW=1.0,
+                         ZB=1.6, BELT=4.1, NOSE=3.9, HOOD=4.2, TAIL=4.1, CROWN=0.03,
+                         A0=-4.0, A1=-2.8, C0=10.6, C1=10.75, ROOF=7.6, TUCK=0.1, B=-1.3, doors=2, rear="liftgate",
+                         blind=True, police=True, stock={"Top": "", "FrontBumper": "Bull"}, paint=(0.2, 0.22, 0.24)),
 }
 VID = os.environ.get("NC_VEHICLE", "Ironclad")
 S = SPECS[VID]
@@ -117,6 +164,13 @@ def make_stations():
     st = [(L0, W - 0.5, ZB + 0.35, nb - 0.2, nb - 0.12, 0.0), (L0 + 0.2, W - 0.22, ZB + 0.15, nb, NOSE - 0.05, CROWN * 0.4),
           (L0 + 0.8, W - 0.05, ZB, nb + 0.05, NOSE + (HOOD - NOSE) * 0.1, CROWN), (A0 - 0.6, W, ZB, BELT - 0.1, HOOD - 0.02, CROWN),
           (A0, W, ZB, BELT, HOOD, CROWN)]
+    # over the front wheel the fender has to clear the arch (low wedge noses would otherwise dip under it)
+    yf = WY_F - ARCH - 0.3
+    if st[2][0] + 0.3 < yf < st[3][0] - 0.3:
+        t = (yf - st[2][0]) / (st[3][0] - st[2][0])
+        lerp = lambda i: st[2][i] + (st[3][i] - st[2][i]) * t
+        belt = max(lerp(3), WR + ARCH + 0.14)
+        st.insert(3, (yf, W, ZB, belt, max(lerp(4), belt + 0.06), CROWN))
     cab_end = C1 if REAR != "liftgate" else L1 - 0.8
     st.append(((A0 + cab_end) / 2, W, ZB, BELT, BELT + 0.1, CROWN * 0.6))
     if REAR in ("trunk", "hatch"):
@@ -328,10 +382,11 @@ def greenhouse():
         sbeam("RoofBody", (s * xb, A0, zb), (s * xt, A1, ROOF), 0.18, 0.18)                        # A pillar
         sbeam("RoofBody", (s * (xt + 0.04), A1, ROOF + 0.02), (s * (xt + 0.04), roof_rear, ROOF + 0.02), 0.08, 0.12)  # roof rail
         # windows between the pillars: front door, rear door (4 doors), quarter
-        def win(pts):
+        def win(pts, quarter=False):
+            blind = quarter and S.get("blind")                # panel van / armoured body: no rear side glass
             outer = [(s * gx(z), y, z) for (y, z) in pts]
-            inner = [(s * (gx(z) - 0.05), y, z) for (y, z) in pts]
-            sprism("RoofGlass", outer, inner)
+            inner = [(s * (gx(z) - (0.14 if blind else 0.05)), y, z) for (y, z) in pts]
+            sprism("RoofBody" if blind else "RoofGlass", outer, inner)
         ya = lambda z: A0 + (A1 - A0) * (z - zb) / (ROOF - zb)
         top = ROOF - 0.08
         win([(ya(zb + 0.03) + 0.3, zb), (ya(top) + 0.08, top), (B - 0.12, top), (B - 0.12, zb)])
@@ -349,7 +404,7 @@ def greenhouse():
                 win([(last + 0.15, zb), (last + 0.15, top), (yc(top) - 0.25, top), (yc(zb + 0.4) - 0.3, zb + 0.4), (yc(zb + 0.4) - 0.3, zb)])
             sbeam("RoofBody", (s * gx(ROOF), C0, ROOF), (s * gx(zb), C1, zb), 0.16, 0.3)
         elif REAR == "liftgate":
-            win([(last + 0.15, zb), (last + 0.15, top), (C0 - 0.2, top), (C0 - 0.2, zb)])
+            win([(last + 0.15, zb), (last + 0.15, top), (C0 - 0.2, top), (C0 - 0.2, zb)], quarter=True)
             sbeam("RoofBody", (s * gx(zb), C0, zb), (s * gx(ROOF), C0, ROOF), 0.16, 0.3)             # D pillar
         elif BED:
             sbeam("RoofBody", (s * gx(zb), C1, zb), (s * gx(ROOF), C0, ROOF), 0.16, 0.24)
@@ -594,6 +649,24 @@ build_rear()
 build_fuel_door()
 build_engine_bay()
 build_parts()
+if S.get("fins"):                                         # 60s tail fins along the rear fenders
+    for s_ in (-1, 1):
+        y0, y1 = C1 + 0.4, L1 - 0.15
+        x = s_ * (W - 0.15)
+        sprism("Body", [(x, y0, deck_z(x, y0) - 0.02), (x, y1, deck_z(x, y1) + 0.55), (x, y1, deck_z(x, y1) - 0.05)],
+               [(x - s_ * 0.16, y0, deck_z(x, y0) - 0.02), (x - s_ * 0.16, y1, deck_z(x, y1) + 0.55), (x - s_ * 0.16, y1, deck_z(x, y1) - 0.05)])
+        scyl("Tail", (x - s_ * 0.08, y1 - 0.02, deck_z(x, y1) + 0.3), (x - s_ * 0.08, y1 + 0.06, deck_z(x, y1) + 0.3), 0.1, seg=12)
+if S.get("police"):                                       # roof light bar + push bar (not for sale, fixed)
+    xt = gx(ROOF)
+    yl = (A1 + C0) / 2 - 0.4 if REAR != "liftgate" else A1 + 0.6
+    sbox("Dark", -(xt - 0.3), yl - 0.25, ROOF + 0.14, xt - 0.3, yl + 0.25, ROOF + 0.24)
+    sbox("PoliceRed", 0.1, yl - 0.22, ROOF + 0.24, xt - 0.35, yl + 0.22, ROOF + 0.46, bev=0.04)
+    sbox("PoliceBlue", -(xt - 0.35), yl - 0.22, ROOF + 0.24, -0.1, yl + 0.22, ROOF + 0.46, bev=0.04)
+    if not BED and REAR != "liftgate":
+        for s_ in (-1, 1):
+            sbeam("Dark", (s_ * 0.9, L0 - 0.6, ZB + 0.2), (s_ * 0.9, L0 - 0.6, NOSE - 0.1), 0.14, 0.14)
+        sbeam("Dark", (-0.9, L0 - 0.6, NOSE - 0.15), (0.9, L0 - 0.6, NOSE - 0.15), 0.14, 0.14)
+        sbeam("Dark", (-0.9, L0 - 0.6, ZB + 0.6), (0.9, L0 - 0.6, ZB + 0.6), 0.14, 0.14)
 split_onto_doors()
 split_panels()
 car, car_tris = join_style(PREFIX, PREFIX)

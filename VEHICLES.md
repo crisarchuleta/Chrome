@@ -12,10 +12,23 @@ paint / vinyl / parts / interior / lights options, saved per vehicle. All names 
 | IronhornTRX | Ironhorn TRX | full-size pickup | 4 | tailgate + open bed |
 | KestrelGT | Kestrel GT | sports fastback | 2 | glass hatch |
 | Dunewalker | Dunewalker | off-road SUV | 4 | liftgate |
+| VantorStrada | Vantor Strada | sedan | 4 | trunk |
+| AurexHalcyon | Aurex Halcyon | luxury sedan | 4 | trunk |
+| KazumiK2 | Kazumi K2 | hatchback | 4 | glass hatch |
+| KazeRS8 | Kaze RS8 | sports coupe | 2 | trunk |
+| HayatoTypeZ | Hayato Type Z | sports fastback | 2 | glass hatch |
+| NorrbyDL84 | Norrby DL84 | boxy 80s sedan | 4 | trunk |
+| PoliceCruiser | Police Cruiser | police sedan (light bar, push bar) | 4 | trunk |
+| MarloweDeville61 | Marlowe 61 | 60s cruiser with fins | 2 | trunk |
+| DusterRidge54 | Duster Ridge 54 | 50s pickup | 2 | tailgate + open bed |
+| ShorelineSix | Shoreline Six | six-seat van | 4 | liftgate |
+| ArmoredTruck | Coast Patrol Armored Truck | armored truck (blind box body) | 2 | liftgate |
 
-The rest of the city's lineup (VantorStrada, AurexHalcyon, KazumiK2, KazeRS8, HayatoTypeZ, NorrbyDL84,
-MarloweDeville61, DusterRidge54, ShorelineSix, GeneralsCart, PoliceCruiser, ArmoredTruck; bikes last) is listed in
-NCVehicles.lua and gets rebuilt under the same names with a spec each.
+These replace the old CarTemplates under the same names. Still to come: GeneralsCart (needs open-top / no-door
+support in the builder), then DirtBike and SportBike (need their own riding physics).
+
+A spec can set its own stock parts with `stock={...}` (merged over its flavour's defaults); the same parts go in
+that vehicle's `defaults` in NCVehicles.lua.
 
 ## Every vehicle has
 

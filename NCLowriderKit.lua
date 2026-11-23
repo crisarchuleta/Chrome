@@ -189,7 +189,7 @@ function Kit.Prepare(import)
 				end)
 			end
 			if id and id ~= "" then
-				vinyls:SetAttribute(liv .. "_" .. pan, id)
+				vinyls:SetAttribute((string.gsub(liv .. "_" .. pan, ":", "__")), id) -- attribute names can't hold ":"
 				nV += 1
 			else
 				warn("NCLowriderKit.Prepare: " .. p:GetFullName() .. " came in without its image; upload lowrider_vinyls/" .. liv .. "_" .. pan .. ".png and put its id in NCLowriderConfig.VinylIds")
@@ -1022,7 +1022,7 @@ function Kit.VinylId(livery, panel, vid)
 	end
 	local f = RS:FindFirstChild("LowriderAssets")
 	local v = f and f:FindFirstChild("Vinyls")
-	return v and v:GetAttribute(key) or ""
+	return v and v:GetAttribute((string.gsub(key, ":", "__"))) or ""
 end
 
 local function printVinyl(p, role, id)
@@ -1122,6 +1122,8 @@ function styleFor(role, look, ctx)
 		return Enum.Material.Neon, colorOf(look, "headlights", Color3.fromRGB(255, 238, 200)), 0, 0
 	elseif mat == "Head" then
 		return Enum.Material.Neon, colorOf(look, "headlights", Color3.fromRGB(255, 238, 200)), 0, 0
+	elseif mat == "PoliceRed" or mat == "PoliceBlue" then
+		return Enum.Material.Neon, mat == "PoliceRed" and Color3.fromRGB(255, 20, 20) or Color3.fromRGB(20, 70, 255), 0, 0
 	elseif mat == "Taillight" or mat == "Light" or mat == "Tail" then
 		return Enum.Material.Neon, colorOf(look, "taillights", Color3.fromRGB(220, 15, 15)), 0, 0
 	elseif mat == "TrunkFloor" then
