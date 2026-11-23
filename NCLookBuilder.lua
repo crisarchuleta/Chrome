@@ -62,10 +62,10 @@ local FIXED = {
 	tooth = Color3.fromRGB(246, 244, 236),
 }
 
--- the always-on modesty base layer: undershirt on the torso, shorts on the hips and thighs (see Apply).
+-- the always-on modesty base layer: a white tank top on the torso, shorts on the hips and thighs (see Apply).
 -- Only the head, arms, hands, lower legs and feet can ever show skin.
 B.BASE_LAYER = {
-	Torso = Color3.fromRGB(58, 60, 66),
+	Torso = Color3.fromRGB(236, 236, 232), -- thin white tank top (matches nc_baselayer.py on the MakeHuman bodies)
 	Hips = Color3.fromRGB(38, 40, 46),
 	ULeg = Color3.fromRGB(38, 40, 46),
 }

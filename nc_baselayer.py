@@ -2,12 +2,13 @@
 # before). Every body gets, permanently:
 #   1. an "NC_Modesty" shape key (value 1, locked on) that smooths away all anatomy under the clothes, so even a
 #      missing or broken garment can never show anything;
-#   2. a fitted undershirt and boxer shorts made from the body's own surface, parented to the body.
+#   2. a thin, skin-tight white tank top and boxer shorts made from the body's own surface, parented to the body.
+#      Both are fully opaque (Roblox modesty layers must be opaque).
 # Pure bpy + numpy (no add-on needed). build_makehuman.py calls add_base_layer(h, female) for every human.
 import bpy
 import numpy as np
 
-SHIRT_RGBA = (0.23, 0.235, 0.26, 1.0)   # matches NCLookBuilder.BASE_LAYER (undershirt)
+SHIRT_RGBA = (0.86, 0.86, 0.84, 1.0)   # white tank top (matches NCLookBuilder.BASE_LAYER.Torso)
 SHORTS_RGBA = (0.15, 0.157, 0.18, 1.0)  # matches NCLookBuilder.BASE_LAYER (shorts)
 
 
@@ -63,15 +64,29 @@ def _labels(co, G):
 
 
 def _smooth(co, edges, iters, nv):
+    """Taubin smoothing (a shrink step then an inflate step), so smoothed areas keep their volume and shape."""
     deg = np.bincount(edges.ravel(), minlength=nv).astype(float)
     out = co.copy()
     for it in range(int(iters.max()) if len(iters) else 0):
+        m = (iters > it) & (deg > 0)
+        for lam in (0.5, -0.53):
+            acc = np.zeros_like(out)
+            np.add.at(acc, edges[:, 0], out[edges[:, 1]])
+            np.add.at(acc, edges[:, 1], out[edges[:, 0]])
+            avg = acc / np.maximum(deg, 1)[:, None]
+            out[m] += lam * (avg[m] - out[m])
+    return out
+
+
+def _smooth_plain(co, edges, iters, nv):
+    deg = np.bincount(edges.ravel(), minlength=nv).astype(float)
+    out = co.copy()
+    for it in range(int(iters.max()) if len(iters) else 0):
+        m = (iters > it) & (deg > 0)
         acc = np.zeros_like(out)
         np.add.at(acc, edges[:, 0], out[edges[:, 1]])
         np.add.at(acc, edges[:, 1], out[edges[:, 0]])
-        avg = acc / np.maximum(deg, 1)[:, None]
-        m = (iters > it) & (deg > 0)
-        out[m] += 0.5 * (avg[m] - out[m])
+        out[m] += 0.5 * (acc[m] / np.maximum(deg, 1)[m][:, None] - out[m])
     return out
 
 
@@ -98,6 +113,8 @@ def add_base_layer(obj, female=False):
     for ch in list(obj.children):
         if ch.get("nc_base_layer"):
             bpy.data.objects.remove(ch, do_unlink=True)
+    if obj.data.shape_keys and "NC_Modesty" in obj.data.shape_keys.key_blocks:
+        obj.shape_key_remove(obj.data.shape_keys.key_blocks["NC_Modesty"])  # rebuild from the plain body
     co = _eval_coords(obj)
     G = _groups(obj)
     nv = len(co)
@@ -114,24 +131,95 @@ def add_base_layer(obj, female=False):
     faces = [list(p.vertices) for p in me.polygons if all(in_body[v] for v in p.vertices)]
 
     pelvis_z, neck_z = J["pelvis"][2], J["neck"][2]
+    H = co[body, 2].max() - co[body, 2].min()
     torso = (region == "Torso")
+    # tank top: the torso from the waist up, with open armholes and a scoop neck
+    sh_x = abs(J["l-shoulder"][0] - J["r-shoulder"][0]) / 2
+    armpit_z = J["l-shoulder"][2] - (0.035 if female else 0.07) * H   # women: higher armholes, no side gap
+    cx = (J["l-shoulder"][0] + J["r-shoulder"][0]) / 2
+    rel_x = np.abs(co[:, 0] - cx)
     shirt = torso & (co[:, 2] > pelvis_z + 0.06 * (neck_z - pelvis_z))
-    shirt |= (region == "UArm") & (t < 0.38)               # short cap sleeves
+    strap = rel_x < (0.72 if female else 0.62) * sh_x                                    # straps run over the shoulders
+    shirt &= ~((co[:, 2] > armpit_z) & ~strap)                     # armholes
+    shirt &= rel_x < 0.9 * sh_x                                    # nothing past the sides onto the arms
+    front = co[:, 1] < J["neck"][1]
+    shirt &= ~(front & (co[:, 2] > neck_z - 0.055 * H) & (rel_x < 0.38 * sh_x))   # front scoop
+    shirt &= ~((co[:, 2] > neck_z - 0.018 * H) & (rel_x < 0.42 * sh_x))           # neckline all round
     shorts = torso & (co[:, 2] <= pelvis_z + 0.16 * (neck_z - pelvis_z))
     shorts |= (region == "ULeg") & (t < 0.5)               # boxer shorts to mid-thigh
     covered = shirt | shorts
 
-    # 1. modesty shape key: smooth away anatomy everywhere under the clothes (hard on the groin and chest detail)
+    # 1. modesty shape key: smooth away anatomy only where it is (groin, nipples), fading out so the hips keep
+    #    their natural shape; Taubin smoothing keeps the volume
     iters = np.zeros(nv)
-    iters[covered] = 6
-    near_groin = shorts & ((region == "Torso") | (t < 0.3))
-    iters[near_groin] = 70
-    for gname, n in (("genitals", 90), ("nipple", 40), ("nippleTip", 40)):
-        if gname in G:
-            iters[G[gname]] = np.maximum(iters[G[gname]], n)
-    if not female:
-        iters[torso & (co[:, 2] > pelvis_z + 0.5 * (neck_z - pelvis_z))] = np.maximum(iters[torso & (co[:, 2] > pelvis_z + 0.5 * (neck_z - pelvis_z))], 14)
+    iters[covered] = 2
+
+    def spot(group, radius, n):
+        if group not in G or not len(G[group]):
+            return
+        c = co[G[group]].mean(0)
+        d = np.linalg.norm(co - c, axis=1)
+        w = np.clip(1 - d / radius, 0, 1) * covered
+        iters[:] = np.maximum(iters, np.round(w * n))
+        iters[G[group]] = np.maximum(iters[G[group]], n)
+    spot("genitals", 0.10 * H, 70)
+    spots = np.zeros(nv)
+    for gname in ("nipple", "nippleTip"):
+        if gname not in G:
+            continue
+        for half in (co[G[gname], 0] > cx, co[G[gname], 0] <= cx):
+            idx = G[gname][half]
+            if len(idx):
+                c = co[idx].mean(0)
+                d = np.linalg.norm(co - c, axis=1)
+                w = np.clip(1 - d / ((0.06 if female else 0.04) * H), 0, 1) * covered
+                spots = np.maximum(spots, np.round(w * (60 if female else 40)))
+                # round off the whole chest contour (Taubin keeps the volume, removes any point)
+                w2 = np.clip(1.3 - d / ((0.11 if female else 0.07) * H), 0, 1) * covered
+                iters[:] = np.maximum(iters, np.round(w2 * (60 if female else 25)))
     S = _smooth(co, edges, iters, nv)
+    S = _smooth_plain(S, edges, spots, nv)
+    # groin: replace the front with a smooth surface fitted to the hips and thighs around it (like a mannequin)
+    if "genitals" in G and len(G["genitals"]):
+        c = S[G["genitals"]].mean(0)
+        r = 0.06 * H
+        d = np.linalg.norm(S - c, axis=1)
+        ring = np.where(in_body & (d > r) & (d < 1.7 * r) & (S[:, 1] < c[1] + 0.02 * H))[0]
+        inner = np.where(in_body & (d <= r))[0]
+        Ng = _normals(S, faces, nv)
+        n = Ng[ring].mean(0); n /= np.linalg.norm(n)
+        u = np.cross(n, [0, 0, 1.0]); u /= np.linalg.norm(u); v = np.cross(n, u)
+        q = S[ring] - c
+        a, b, h = q @ u, q @ v, q @ n
+        k = np.linalg.lstsq(np.stack([np.ones_like(a), a, b, a * a, a * b, b * b], 1), h, rcond=None)[0]
+        q = S[inner] - c
+        a, b, h = q @ u, q @ v, q @ n
+        hn = np.stack([np.ones_like(a), a, b, a * a, a * b, b * b], 1) @ k
+        S[inner] = c + a[:, None] * u + b[:, None] * v + np.minimum(h, hn)[:, None] * n
+    # nipples: replace the whole tip with a smooth dome fitted to the skin around it, so no point or bump is left
+    faces_all = faces
+    if "nipple" in G:
+        Nn = _normals(S, faces_all, nv)
+        for half in (co[G["nipple"], 0] > cx, co[G["nipple"], 0] <= cx):
+            idx = G["nipple"][half]
+            if not len(idx):
+                continue
+            c = S[idx].mean(0)
+            r = (0.024 if female else 0.018) * H
+            d = np.linalg.norm(S - c, axis=1)
+            ring = np.where(in_body & (d > r) & (d < 1.8 * r))[0]
+            inner = np.where(in_body & (d <= r))[0]
+            n = Nn[ring].mean(0); n /= np.linalg.norm(n)
+            u = np.cross(n, [0, 0, 1.0]); u /= np.linalg.norm(u); v = np.cross(n, u)
+            def local(P):
+                q = P - c
+                return q @ u, q @ v, q @ n
+            a, b, h = local(S[ring])
+            A = np.stack([np.ones_like(a), a, b, a * a, a * b, b * b], 1)
+            k = np.linalg.lstsq(A, h, rcond=None)[0]
+            a, b, _ = local(S[inner])
+            hn = np.stack([np.ones_like(a), a, b, a * a, a * b, b * b], 1) @ k
+            S[inner] = c + a[:, None] * u + b[:, None] * v + hn[:, None] * n
     S[~in_body] = co[~in_body]
     if not me.shape_keys:
         obj.shape_key_add(name="Basis")
@@ -148,8 +236,25 @@ def add_base_layer(obj, female=False):
     # 2. garments from the smoothed surface, pushed out so the body can never poke through
     N = _normals(S, faces, nv)
     made = []
-    for gname, mask, off, rgba in (("Undershirt", shirt, 0.010, SHIRT_RGBA), ("Shorts", shorts, 0.014, SHORTS_RGBA)):
+    for gname, mask, off, thick, rgba in (("TankTop", shirt, 0.0035, 0.0012, SHIRT_RGBA), ("Shorts", shorts, 0.008, 0.003, SHORTS_RGBA)):
         fs = [f for f in faces if sum(mask[v] for v in f) * 2 >= len(f)]  # half or more inside: no gaps at hems
+        # keep only the main piece (drop stray scraps, e.g. bits of torso skin under the arm)
+        par = {}
+        def root(x):
+            while par.setdefault(x, x) != x:
+                par[x] = par[par[x]]
+                x = par[x]
+            return x
+        for f in fs:
+            for v in f[1:]:
+                a, b = root(f[0]), root(v)
+                if a != b:
+                    par[a] = b
+        sizes = {}
+        for f in fs:
+            r0 = root(f[0]); sizes[r0] = sizes.get(r0, 0) + 1
+        main = max(sizes, key=sizes.get)
+        fs = [f for f in fs if root(f[0]) == main]
         used = sorted({v for f in fs for v in f})
         remap = {v: i for i, v in enumerate(used)}
         V = np.array([S[v] + N[v] * off for v in used])
@@ -161,12 +266,18 @@ def add_base_layer(obj, female=False):
                 cnt[e] = cnt.get(e, 0) + 1
         bnd = np.array([[remap[a], remap[b]] for (a, b), c in cnt.items() if c == 1])
         if len(bnd):
-            for _ in range(25):
+            surf = S[body] + N[body] * off
+            snrm = N[body]
+            for _ in range(30):
                 acc = np.zeros_like(V); deg = np.zeros(len(V))
                 np.add.at(acc, bnd[:, 0], V[bnd[:, 1]]); np.add.at(acc, bnd[:, 1], V[bnd[:, 0]])
                 np.add.at(deg, bnd[:, 0], 1); np.add.at(deg, bnd[:, 1], 1)
-                m = deg > 0
+                m = np.where(deg > 0)[0]
                 V[m] += 0.5 * (acc[m] / deg[m][:, None] - V[m])
+                # keep the hem on the body: project back onto the offset surface at the nearest point
+                for i in m:
+                    j = np.argmin(((surf - V[i]) ** 2).sum(1))
+                    V[i] -= np.dot(V[i] - surf[j], snrm[j]) * snrm[j]
         verts = [tuple(x) for x in V]
         gm = bpy.data.meshes.new(obj.name + "_" + gname)
         gm.from_pydata(verts, [], [[remap[v] for v in f] for f in fs])
@@ -177,7 +288,7 @@ def add_base_layer(obj, female=False):
         go["nc_base_layer"] = True
         go.data.materials.append(_material("NC_BaseLayer_" + gname, rgba))
         sol = go.modifiers.new("Thickness", "SOLIDIFY")
-        sol.thickness = 0.004
+        sol.thickness = thick
         sol.offset = 1.0
         for c in obj.users_collection:
             c.objects.link(go)
@@ -185,5 +296,5 @@ def add_base_layer(obj, female=False):
         go.matrix_parent_inverse = obj.matrix_world.inverted()
         go.matrix_world = obj.matrix_world.copy()
         made.append(go)
-    obj["nc_base_layer"] = "undershirt+shorts"
+    obj["nc_base_layer"] = "tanktop+shorts"
     return made
