@@ -461,23 +461,23 @@
    ]
   },
   "tris": {
-   "LowerTorso": 2520,
-   "UpperTorso": 4116,
+   "LowerTorso": 2512,
+   "UpperTorso": 4170,
    "Head": 8616,
-   "RightUpperArm": 610,
+   "RightUpperArm": 612,
    "RightLowerArm": 494,
    "RightHand": 2972,
    "RightUpperLeg": 1506,
    "RightLowerLeg": 608,
    "RightFoot": 2102,
-   "LeftUpperArm": 612,
+   "LeftUpperArm": 616,
    "LeftLowerArm": 494,
    "LeftHand": 2972,
    "LeftUpperLeg": 1530,
    "LeftLowerLeg": 608,
    "LeftFoot": 2102
   },
-  "tris_total": 31862,
+  "tris_total": 31914,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 35.5,
@@ -489,7 +489,7 @@
    "LeftTwist": -1.9,
    "LeftLegStraighten": 5.3
   },
-  "covered_skin_faces_removed": 1787
+  "covered_skin_faces_removed": 1817
  },
  "Female_Average": {
   "height": 5.919,
@@ -954,22 +954,22 @@
   },
   "tris": {
    "LowerTorso": 2580,
-   "UpperTorso": 4174,
+   "UpperTorso": 4164,
    "Head": 8612,
-   "RightUpperArm": 640,
+   "RightUpperArm": 618,
    "RightLowerArm": 502,
    "RightHand": 2916,
    "RightUpperLeg": 1558,
    "RightLowerLeg": 608,
    "RightFoot": 2104,
-   "LeftUpperArm": 640,
+   "LeftUpperArm": 618,
    "LeftLowerArm": 502,
    "LeftHand": 2916,
    "LeftUpperLeg": 1566,
    "LeftLowerLeg": 608,
    "LeftFoot": 2104
   },
-  "tris_total": 32030,
+  "tris_total": 31976,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 35.5,
@@ -981,7 +981,7 @@
    "LeftTwist": -1.9,
    "LeftLegStraighten": 5.3
   },
-  "covered_skin_faces_removed": 1705
+  "covered_skin_faces_removed": 1788
  },
  "Female_Heavy": {
   "height": 5.922,
@@ -1445,8 +1445,8 @@
    ]
   },
   "tris": {
-   "LowerTorso": 2582,
-   "UpperTorso": 4204,
+   "LowerTorso": 2586,
+   "UpperTorso": 4242,
    "Head": 8616,
    "RightUpperArm": 680,
    "RightLowerArm": 486,
@@ -1461,7 +1461,7 @@
    "LeftLowerLeg": 610,
    "LeftFoot": 2102
   },
-  "tris_total": 32512,
+  "tris_total": 32554,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 35.5,
@@ -1473,7 +1473,7 @@
    "LeftTwist": -1.9,
    "LeftLegStraighten": 5.3
   },
-  "covered_skin_faces_removed": 1394
+  "covered_skin_faces_removed": 1425
  },
  "Female_Muscular": {
   "height": 5.922,
@@ -1938,7 +1938,7 @@
   },
   "tris": {
    "LowerTorso": 2368,
-   "UpperTorso": 4150,
+   "UpperTorso": 4172,
    "Head": 8630,
    "RightUpperArm": 680,
    "RightLowerArm": 494,
@@ -1953,7 +1953,7 @@
    "LeftLowerLeg": 616,
    "LeftFoot": 2102
   },
-  "tris_total": 31996,
+  "tris_total": 32018,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 35.5,
@@ -1965,7 +1965,7 @@
    "LeftTwist": -1.8,
    "LeftLegStraighten": 5.3
   },
-  "covered_skin_faces_removed": 1716
+  "covered_skin_faces_removed": 1745
  },
  "Female_Skinny": {
   "height": 5.933,
@@ -2430,22 +2430,22 @@
   },
   "tris": {
    "LowerTorso": 2486,
-   "UpperTorso": 4296,
+   "UpperTorso": 4316,
    "Head": 8612,
-   "RightUpperArm": 614,
+   "RightUpperArm": 624,
    "RightLowerArm": 492,
    "RightHand": 3194,
    "RightUpperLeg": 1496,
    "RightLowerLeg": 622,
    "RightFoot": 2102,
-   "LeftUpperArm": 614,
+   "LeftUpperArm": 626,
    "LeftLowerArm": 492,
    "LeftHand": 3194,
    "LeftUpperLeg": 1510,
    "LeftLowerLeg": 622,
    "LeftFoot": 2102
   },
-  "tris_total": 32448,
+  "tris_total": 32490,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 35.5,
@@ -2457,7 +2457,7 @@
    "LeftTwist": -1.8,
    "LeftLegStraighten": 5.3
   },
-  "covered_skin_faces_removed": 1534
+  "covered_skin_faces_removed": 1593
  },
  "Male_Athletic": {
   "height": 6.754,
@@ -2922,22 +2922,22 @@
   },
   "tris": {
    "LowerTorso": 2738,
-   "UpperTorso": 4632,
+   "UpperTorso": 4592,
    "Head": 8478,
-   "RightUpperArm": 616,
+   "RightUpperArm": 586,
    "RightLowerArm": 506,
    "RightHand": 3232,
    "RightUpperLeg": 1562,
    "RightLowerLeg": 558,
    "RightFoot": 2130,
-   "LeftUpperArm": 616,
+   "LeftUpperArm": 572,
    "LeftLowerArm": 506,
    "LeftHand": 3232,
    "LeftUpperLeg": 1576,
    "LeftLowerLeg": 558,
    "LeftFoot": 2130
   },
-  "tris_total": 33070,
+  "tris_total": 32956,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 34.1,
@@ -2949,7 +2949,7 @@
    "LeftTwist": 1.0,
    "LeftLegStraighten": 6.0
   },
-  "covered_skin_faces_removed": 1405
+  "covered_skin_faces_removed": 1614
  },
  "Male_Average": {
   "height": 6.78,
@@ -3413,23 +3413,23 @@
    ]
   },
   "tris": {
-   "LowerTorso": 2706,
-   "UpperTorso": 4638,
+   "LowerTorso": 2698,
+   "UpperTorso": 4606,
    "Head": 8474,
-   "RightUpperArm": 620,
+   "RightUpperArm": 598,
    "RightLowerArm": 502,
    "RightHand": 3230,
    "RightUpperLeg": 1560,
    "RightLowerLeg": 568,
    "RightFoot": 2128,
-   "LeftUpperArm": 620,
+   "LeftUpperArm": 598,
    "LeftLowerArm": 502,
    "LeftHand": 3230,
    "LeftUpperLeg": 1578,
    "LeftLowerLeg": 568,
    "LeftFoot": 2128
   },
-  "tris_total": 33052,
+  "tris_total": 32968,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 33.9,
@@ -3441,7 +3441,7 @@
    "LeftTwist": 0.9,
    "LeftLegStraighten": 5.9
   },
-  "covered_skin_faces_removed": 1372
+  "covered_skin_faces_removed": 1584
  },
  "Male_Heavy": {
   "height": 6.777,
@@ -3906,7 +3906,7 @@
   },
   "tris": {
    "LowerTorso": 2654,
-   "UpperTorso": 4474,
+   "UpperTorso": 4642,
    "Head": 8478,
    "RightUpperArm": 626,
    "RightLowerArm": 524,
@@ -3921,7 +3921,7 @@
    "LeftLowerLeg": 552,
    "LeftFoot": 2132
   },
-  "tris_total": 32988,
+  "tris_total": 33156,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 34.0,
@@ -3933,7 +3933,7 @@
    "LeftTwist": 0.9,
    "LeftLegStraighten": 6.0
   },
-  "covered_skin_faces_removed": 1384
+  "covered_skin_faces_removed": 1506
  },
  "Male_Muscular": {
   "height": 6.776,
@@ -4398,7 +4398,7 @@
   },
   "tris": {
    "LowerTorso": 2634,
-   "UpperTorso": 4572,
+   "UpperTorso": 4632,
    "Head": 8490,
    "RightUpperArm": 604,
    "RightLowerArm": 528,
@@ -4406,14 +4406,14 @@
    "RightUpperLeg": 1622,
    "RightLowerLeg": 556,
    "RightFoot": 2134,
-   "LeftUpperArm": 604,
+   "LeftUpperArm": 618,
    "LeftLowerArm": 528,
    "LeftHand": 3234,
    "LeftUpperLeg": 1650,
    "LeftLowerLeg": 556,
    "LeftFoot": 2134
   },
-  "tris_total": 33080,
+  "tris_total": 33154,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 34.3,
@@ -4425,7 +4425,7 @@
    "LeftTwist": 1.1,
    "LeftLegStraighten": 5.9
   },
-  "covered_skin_faces_removed": 1384
+  "covered_skin_faces_removed": 1525
  },
  "Male_Skinny": {
   "height": 6.758,
@@ -4889,23 +4889,23 @@
    ]
   },
   "tris": {
-   "LowerTorso": 2684,
-   "UpperTorso": 4642,
+   "LowerTorso": 2692,
+   "UpperTorso": 4658,
    "Head": 8482,
-   "RightUpperArm": 620,
+   "RightUpperArm": 592,
    "RightLowerArm": 502,
    "RightHand": 3232,
    "RightUpperLeg": 1542,
    "RightLowerLeg": 562,
    "RightFoot": 2122,
-   "LeftUpperArm": 620,
+   "LeftUpperArm": 598,
    "LeftLowerArm": 502,
    "LeftHand": 3232,
    "LeftUpperLeg": 1554,
    "LeftLowerLeg": 562,
    "LeftFoot": 2122
   },
-  "tris_total": 32980,
+  "tris_total": 32954,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 34.1,
@@ -4917,6 +4917,6 @@
    "LeftTwist": 1.0,
    "LeftLegStraighten": 5.9
   },
-  "covered_skin_faces_removed": 1386
+  "covered_skin_faces_removed": 1581
  }
 }

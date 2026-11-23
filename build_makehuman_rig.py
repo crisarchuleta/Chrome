@@ -45,6 +45,15 @@ D2R = math.pi / 180
 ABD = 7 * D2R             # rest pose: arms hang 7 degrees out from the body (as build_human.py)
 
 bpy.ops.wm.open_mainfile(filepath=SRC)
+# ribbed-knit tank texture: write the PNGs next to the FBX files and point the tank material at them, so the
+# FBX export copies them (Roblox: colour map on the mesh; the normal map is for a SurfaceAppearance)
+for _im_name, _p in NB.write_rib_pngs(OUT).items():
+    _im = bpy.data.images.get(_im_name)
+    if _im is not None:
+        if _im.packed_file:
+            _im.unpack(method="REMOVE")
+        _im.filepath = _p
+        _im.reload()
 scene = bpy.context.scene
 SOURCES = [o for o in bpy.data.objects if o.type == "MESH" and o.get("nc_base_layer") == "tanktop+shorts"]
 if ONLY:
@@ -442,7 +451,7 @@ def bake_base_layer(body, garments):
     for g in garments:
         g.data.materials.clear()
     activate(body)
-    for g in garments:
+    for g in garments:  # the tank keeps its UVs and ribbed-knit material from nc_baselayer
         mname = "NC_BaseLayer_TankTop" if "TankTop" in g.name else "NC_BaseLayer_Shorts"
         g.data.materials.append(material(mname))
         for p in g.data.polygons:
@@ -638,7 +647,8 @@ for src in SOURCES:
     bpy.ops.export_scene.fbx(filepath=os.path.join(OUT, f"NC_Body_{name}.fbx"), use_selection=True,
                              object_types={"ARMATURE", "MESH"}, apply_scale_options="FBX_SCALE_UNITS",
                              add_leaf_bones=False, bake_anim=False, use_custom_props=True, primary_bone_axis="Y",
-                             secondary_bone_axis="X", mesh_smooth_type="OFF", path_mode="COPY")
+                             secondary_bone_axis="X", mesh_smooth_type="OFF", path_mode="COPY",
+                             embed_textures=True)  # the tank rib texture travels inside the FBX
     for part, ob in pieces.items():                  # names back to unique ones for the next body
         ob.name = f"{name}_{part}_Geo"
     RIGS[name] = (rig, pieces)

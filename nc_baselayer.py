@@ -109,6 +109,93 @@ def _material(name, rgba):
     return m
 
 
+RIB_TILE_M = 0.01  # one texture tile = 1 cm x 1 cm (4 ribs), so the knit is the same size on every body
+
+
+def _rib_pixels(n=64):
+    """Tiling ribbed-knit colour + normal maps (vertical 1x1 rib, 4 ribs a tile) as float RGB arrays, row 0 = bottom."""
+    x = (np.arange(n) + 0.5) / n
+    ph = np.sin(2 * np.pi * 4 * x)                      # rib profile across the tile
+    hgt = np.sign(ph) * np.abs(ph) ** 0.6
+    y = (np.arange(n) + 0.5) / n
+    knit = 0.04 * np.cos(2 * np.pi * 16 * y)[:, None] * (np.abs(ph)[None, :])  # faint stitch rows along each rib
+    shade = 0.96 + 0.04 * hgt[None, :] + 0.5 * knit
+    col = np.clip(np.repeat(shade[:, :, None], 3, 2) * np.array(SHIRT_RGBA[:3]), 0, 1)
+    dh = np.gradient(np.tile(hgt, (n, 1)) * 0.6 + knit * 2, axis=1)
+    nrm = np.stack([-dh * 0.8, np.zeros_like(dh), np.ones_like(dh)], 2)
+    nrm /= np.linalg.norm(nrm, axis=2, keepdims=True)
+    return {"NC_TankRib_Color": col, "NC_TankRib_Normal": nrm * 0.5 + 0.5}
+
+
+def write_rib_pngs(folder):
+    """Write the rib maps as PNG files (raw values, no view transform) for FBX export / Roblox SurfaceAppearance."""
+    import os
+    paths = {}
+    for name, arr in _rib_pixels().items():
+        n = arr.shape[0]
+        im = bpy.data.images.new(name + "_out", n, n, alpha=False, float_buffer=False)
+        if name.endswith("Normal"):
+            im.colorspace_settings.name = "Non-Color"
+        im.pixels.foreach_set(np.concatenate([arr, np.ones((n, n, 1))], 2).astype(np.float32).ravel())
+        im.filepath_raw = os.path.join(folder, name + ".png")
+        im.file_format = "PNG"
+        im.save()
+        bpy.data.images.remove(im)
+        paths[name] = os.path.join(folder, name + ".png")
+    return paths
+
+
+def _rib_image():
+    """The rib maps as images packed into the .blend."""
+    out = {}
+    for name, arr in _rib_pixels().items():
+        n = arr.shape[0]
+        im = bpy.data.images.get(name) or bpy.data.images.new(name, n, n, alpha=False)
+        if name.endswith("Normal"):
+            im.colorspace_settings.name = "Non-Color"
+        im.pixels.foreach_set(np.concatenate([arr, np.ones((n, n, 1))], 2).astype(np.float32).ravel())
+        im.pack()
+        out[name] = im
+    return out
+
+
+def _rib_material(name, rgba):
+    m = _material(name, rgba)
+    ims = _rib_image()
+    nt = m.node_tree
+    bsdf = nt.nodes.get("Principled BSDF")
+    tc = nt.nodes.new("ShaderNodeTexImage"); tc.image = ims["NC_TankRib_Color"]
+    tn = nt.nodes.new("ShaderNodeTexImage"); tn.image = ims["NC_TankRib_Normal"]
+    nm = nt.nodes.new("ShaderNodeNormalMap"); nm.inputs["Strength"].default_value = 0.5
+    nt.links.new(tc.outputs["Color"], bsdf.inputs["Base Color"])
+    # the normal map is packed for Roblox SurfaceAppearance (NormalMap) but not linked here: Blender's FBX/glTF
+    # exporters and Roblox import only the colour map reliably
+    nt.links.new(tn.outputs["Color"], nm.inputs["Color"])
+    m["nc_rib_tile_m"] = RIB_TILE_M
+    return m
+
+
+def _rib_uvs(mesh, V, cx, cy):
+    """Cylindrical UVs in real size: U runs round the body (ribs stay vertical), V runs up; 1 UV unit = 1 tile."""
+    ang = np.arctan2(V[:, 0] - cx, -(V[:, 1] - cy))            # 0 at the front centre, seam at the back
+    r = np.hypot(V[:, 0] - cx, V[:, 1] - cy)
+    rm = np.median(r)
+    u = ang * rm / RIB_TILE_M
+    v = (V[:, 2] - V[:, 2].min()) / RIB_TILE_M
+    uv = mesh.uv_layers.new(name="UVMap")
+    loops = np.array([l.vertex_index for l in mesh.loops])
+    uu, vv = u[loops].copy(), v[loops]
+    # no wrap across the back seam: keep each face on one side
+    for p in mesh.polygons:
+        idx = list(range(p.loop_start, p.loop_start + p.loop_total))
+        a = ang[loops[idx]]
+        if a.max() - a.min() > np.pi:
+            for i in idx:
+                if ang[loops[i]] < 0:
+                    uu[i] += 2 * np.pi * rm / RIB_TILE_M
+    uv.data.foreach_set("uv", np.stack([uu, vv], 1).ravel())
+
+
 def add_base_layer(obj, female=False):
     for ch in list(obj.children):
         if ch.get("nc_base_layer"):
@@ -133,18 +220,28 @@ def add_base_layer(obj, female=False):
     pelvis_z, neck_z = J["pelvis"][2], J["neck"][2]
     H = co[body, 2].max() - co[body, 2].min()
     torso = (region == "Torso")
-    # tank top: the torso from the waist up, with open armholes and a scoop neck
+    # tank top (person's reference photo, 2026-11-23): ribbed knit, high round neck with only a slight dip,
+    # wide straps (~5.5 cm), athletic armholes that cut in at the shoulder and end just under the armpit,
+    # fitted to the hip
     sh_x = abs(J["l-shoulder"][0] - J["r-shoulder"][0]) / 2
-    armpit_z = J["l-shoulder"][2] - (0.035 if female else 0.07) * H   # women: higher armholes, no side gap
+    sh_top = J["l-shoulder"][2] + 0.02 * H
+    armpit_z = J["l-shoulder"][2] - (0.035 if female else 0.05) * H   # women: higher armholes, no side gap
     cx = (J["l-shoulder"][0] + J["r-shoulder"][0]) / 2
     rel_x = np.abs(co[:, 0] - cx)
+    neck_hw = (0.36 if female else 0.4) * sh_x          # half-width of the neck opening
+    strap_out = neck_hw + 0.031 * H                      # ~5.5 cm strap on a 1.78 m body
+    side_x = 0.9 * sh_x
     shirt = torso & (co[:, 2] > pelvis_z + 0.06 * (neck_z - pelvis_z))
-    strap = rel_x < (0.72 if female else 0.62) * sh_x                                    # straps run over the shoulders
-    shirt &= ~((co[:, 2] > armpit_z) & ~strap)                     # armholes
-    shirt &= rel_x < 0.9 * sh_x                                    # nothing past the sides onto the arms
+    # armhole: a smooth curve from the outer strap edge on the shoulder down to the side seam under the arm
+    s_ = np.clip((co[:, 2] - armpit_z) / max(sh_top - armpit_z, 1e-6), 0, 1)
+    x_edge = side_x - (side_x - strap_out) * (1 - (1 - s_) ** 2.2)
+    shirt &= ~((co[:, 2] > armpit_z) & (rel_x > x_edge))
+    shirt &= rel_x < side_x                                        # nothing past the sides onto the arms
     front = co[:, 1] < J["neck"][1]
-    shirt &= ~(front & (co[:, 2] > neck_z - 0.055 * H) & (rel_x < 0.38 * sh_x))   # front scoop
-    shirt &= ~((co[:, 2] > neck_z - 0.018 * H) & (rel_x < 0.42 * sh_x))           # neckline all round
+    # high round neck: the back sits at the base of the neck, the front dips only slightly
+    rr = np.clip(rel_x / neck_hw, 0, 1)
+    dip = np.where(front, 0.02 + 0.016 * np.sqrt(1 - rr ** 2), 0.018 + 0.004 * np.sqrt(1 - rr ** 2)) * H
+    shirt &= ~((co[:, 2] > neck_z - dip) & (rel_x < neck_hw))
     shorts = torso & (co[:, 2] <= pelvis_z + 0.16 * (neck_z - pelvis_z))
     shorts |= (region == "ULeg") & (t < 0.5)               # boxer shorts to mid-thigh
     covered = shirt | shorts
@@ -286,7 +383,11 @@ def add_base_layer(obj, female=False):
             p.use_smooth = True
         go = bpy.data.objects.new(obj.name + "_" + gname, gm)
         go["nc_base_layer"] = True
-        go.data.materials.append(_material("NC_BaseLayer_" + gname, rgba))
+        if gname == "TankTop":
+            _rib_uvs(gm, V, cx, J["neck"][1])
+            go.data.materials.append(_rib_material("NC_BaseLayer_" + gname, rgba))
+        else:
+            go.data.materials.append(_material("NC_BaseLayer_" + gname, rgba))
         sol = go.modifiers.new("Thickness", "SOLIDIFY")
         sol.thickness = thick
         sol.offset = 1.0
