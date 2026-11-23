@@ -92,6 +92,19 @@ PART_OF_BONE["NC_SpineMid"] = "UpperTorso"
 PART_OF_BONE["NC_NeckMid"] = "Head"
 DEFORM = [b for b in BONES if b not in ("Root", "HumanoidRootNode")]
 
+# face bones (children of Head) for the face shape sliders: where they sit and how far each reaches come from
+# build_heads.py (heads.json, measured on each gender's Average head, fitted to every body by its eyes). Only the
+# export rig has them, and they only take weight from the Head, so no other bone, part or attachment changes.
+FACE = None
+for _p in (os.path.join(OUT, "heads.json"), os.path.join(os.path.dirname(os.path.abspath(__file__)), "heads.json")):
+    if os.path.exists(_p):
+        with open(_p) as _f:
+            FACE = json.load(_f)
+        break
+FACE_BONES = sorted({b for g in (FACE or {}).values() for b in g.get("bones", {})})
+for _b in FACE_BONES:
+    PART_OF_BONE[_b] = "Head"
+
 COLOURS = {"Skin": (0.78, 0.58, 0.45, 1), "NC_BaseLayer_TankTop": NB.SHIRT_RGBA, "NC_BaseLayer_Shorts": NB.SHORTS_RGBA}
 
 
@@ -467,10 +480,78 @@ def bake_base_layer(body, garments):
     return removed
 
 
+# ------------------------------------------------------------------------------------------------ 4b. face bones
+def face_marks(name, eyes):
+    """{bone: (head position, reach)} for this body, or {} without heads.json"""
+    gender = name.split("_")[0]
+    if not FACE or gender not in FACE or not ("l" in eyes and "r" in eyes):
+        return {}
+    d = FACE[gender]
+    A = (eyes["l"][0] + eyes["r"][0]) / 2
+    k = (eyes["l"][0] - eyes["r"][0]).length / d["eyeSpan"]
+    out = {}
+    for b, x in d["bones"].items():
+        r = x["at"]                                    # Roblox axes from the eyes' midpoint -> Blender
+        out[b] = (A + Vector((-r[0], r[2], r[1])) * k, x["reach"] * k)
+    return out
+
+
+def face_weights(body, FB):
+    """each face bone takes a smooth share of the Head's weight around it (at most two face bones per vertex)"""
+    for b in FB:
+        body.vertex_groups.new(name=b)
+    names = {g.index: g.name for g in body.vertex_groups}
+    gi = {g.name: g.index for g in body.vertex_groups}
+    head = body.vertex_groups["Head"]
+    moved = 0
+    for v in body.data.vertices:
+        w = {names[ge.group]: ge.weight for ge in v.groups}
+        hw = w.get("Head", 0.0)
+        if hw < 0.05:
+            continue
+        cand = []
+        for b, (p, r) in FB.items():
+            d = (v.co - p).length
+            if d < r:
+                cand.append(((1 - (d / r) ** 2) ** 2, b))
+        if not cand:
+            continue
+        cand.sort(reverse=True)
+        cand = cand[:2]
+        tot = sum(c for c, _ in cand)
+        share = min(0.95, tot) * hw
+        for c, b in cand:
+            body.vertex_groups[gi[b]].add([v.index], share * c / tot, "REPLACE")
+        head.add([v.index], hw - share, "REPLACE")
+        moved += 1
+    activate(body)
+    bpy.ops.object.vertex_group_limit_total(group_select_mode="ALL", limit=4)
+    bpy.ops.object.vertex_group_normalize_all(group_select_mode="ALL", lock_active=False)
+    return moved
+
+
+def add_face_bones(rig, FB):
+    """the export rig's face bones: straight up and rolled half round like every other bone (Roblox axes)"""
+    activate(rig)
+    bpy.ops.object.mode_set(mode="EDIT")
+    eb = rig.data.edit_bones
+    for b, (p, r) in FB.items():
+        e = eb.new(b)
+        e.head = p
+        e.tail = p + Vector((0, 0, 0.08))
+        e.roll = math.pi
+        e.parent = eb["Head"]
+        e.use_connect = False
+        e.use_deform = True
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+
 # ------------------------------------------------------------------------------------------------ 5. 15 R15 pieces
 def split(body, rig, prefix):
     bm_full = bmesh.new()
     bm_full.from_mesh(body.data)
+    loose = [v for v in bm_full.verts if not v.link_faces]      # (stray points would bloat every part's bounds)
+    bmesh.ops.delete(bm_full, geom=loose, context="VERTS")
     bm_full.normal_update()
     full_normals = [v.normal.copy() for v in bm_full.verts]
     kd = KDTree(len(bm_full.verts))
@@ -503,6 +584,50 @@ def split(body, rig, prefix):
                 if best != face_part[f.index] and nb.count(best) * 2 > len(nb):
                     newp[f.index] = best
         face_part = newp
+    # clean edges where they matter for colouring by part: the whole tank top is UpperTorso and the whole shorts
+    # LowerTorso (their hems are the lines between torso, arms and thighs), and the neck goes with the Head
+    mat_names = [m.name if m else "" for m in body.data.materials]
+    neck_z = rig.data.bones["Head"].head_local.z
+    for f in bm_full.faces:
+        mn = mat_names[f.material_index] if f.material_index < len(mat_names) else ""
+        if "TankTop" in mn:
+            face_part[f.index] = "UpperTorso"
+        elif "Shorts" in mn:
+            face_part[f.index] = "LowerTorso"
+        elif face_part[f.index] == "UpperTorso":
+            c = f.calc_center_median()
+            if c.z > neck_z - 0.15 and abs(c.x) < 0.22:
+                face_part[f.index] = "Head"
+    # skin between limb parts: straight cuts across the limb at each joint (shoulder side, elbow, wrist, knee,
+    # ankle), so a sleeve or trouser leg coloured by part ends in a clean line
+    J = {b.name: b.head_local.copy() for b in rig.data.bones}
+    for side, s, m, bx in SIDES:
+        for chain in (("UpperArm", "LowerArm", "Hand"), ("UpperLeg", "LowerLeg", "Foot")):
+            names = [side + c for c in chain]
+            a, b_, c_ = (J[n] for n in names)
+            d1 = (b_ - a).normalized()
+            d2 = (c_ - b_).normalized()
+            arm = chain[0] == "UpperArm"
+            for f in bm_full.faces:
+                cur = face_part[f.index]
+                mn = mat_names[f.material_index] if f.material_index < len(mat_names) else ""
+                if "BaseLayer" in mn:
+                    continue
+                cen = f.calc_center_median()
+                if cur in names:
+                    if (cen - b_).dot(d1) < 0:
+                        new = names[0]
+                    elif (cen - c_).dot(d2) < 0:
+                        new = names[1]
+                    else:
+                        new = names[2]
+                    face_part[f.index] = new
+                cur = face_part[f.index]
+                # the shoulder: a sleeve seam, a plane through the shoulder joint tilted 45 degrees (over the top of
+                # the shoulder, down through the armpit)
+                if arm and cur in ("UpperTorso", names[0]) and cen.x * bx > 0 and cen.z > a.z - 0.6:
+                    seam = Vector((bx * 0.7071, 0, -0.7071))
+                    face_part[f.index] = names[0] if (cen - a).dot(seam) > 0 else "UpperTorso"
     pieces = {}
     for part in R15_PARTS:
         bm = bm_full.copy()
@@ -524,6 +649,7 @@ def split(body, rig, prefix):
                 cv[dlp].clear()
                 for gi, w in top:
                     cv[dlp][gi] = w / tot
+        bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")   # no stray points
         m = bpy.data.meshes.new(prefix + part + "_Geo")
         bm.to_mesh(m)
         bm.free()
@@ -547,6 +673,139 @@ def split(body, rig, prefix):
     bm_full.free()
     bpy.data.objects.remove(body, do_unlink=True)
     return pieces
+
+
+# ------------------------------------------------------------------------------------------------ 5b. one texture a part
+TEX_DIR = os.path.join(OUT, "textures")
+
+
+def _emit_material(name, colour=None, image=None, uv=None):
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    em = nt.nodes.new("ShaderNodeEmission")
+    nt.links.new(em.outputs[0], out.inputs["Surface"])
+    if image is not None:
+        tx = nt.nodes.new("ShaderNodeTexImage")
+        tx.image = image
+        tx.interpolation = "Cubic"
+        uvn = nt.nodes.new("ShaderNodeUVMap")
+        uvn.uv_map = uv
+        nt.links.new(uvn.outputs[0], tx.inputs["Vector"])
+        nt.links.new(tx.outputs["Color"], em.inputs["Color"])
+    else:
+        em.inputs["Color"].default_value = colour
+    return m
+
+
+def _rib_image_of(mat):
+    if mat and mat.use_nodes:
+        for n in mat.node_tree.nodes:
+            if n.type == "TEX_IMAGE" and n.image and "Rib_Color" in n.image.name:
+                return n.image
+    return None
+
+
+def texture_pieces(pieces, name):
+    """Roblox gives each MeshPart one texture, so every part gets its own: skin-only parts get none (just the Skin
+    material, so NCLookBuilder tints them); a part the tank top or shorts reach gets a colour map baked on a fresh
+    UV: rib knit on the tank, the shorts' colour on the shorts, and alpha 0 on skin, so the part's own colour (the
+    skin tone) shows through there (Overlay)."""
+    os.makedirs(TEX_DIR, exist_ok=True)
+    scene.render.engine = "CYCLES"
+    scene.cycles.samples = 1
+    scene.cycles.device = "CPU"
+    scene.render.bake.margin = 4
+    skin = material("Skin")
+    made = {}
+    for part, ob in pieces.items():
+        me = ob.data
+        used = {p.material_index for p in me.polygons}
+        mats = list(me.materials)
+        clothes = [i for i in used if mats[i] and mats[i].name.startswith("NC_BaseLayer")]
+        rib_uv = me.uv_layers.get("UVMap")
+        if not clothes:
+            for uvl in list(me.uv_layers):
+                me.uv_layers.remove(uvl)
+            me.materials.clear()
+            me.materials.append(skin)
+            for p in me.polygons:
+                p.material_index = 0
+            continue
+        mat_idx = np.empty(len(me.polygons), np.int32)
+        me.polygons.foreach_get("material_index", mat_idx)        # (clearing the slots resets these)
+        res = 1024 if part in ("UpperTorso", "LowerTorso") else 512
+        # a fresh UV just for this part's texture
+        bake_uv = me.uv_layers.new(name="NC_Bake")
+        me.uv_layers.active = bake_uv
+        activate(ob)
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.uv.smart_project(angle_limit=math.radians(60), island_margin=0.004, scale_to_bounds=True)
+        bpy.ops.object.mode_set(mode="OBJECT")
+        me.uv_layers["NC_Bake"].active_render = True              # (edit mode reallocates the layers: by name)
+        me.uv_layers.active = me.uv_layers["NC_Bake"]             # (the bake writes through the active UV)
+        rib_uv = me.uv_layers.get("UVMap")
+        target = bpy.data.images.new(f"NC_{name}_{part}_Base", res, res, alpha=True)
+        planes = {}
+        for pass_name in ("colour", "alpha"):
+            tmp = []
+            for i, mt in enumerate(mats):
+                rib = _rib_image_of(mt)
+                is_cloth = mt is not None and mt.name.startswith("NC_BaseLayer")
+                if pass_name == "alpha":
+                    tm = _emit_material("_bk", (1, 1, 1, 1) if is_cloth else (0, 0, 0, 1))
+                elif rib is not None and rib_uv is not None:
+                    tm = _emit_material("_bk", image=rib, uv=rib_uv.name)
+                else:
+                    tm = _emit_material("_bk", tuple(mt.diffuse_color) if (mt and is_cloth) else (0, 0, 0, 1))
+                tn = tm.node_tree.nodes.new("ShaderNodeTexImage")       # the bake target (active node)
+                tn.image = target
+                tm.node_tree.nodes.active = tn
+                tmp.append(tm)
+            me.materials.clear()
+            for tm in tmp:
+                me.materials.append(tm)
+            me.polygons.foreach_set("material_index", mat_idx)
+            activate(ob)
+            me.update()
+            bpy.context.view_layer.update()
+            bpy.ops.object.bake(type="EMIT", margin=4, use_clear=True)
+            px = np.empty(res * res * 4, np.float32)
+            target.pixels.foreach_get(px)
+            planes[pass_name] = px.reshape(res, res, 4)
+            me.materials.clear()
+            for mt in mats:
+                me.materials.append(mt)
+            me.polygons.foreach_set("material_index", mat_idx)
+            for tm in tmp:
+                bpy.data.materials.remove(tm)
+        rgba = planes["colour"].copy()
+        rgba[..., 3] = planes["alpha"][..., 0]
+        target.pixels.foreach_set(rgba.ravel())
+        path = os.path.join(TEX_DIR, target.name + ".png")
+        target.filepath_raw = path
+        target.file_format = "PNG"
+        target.save()
+        # the part's one material: that map on that UV (the only UV left), skin colour underneath
+        if rib_uv is not None:
+            me.uv_layers.remove(me.uv_layers["UVMap"])
+        fm = bpy.data.materials.new(f"NC_{name}_{part}_Base")
+        fm.use_nodes = True
+        bsdf = fm.node_tree.nodes.get("Principled BSDF")
+        tx = fm.node_tree.nodes.new("ShaderNodeTexImage")
+        tx.image = target
+        fm.node_tree.links.new(tx.outputs["Color"], bsdf.inputs["Base Color"])
+        fm.node_tree.links.new(tx.outputs["Alpha"], bsdf.inputs["Alpha"])
+        fm.diffuse_color = COLOURS["Skin"]
+        me.materials.clear()
+        me.materials.append(fm)
+        for p in me.polygons:
+            p.material_index = 0
+        made[part] = res
+    return made
 
 
 # ------------------------------------------------------------------------------------------------ Roblox numbers
@@ -618,6 +877,10 @@ for src in SOURCES:
     removed = bake_base_layer(body, garments)
     rig = make_armature("NC_" + name, Q)
     rig["NC_Body"] = name
+    FB = face_marks(name, eyes)
+    if FB:
+        add_face_bones(rig, FB)
+        face_moved = face_weights(body, FB)
     body.parent = rig
     # keep one whole, weighted copy (not exported): garment tools copy its weights onto new clothes
     whole = body.copy()
@@ -630,12 +893,16 @@ for src in SOURCES:
     whole.hide_render = True
     whole.hide_set(True)
     pieces = split(body, rig, name + "_")
+    textured = texture_pieces(pieces, name)
     data = roblox_data(Q, pieces, eyes)
     data["tris"] = {p: tri_count(o) for p, o in pieces.items()}
     data["tris_total"] = sum(data["tris"].values())
     data["heat_missing"] = missing
     data["repose"] = rep
     data["covered_skin_faces_removed"] = removed
+    data["face_bones"] = {b: [round(c, 4) for c in rbx(p - Q["Head"])] for b, (p, r) in FB.items()}
+    data["face_vertices"] = face_moved if FB else 0
+    data["textured_parts"] = sorted(textured)
     RESULTS[name] = data
     # export this body on its own
     bpy.ops.object.select_all(action="DESELECT")
@@ -742,8 +1009,23 @@ for _, model in game:GetService("Selection"):Get() do
 \thum.Parent = model
 \thum.RigType = Enum.HumanoidRigType.R15
 \tpcall(function() hum.AutomaticScalingEnabled = false end)
-\thum.HipHeight = B.hipHeight
-\tlocal origin = hrp.CFrame * CFrame.new(0, -B.hrpY, 0)
+\t-- the floor is the lowest point of the body's meshes (the importer doesn't put the root part exactly on the
+\t-- rig's root bone, so nothing is measured from it vertically)
+\tlocal floorY = math.huge
+\tfor _, d in model:GetDescendants() do
+\t\tif d:IsA("MeshPart") and d ~= hrp then
+\t\t\tlocal h = d.Size / 2
+\t\t\tfor _, sx in { -1, 1 } do
+\t\t\t\tfor _, sy in { -1, 1 } do
+\t\t\t\t\tfor _, sz in { -1, 1 } do
+\t\t\t\t\t\tfloorY = math.min(floorY, (d.CFrame * Vector3.new(sx * h.X, sy * h.Y, sz * h.Z)).Y)
+\t\t\t\t\tend
+\t\t\t\tend
+\t\t\tend
+\t\tend
+\tend
+\thum.HipHeight = math.max(0.5, hrp.Position.Y - hrp.Size.Y / 2 - floorY)
+\tlocal origin = CFrame.new(hrp.Position.X, floorY, hrp.Position.Z) * hrp.CFrame.Rotation
 \tfor _, a in B.attachments do
 \t\tlocal part = model:FindFirstChild(a[1])
 \t\tif part then
@@ -755,6 +1037,27 @@ for _, model in game:GetService("Selection"):Get() do
 \tend
 \tfor _, d in model:GetDescendants() do
 \t\tif d:IsA("MeshPart") then
+\t\t\t-- one texture a part: the torso parts carry the tank top / shorts map (skin see-through, so the part's
+\t\t\t-- colour shows there); every other part is plain skin and must not keep any texture
+\t\t\tlocal sa = d:FindFirstChildOfClass("SurfaceAppearance")
+\t\t\tif d.Name == "UpperTorso" or d.Name == "LowerTorso" then
+\t\t\t\tif sa or d.TextureID ~= "" then
+\t\t\t\t\td:SetAttribute("NC_BaseLayer", true)
+\t\t\t\t\tif d.TextureID ~= "" then
+\t\t\t\t\t\td:SetAttribute("NC_TextureID", d.TextureID)
+\t\t\t\t\tend
+\t\t\t\t\tif sa then
+\t\t\t\t\t\tpcall(function() sa.AlphaMode = Enum.AlphaMode.Overlay end)
+\t\t\t\t\tend
+\t\t\t\telse
+\t\t\t\t\twarn(id .. ": " .. d.Name .. " came in without its base-layer texture (import with textures on)")
+\t\t\t\tend
+\t\t\telse
+\t\t\t\tif sa then
+\t\t\t\t\tsa:Destroy()
+\t\t\t\tend
+\t\t\t\td.TextureID = ""
+\t\t\tend
 \t\t\td.CanCollide = d.Name == "UpperTorso" or d.Name == "LowerTorso" or d.Name == "Head"
 \t\t\tpcall(function() d.CollisionFidelity = Enum.CollisionFidelity.Box end)
 \t\t\td.Anchored = false

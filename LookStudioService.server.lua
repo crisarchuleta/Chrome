@@ -24,7 +24,7 @@ local InsertService = game:GetService("InsertService")
 -- ServerScriptService), move the shared modules to ReplicatedStorage and the client to StarterPlayerScripts
 do
 	local here = script.Parent
-	for _, n in ipairs({ "NCLookCatalog", "NCLookBuilder", "NCBodyData" }) do
+	for _, n in ipairs({ "NCLookCatalog", "NCLookBuilder", "NCBodyData", "NCHead", "NCHeadData" }) do
 		local m = here:FindFirstChild(n)
 		if m and m:IsA("ModuleScript") then
 			local old = RS:FindFirstChild(n)
@@ -102,7 +102,11 @@ end
 local function copyLook(look)
 	local out = {}
 	for slot, e in pairs(look) do
-		out[slot] = { id = e.id, c1 = e.c1, c2 = e.c2 }
+		if slot == "FaceShape" then
+			out.FaceShape = Catalog.CleanFaceShape(e)
+		else
+			out[slot] = { id = e.id, c1 = e.c1, c2 = e.c2 }
+		end
 	end
 	return out
 end
@@ -128,6 +132,7 @@ local function sanitize(raw)
 			look[s.id] = copyLook({ x = Catalog.DEFAULT_LOOK[s.id] }).x
 		end
 	end
+	look.FaceShape = Catalog.CleanFaceShape(raw.FaceShape)
 	return look
 end
 

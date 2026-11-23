@@ -461,23 +461,23 @@
    ]
   },
   "tris": {
-   "LowerTorso": 2512,
-   "UpperTorso": 4170,
-   "Head": 8616,
-   "RightUpperArm": 612,
-   "RightLowerArm": 494,
-   "RightHand": 2972,
-   "RightUpperLeg": 1506,
-   "RightLowerLeg": 608,
-   "RightFoot": 2102,
+   "LowerTorso": 2496,
+   "UpperTorso": 5528,
+   "Head": 8760,
+   "RightUpperArm": 610,
+   "RightLowerArm": 490,
+   "RightHand": 2974,
+   "RightUpperLeg": 428,
+   "RightLowerLeg": 616,
+   "RightFoot": 2104,
    "LeftUpperArm": 616,
-   "LeftLowerArm": 494,
-   "LeftHand": 2972,
-   "LeftUpperLeg": 1530,
-   "LeftLowerLeg": 608,
-   "LeftFoot": 2102
+   "LeftLowerArm": 490,
+   "LeftHand": 2974,
+   "LeftUpperLeg": 428,
+   "LeftLowerLeg": 616,
+   "LeftFoot": 2104
   },
-  "tris_total": 31914,
+  "tris_total": 31234,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 35.5,
@@ -489,7 +489,109 @@
    "LeftTwist": -1.9,
    "LeftLegStraighten": 5.3
   },
-  "covered_skin_faces_removed": 1817
+  "covered_skin_faces_removed": 1817,
+  "face_bones": {
+   "NC_FaceEyeL": [
+    -0.1064,
+    0.5315,
+    -0.4159
+   ],
+   "NC_FaceBrowL": [
+    -0.1264,
+    0.6516,
+    -0.4459
+   ],
+   "NC_FaceCheekL": [
+    -0.1764,
+    0.4015,
+    -0.4159
+   ],
+   "NC_FaceNostrilL": [
+    -0.05,
+    0.3784,
+    -0.5227
+   ],
+   "NC_FaceMouthL": [
+    -0.0965,
+    0.3013,
+    -0.4534
+   ],
+   "NC_FaceJawL": [
+    -0.1761,
+    0.2538,
+    -0.234
+   ],
+   "NC_FaceEarL": [
+    -0.264,
+    0.4534,
+    -0.1675
+   ],
+   "NC_FaceEyeR": [
+    0.1064,
+    0.5315,
+    -0.4159
+   ],
+   "NC_FaceBrowR": [
+    0.1264,
+    0.6516,
+    -0.4459
+   ],
+   "NC_FaceCheekR": [
+    0.1764,
+    0.4015,
+    -0.4159
+   ],
+   "NC_FaceNostrilR": [
+    0.05,
+    0.3784,
+    -0.5227
+   ],
+   "NC_FaceMouthR": [
+    0.0965,
+    0.3013,
+    -0.4534
+   ],
+   "NC_FaceJawR": [
+    0.1761,
+    0.2538,
+    -0.234
+   ],
+   "NC_FaceEarR": [
+    0.264,
+    0.4534,
+    -0.1675
+   ],
+   "NC_FaceNose": [
+    -0.0,
+    0.3985,
+    -0.5628
+   ],
+   "NC_FaceNoseBridge": [
+    -0.0,
+    0.5115,
+    -0.5059
+   ],
+   "NC_FaceLipUpper": [
+    -0.0,
+    0.319,
+    -0.515
+   ],
+   "NC_FaceLipLower": [
+    -0.0,
+    0.2922,
+    -0.5011
+   ],
+   "NC_FaceChin": [
+    -0.0,
+    0.2205,
+    -0.5071
+   ]
+  },
+  "face_vertices": 3461,
+  "textured_parts": [
+   "LowerTorso",
+   "UpperTorso"
+  ]
  },
  "Female_Average": {
   "height": 5.919,
@@ -953,23 +1055,23 @@
    ]
   },
   "tris": {
-   "LowerTorso": 2580,
-   "UpperTorso": 4164,
-   "Head": 8612,
-   "RightUpperArm": 618,
-   "RightLowerArm": 502,
-   "RightHand": 2916,
-   "RightUpperLeg": 1558,
-   "RightLowerLeg": 608,
+   "LowerTorso": 2578,
+   "UpperTorso": 5484,
+   "Head": 8768,
+   "RightUpperArm": 624,
+   "RightLowerArm": 488,
+   "RightHand": 2922,
+   "RightUpperLeg": 474,
+   "RightLowerLeg": 612,
    "RightFoot": 2104,
-   "LeftUpperArm": 618,
-   "LeftLowerArm": 502,
-   "LeftHand": 2916,
-   "LeftUpperLeg": 1566,
-   "LeftLowerLeg": 608,
+   "LeftUpperArm": 624,
+   "LeftLowerArm": 488,
+   "LeftHand": 2922,
+   "LeftUpperLeg": 472,
+   "LeftLowerLeg": 612,
    "LeftFoot": 2104
   },
-  "tris_total": 31976,
+  "tris_total": 31276,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 35.5,
@@ -981,7 +1083,109 @@
    "LeftTwist": -1.9,
    "LeftLegStraighten": 5.3
   },
-  "covered_skin_faces_removed": 1788
+  "covered_skin_faces_removed": 1788,
+  "face_bones": {
+   "NC_FaceEyeL": [
+    -0.1062,
+    0.5309,
+    -0.4154
+   ],
+   "NC_FaceBrowL": [
+    -0.1262,
+    0.6508,
+    -0.4453
+   ],
+   "NC_FaceCheekL": [
+    -0.1762,
+    0.401,
+    -0.4154
+   ],
+   "NC_FaceNostrilL": [
+    -0.05,
+    0.378,
+    -0.5221
+   ],
+   "NC_FaceMouthL": [
+    -0.0963,
+    0.3009,
+    -0.4528
+   ],
+   "NC_FaceJawL": [
+    -0.1759,
+    0.2535,
+    -0.2337
+   ],
+   "NC_FaceEarL": [
+    -0.2636,
+    0.4528,
+    -0.1673
+   ],
+   "NC_FaceEyeR": [
+    0.1062,
+    0.5309,
+    -0.4154
+   ],
+   "NC_FaceBrowR": [
+    0.1262,
+    0.6508,
+    -0.4453
+   ],
+   "NC_FaceCheekR": [
+    0.1762,
+    0.401,
+    -0.4154
+   ],
+   "NC_FaceNostrilR": [
+    0.05,
+    0.378,
+    -0.5221
+   ],
+   "NC_FaceMouthR": [
+    0.0963,
+    0.3009,
+    -0.4528
+   ],
+   "NC_FaceJawR": [
+    0.1759,
+    0.2535,
+    -0.2337
+   ],
+   "NC_FaceEarR": [
+    0.2636,
+    0.4528,
+    -0.1673
+   ],
+   "NC_FaceNose": [
+    0.0,
+    0.398,
+    -0.5621
+   ],
+   "NC_FaceNoseBridge": [
+    0.0,
+    0.5109,
+    -0.5053
+   ],
+   "NC_FaceLipUpper": [
+    0.0,
+    0.3186,
+    -0.5144
+   ],
+   "NC_FaceLipLower": [
+    0.0,
+    0.2918,
+    -0.5005
+   ],
+   "NC_FaceChin": [
+    0.0,
+    0.2203,
+    -0.5065
+   ]
+  },
+  "face_vertices": 3461,
+  "textured_parts": [
+   "LowerTorso",
+   "UpperTorso"
+  ]
  },
  "Female_Heavy": {
   "height": 5.922,
@@ -1078,7 +1282,7 @@
     [
      -0.0,
      3.113,
-     0.499
+     0.508
     ]
    ],
    [
@@ -1445,23 +1649,23 @@
    ]
   },
   "tris": {
-   "LowerTorso": 2586,
-   "UpperTorso": 4242,
-   "Head": 8616,
-   "RightUpperArm": 680,
-   "RightLowerArm": 486,
-   "RightHand": 3086,
-   "RightUpperLeg": 1582,
-   "RightLowerLeg": 610,
-   "RightFoot": 2102,
-   "LeftUpperArm": 680,
-   "LeftLowerArm": 486,
-   "LeftHand": 3088,
-   "LeftUpperLeg": 1598,
-   "LeftLowerLeg": 610,
-   "LeftFoot": 2102
+   "LowerTorso": 2652,
+   "UpperTorso": 5312,
+   "Head": 8756,
+   "RightUpperArm": 730,
+   "RightLowerArm": 492,
+   "RightHand": 3082,
+   "RightUpperLeg": 484,
+   "RightLowerLeg": 616,
+   "RightFoot": 2104,
+   "LeftUpperArm": 730,
+   "LeftLowerArm": 492,
+   "LeftHand": 3084,
+   "LeftUpperLeg": 484,
+   "LeftLowerLeg": 616,
+   "LeftFoot": 2104
   },
-  "tris_total": 32554,
+  "tris_total": 31738,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 35.5,
@@ -1473,7 +1677,109 @@
    "LeftTwist": -1.9,
    "LeftLegStraighten": 5.3
   },
-  "covered_skin_faces_removed": 1425
+  "covered_skin_faces_removed": 1425,
+  "face_bones": {
+   "NC_FaceEyeL": [
+    -0.1063,
+    0.5309,
+    -0.4154
+   ],
+   "NC_FaceBrowL": [
+    -0.1262,
+    0.6509,
+    -0.4454
+   ],
+   "NC_FaceCheekL": [
+    -0.1762,
+    0.401,
+    -0.4154
+   ],
+   "NC_FaceNostrilL": [
+    -0.05,
+    0.378,
+    -0.5222
+   ],
+   "NC_FaceMouthL": [
+    -0.0964,
+    0.3009,
+    -0.4529
+   ],
+   "NC_FaceJawL": [
+    -0.1759,
+    0.2534,
+    -0.2337
+   ],
+   "NC_FaceEarL": [
+    -0.2637,
+    0.4529,
+    -0.1674
+   ],
+   "NC_FaceEyeR": [
+    0.1063,
+    0.5309,
+    -0.4154
+   ],
+   "NC_FaceBrowR": [
+    0.1262,
+    0.6509,
+    -0.4454
+   ],
+   "NC_FaceCheekR": [
+    0.1762,
+    0.401,
+    -0.4154
+   ],
+   "NC_FaceNostrilR": [
+    0.05,
+    0.378,
+    -0.5222
+   ],
+   "NC_FaceMouthR": [
+    0.0964,
+    0.3009,
+    -0.4529
+   ],
+   "NC_FaceJawR": [
+    0.1759,
+    0.2534,
+    -0.2337
+   ],
+   "NC_FaceEarR": [
+    0.2637,
+    0.4529,
+    -0.1674
+   ],
+   "NC_FaceNose": [
+    0.0,
+    0.398,
+    -0.5622
+   ],
+   "NC_FaceNoseBridge": [
+    0.0,
+    0.5109,
+    -0.5054
+   ],
+   "NC_FaceLipUpper": [
+    0.0,
+    0.3186,
+    -0.5145
+   ],
+   "NC_FaceLipLower": [
+    0.0,
+    0.2918,
+    -0.5006
+   ],
+   "NC_FaceChin": [
+    0.0,
+    0.2203,
+    -0.5066
+   ]
+  },
+  "face_vertices": 3457,
+  "textured_parts": [
+   "LowerTorso",
+   "UpperTorso"
+  ]
  },
  "Female_Muscular": {
   "height": 5.922,
@@ -1570,7 +1876,7 @@
     [
      0.0,
      3.113,
-     0.465
+     0.468
     ]
    ],
    [
@@ -1937,23 +2243,23 @@
    ]
   },
   "tris": {
-   "LowerTorso": 2368,
-   "UpperTorso": 4172,
-   "Head": 8630,
-   "RightUpperArm": 680,
-   "RightLowerArm": 494,
-   "RightHand": 2954,
-   "RightUpperLeg": 1576,
-   "RightLowerLeg": 616,
-   "RightFoot": 2102,
-   "LeftUpperArm": 680,
-   "LeftLowerArm": 494,
-   "LeftHand": 2954,
-   "LeftUpperLeg": 1580,
-   "LeftLowerLeg": 616,
-   "LeftFoot": 2102
+   "LowerTorso": 2480,
+   "UpperTorso": 5390,
+   "Head": 8736,
+   "RightUpperArm": 686,
+   "RightLowerArm": 488,
+   "RightHand": 2956,
+   "RightUpperLeg": 428,
+   "RightLowerLeg": 620,
+   "RightFoot": 2104,
+   "LeftUpperArm": 686,
+   "LeftLowerArm": 488,
+   "LeftHand": 2956,
+   "LeftUpperLeg": 428,
+   "LeftLowerLeg": 620,
+   "LeftFoot": 2104
   },
-  "tris_total": 32018,
+  "tris_total": 31170,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 35.5,
@@ -1965,7 +2271,109 @@
    "LeftTwist": -1.8,
    "LeftLegStraighten": 5.3
   },
-  "covered_skin_faces_removed": 1745
+  "covered_skin_faces_removed": 1745,
+  "face_bones": {
+   "NC_FaceEyeL": [
+    -0.1063,
+    0.5309,
+    -0.4154
+   ],
+   "NC_FaceBrowL": [
+    -0.1262,
+    0.6509,
+    -0.4454
+   ],
+   "NC_FaceCheekL": [
+    -0.1762,
+    0.401,
+    -0.4154
+   ],
+   "NC_FaceNostrilL": [
+    -0.05,
+    0.378,
+    -0.5222
+   ],
+   "NC_FaceMouthL": [
+    -0.0964,
+    0.3009,
+    -0.4529
+   ],
+   "NC_FaceJawL": [
+    -0.1759,
+    0.2534,
+    -0.2337
+   ],
+   "NC_FaceEarL": [
+    -0.2637,
+    0.4529,
+    -0.1674
+   ],
+   "NC_FaceEyeR": [
+    0.1063,
+    0.5309,
+    -0.4154
+   ],
+   "NC_FaceBrowR": [
+    0.1262,
+    0.6509,
+    -0.4454
+   ],
+   "NC_FaceCheekR": [
+    0.1762,
+    0.401,
+    -0.4154
+   ],
+   "NC_FaceNostrilR": [
+    0.05,
+    0.378,
+    -0.5222
+   ],
+   "NC_FaceMouthR": [
+    0.0964,
+    0.3009,
+    -0.4529
+   ],
+   "NC_FaceJawR": [
+    0.1759,
+    0.2534,
+    -0.2337
+   ],
+   "NC_FaceEarR": [
+    0.2637,
+    0.4529,
+    -0.1674
+   ],
+   "NC_FaceNose": [
+    -0.0,
+    0.398,
+    -0.5622
+   ],
+   "NC_FaceNoseBridge": [
+    -0.0,
+    0.5109,
+    -0.5054
+   ],
+   "NC_FaceLipUpper": [
+    -0.0,
+    0.3186,
+    -0.5145
+   ],
+   "NC_FaceLipLower": [
+    -0.0,
+    0.2918,
+    -0.5006
+   ],
+   "NC_FaceChin": [
+    -0.0,
+    0.2203,
+    -0.5066
+   ]
+  },
+  "face_vertices": 3461,
+  "textured_parts": [
+   "LowerTorso",
+   "UpperTorso"
+  ]
  },
  "Female_Skinny": {
   "height": 5.933,
@@ -2429,23 +2837,23 @@
    ]
   },
   "tris": {
-   "LowerTorso": 2486,
-   "UpperTorso": 4316,
-   "Head": 8612,
-   "RightUpperArm": 624,
-   "RightLowerArm": 492,
-   "RightHand": 3194,
-   "RightUpperLeg": 1496,
-   "RightLowerLeg": 622,
-   "RightFoot": 2102,
-   "LeftUpperArm": 626,
-   "LeftLowerArm": 492,
-   "LeftHand": 3194,
-   "LeftUpperLeg": 1510,
-   "LeftLowerLeg": 622,
-   "LeftFoot": 2102
+   "LowerTorso": 2496,
+   "UpperTorso": 5634,
+   "Head": 8768,
+   "RightUpperArm": 616,
+   "RightLowerArm": 486,
+   "RightHand": 3196,
+   "RightUpperLeg": 434,
+   "RightLowerLeg": 618,
+   "RightFoot": 2104,
+   "LeftUpperArm": 612,
+   "LeftLowerArm": 486,
+   "LeftHand": 3196,
+   "LeftUpperLeg": 434,
+   "LeftLowerLeg": 618,
+   "LeftFoot": 2104
   },
-  "tris_total": 32490,
+  "tris_total": 31802,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 35.5,
@@ -2457,7 +2865,109 @@
    "LeftTwist": -1.8,
    "LeftLegStraighten": 5.3
   },
-  "covered_skin_faces_removed": 1593
+  "covered_skin_faces_removed": 1593,
+  "face_bones": {
+   "NC_FaceEyeL": [
+    -0.1064,
+    0.5308,
+    -0.4155
+   ],
+   "NC_FaceBrowL": [
+    -0.1264,
+    0.6509,
+    -0.4455
+   ],
+   "NC_FaceCheekL": [
+    -0.1764,
+    0.4008,
+    -0.4155
+   ],
+   "NC_FaceNostrilL": [
+    -0.05,
+    0.3778,
+    -0.5224
+   ],
+   "NC_FaceMouthL": [
+    -0.0965,
+    0.3006,
+    -0.453
+   ],
+   "NC_FaceJawL": [
+    -0.1761,
+    0.2531,
+    -0.2336
+   ],
+   "NC_FaceEarL": [
+    -0.264,
+    0.4527,
+    -0.1672
+   ],
+   "NC_FaceEyeR": [
+    0.1064,
+    0.5308,
+    -0.4155
+   ],
+   "NC_FaceBrowR": [
+    0.1264,
+    0.6509,
+    -0.4455
+   ],
+   "NC_FaceCheekR": [
+    0.1764,
+    0.4008,
+    -0.4155
+   ],
+   "NC_FaceNostrilR": [
+    0.05,
+    0.3778,
+    -0.5224
+   ],
+   "NC_FaceMouthR": [
+    0.0965,
+    0.3006,
+    -0.453
+   ],
+   "NC_FaceJawR": [
+    0.1761,
+    0.2531,
+    -0.2336
+   ],
+   "NC_FaceEarR": [
+    0.264,
+    0.4527,
+    -0.1672
+   ],
+   "NC_FaceNose": [
+    -0.0,
+    0.3978,
+    -0.5624
+   ],
+   "NC_FaceNoseBridge": [
+    -0.0,
+    0.5108,
+    -0.5056
+   ],
+   "NC_FaceLipUpper": [
+    -0.0,
+    0.3183,
+    -0.5147
+   ],
+   "NC_FaceLipLower": [
+    -0.0,
+    0.2915,
+    -0.5008
+   ],
+   "NC_FaceChin": [
+    -0.0,
+    0.2199,
+    -0.5068
+   ]
+  },
+  "face_vertices": 3467,
+  "textured_parts": [
+   "LowerTorso",
+   "UpperTorso"
+  ]
  },
  "Male_Athletic": {
   "height": 6.754,
@@ -2921,23 +3431,23 @@
    ]
   },
   "tris": {
-   "LowerTorso": 2738,
-   "UpperTorso": 4592,
-   "Head": 8478,
-   "RightUpperArm": 586,
-   "RightLowerArm": 506,
+   "LowerTorso": 2808,
+   "UpperTorso": 5964,
+   "Head": 8584,
+   "RightUpperArm": 594,
+   "RightLowerArm": 500,
    "RightHand": 3232,
-   "RightUpperLeg": 1562,
-   "RightLowerLeg": 558,
-   "RightFoot": 2130,
-   "LeftUpperArm": 572,
-   "LeftLowerArm": 506,
+   "RightUpperLeg": 400,
+   "RightLowerLeg": 574,
+   "RightFoot": 2106,
+   "LeftUpperArm": 594,
+   "LeftLowerArm": 500,
    "LeftHand": 3232,
-   "LeftUpperLeg": 1576,
-   "LeftLowerLeg": 558,
-   "LeftFoot": 2130
+   "LeftUpperLeg": 400,
+   "LeftLowerLeg": 574,
+   "LeftFoot": 2106
   },
-  "tris_total": 32956,
+  "tris_total": 32168,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 34.1,
@@ -2949,7 +3459,109 @@
    "LeftTwist": 1.0,
    "LeftLegStraighten": 6.0
   },
-  "covered_skin_faces_removed": 1614
+  "covered_skin_faces_removed": 1614,
+  "face_bones": {
+   "NC_FaceEyeL": [
+    -0.1128,
+    0.5312,
+    -0.4419
+   ],
+   "NC_FaceBrowL": [
+    -0.1327,
+    0.6507,
+    -0.4717
+   ],
+   "NC_FaceCheekL": [
+    -0.1825,
+    0.4017,
+    -0.4419
+   ],
+   "NC_FaceNostrilL": [
+    -0.0498,
+    0.346,
+    -0.5507
+   ],
+   "NC_FaceMouthL": [
+    -0.1069,
+    0.2583,
+    -0.4721
+   ],
+   "NC_FaceJawL": [
+    -0.1995,
+    0.2071,
+    -0.2027
+   ],
+   "NC_FaceEarL": [
+    -0.2892,
+    0.4551,
+    -0.1387
+   ],
+   "NC_FaceEyeR": [
+    0.1128,
+    0.5312,
+    -0.4419
+   ],
+   "NC_FaceBrowR": [
+    0.1327,
+    0.6507,
+    -0.4717
+   ],
+   "NC_FaceCheekR": [
+    0.1825,
+    0.4017,
+    -0.4419
+   ],
+   "NC_FaceNostrilR": [
+    0.0498,
+    0.346,
+    -0.5507
+   ],
+   "NC_FaceMouthR": [
+    0.1069,
+    0.2583,
+    -0.4721
+   ],
+   "NC_FaceJawR": [
+    0.1995,
+    0.2071,
+    -0.2027
+   ],
+   "NC_FaceEarR": [
+    0.2892,
+    0.4551,
+    -0.1387
+   ],
+   "NC_FaceNose": [
+    0.0,
+    0.3659,
+    -0.5905
+   ],
+   "NC_FaceNoseBridge": [
+    0.0,
+    0.5113,
+    -0.5315
+   ],
+   "NC_FaceLipUpper": [
+    0.0,
+    0.2739,
+    -0.5369
+   ],
+   "NC_FaceLipLower": [
+    0.0,
+    0.2455,
+    -0.5233
+   ],
+   "NC_FaceChin": [
+    0.0,
+    0.1629,
+    -0.535
+   ]
+  },
+  "face_vertices": 3204,
+  "textured_parts": [
+   "LowerTorso",
+   "UpperTorso"
+  ]
  },
  "Male_Average": {
   "height": 6.78,
@@ -3413,23 +4025,23 @@
    ]
   },
   "tris": {
-   "LowerTorso": 2698,
-   "UpperTorso": 4606,
-   "Head": 8474,
-   "RightUpperArm": 598,
+   "LowerTorso": 2764,
+   "UpperTorso": 6002,
+   "Head": 8580,
+   "RightUpperArm": 610,
    "RightLowerArm": 502,
-   "RightHand": 3230,
-   "RightUpperLeg": 1560,
-   "RightLowerLeg": 568,
-   "RightFoot": 2128,
-   "LeftUpperArm": 598,
+   "RightHand": 3234,
+   "RightUpperLeg": 412,
+   "RightLowerLeg": 574,
+   "RightFoot": 2106,
+   "LeftUpperArm": 604,
    "LeftLowerArm": 502,
-   "LeftHand": 3230,
-   "LeftUpperLeg": 1578,
-   "LeftLowerLeg": 568,
-   "LeftFoot": 2128
+   "LeftHand": 3234,
+   "LeftUpperLeg": 412,
+   "LeftLowerLeg": 574,
+   "LeftFoot": 2106
   },
-  "tris_total": 32968,
+  "tris_total": 32216,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 33.9,
@@ -3441,7 +4053,109 @@
    "LeftTwist": 0.9,
    "LeftLegStraighten": 5.9
   },
-  "covered_skin_faces_removed": 1584
+  "covered_skin_faces_removed": 1584,
+  "face_bones": {
+   "NC_FaceEyeL": [
+    -0.1131,
+    0.5326,
+    -0.4431
+   ],
+   "NC_FaceBrowL": [
+    -0.1331,
+    0.6524,
+    -0.473
+   ],
+   "NC_FaceCheekL": [
+    -0.183,
+    0.4028,
+    -0.4431
+   ],
+   "NC_FaceNostrilL": [
+    -0.0499,
+    0.3469,
+    -0.5522
+   ],
+   "NC_FaceMouthL": [
+    -0.1072,
+    0.259,
+    -0.4734
+   ],
+   "NC_FaceJawL": [
+    -0.2001,
+    0.2076,
+    -0.2033
+   ],
+   "NC_FaceEarL": [
+    -0.29,
+    0.4563,
+    -0.139
+   ],
+   "NC_FaceEyeR": [
+    0.1131,
+    0.5326,
+    -0.4431
+   ],
+   "NC_FaceBrowR": [
+    0.1331,
+    0.6524,
+    -0.473
+   ],
+   "NC_FaceCheekR": [
+    0.183,
+    0.4028,
+    -0.4431
+   ],
+   "NC_FaceNostrilR": [
+    0.0499,
+    0.3469,
+    -0.5522
+   ],
+   "NC_FaceMouthR": [
+    0.1072,
+    0.259,
+    -0.4734
+   ],
+   "NC_FaceJawR": [
+    0.2001,
+    0.2076,
+    -0.2033
+   ],
+   "NC_FaceEarR": [
+    0.29,
+    0.4563,
+    -0.139
+   ],
+   "NC_FaceNose": [
+    -0.0,
+    0.3669,
+    -0.5922
+   ],
+   "NC_FaceNoseBridge": [
+    -0.0,
+    0.5127,
+    -0.533
+   ],
+   "NC_FaceLipUpper": [
+    -0.0,
+    0.2746,
+    -0.5383
+   ],
+   "NC_FaceLipLower": [
+    -0.0,
+    0.2462,
+    -0.5248
+   ],
+   "NC_FaceChin": [
+    -0.0,
+    0.1633,
+    -0.5364
+   ]
+  },
+  "face_vertices": 3204,
+  "textured_parts": [
+   "LowerTorso",
+   "UpperTorso"
+  ]
  },
  "Male_Heavy": {
   "height": 6.777,
@@ -3905,23 +4619,23 @@
    ]
   },
   "tris": {
-   "LowerTorso": 2654,
-   "UpperTorso": 4642,
-   "Head": 8478,
-   "RightUpperArm": 626,
-   "RightLowerArm": 524,
-   "RightHand": 3224,
-   "RightUpperLeg": 1632,
-   "RightLowerLeg": 552,
-   "RightFoot": 2132,
-   "LeftUpperArm": 626,
-   "LeftLowerArm": 524,
-   "LeftHand": 3224,
-   "LeftUpperLeg": 1634,
-   "LeftLowerLeg": 552,
-   "LeftFoot": 2132
+   "LowerTorso": 2792,
+   "UpperTorso": 5908,
+   "Head": 8588,
+   "RightUpperArm": 670,
+   "RightLowerArm": 516,
+   "RightHand": 3230,
+   "RightUpperLeg": 380,
+   "RightLowerLeg": 572,
+   "RightFoot": 2108,
+   "LeftUpperArm": 670,
+   "LeftLowerArm": 516,
+   "LeftHand": 3230,
+   "LeftUpperLeg": 404,
+   "LeftLowerLeg": 572,
+   "LeftFoot": 2108
   },
-  "tris_total": 33156,
+  "tris_total": 32264,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 34.0,
@@ -3933,7 +4647,109 @@
    "LeftTwist": 0.9,
    "LeftLegStraighten": 6.0
   },
-  "covered_skin_faces_removed": 1506
+  "covered_skin_faces_removed": 1506,
+  "face_bones": {
+   "NC_FaceEyeL": [
+    -0.1131,
+    0.5324,
+    -0.4429
+   ],
+   "NC_FaceBrowL": [
+    -0.133,
+    0.6522,
+    -0.4728
+   ],
+   "NC_FaceCheekL": [
+    -0.1829,
+    0.4027,
+    -0.4429
+   ],
+   "NC_FaceNostrilL": [
+    -0.0499,
+    0.3468,
+    -0.552
+   ],
+   "NC_FaceMouthL": [
+    -0.1072,
+    0.2589,
+    -0.4732
+   ],
+   "NC_FaceJawL": [
+    -0.2,
+    0.2075,
+    -0.2032
+   ],
+   "NC_FaceEarL": [
+    -0.2898,
+    0.4561,
+    -0.139
+   ],
+   "NC_FaceEyeR": [
+    0.1131,
+    0.5324,
+    -0.4429
+   ],
+   "NC_FaceBrowR": [
+    0.133,
+    0.6522,
+    -0.4728
+   ],
+   "NC_FaceCheekR": [
+    0.1829,
+    0.4027,
+    -0.4429
+   ],
+   "NC_FaceNostrilR": [
+    0.0499,
+    0.3468,
+    -0.552
+   ],
+   "NC_FaceMouthR": [
+    0.1072,
+    0.2589,
+    -0.4732
+   ],
+   "NC_FaceJawR": [
+    0.2,
+    0.2075,
+    -0.2032
+   ],
+   "NC_FaceEarR": [
+    0.2898,
+    0.4561,
+    -0.139
+   ],
+   "NC_FaceNose": [
+    0.0,
+    0.3667,
+    -0.5919
+   ],
+   "NC_FaceNoseBridge": [
+    0.0,
+    0.5124,
+    -0.5327
+   ],
+   "NC_FaceLipUpper": [
+    0.0,
+    0.2745,
+    -0.5381
+   ],
+   "NC_FaceLipLower": [
+    0.0,
+    0.2461,
+    -0.5245
+   ],
+   "NC_FaceChin": [
+    0.0,
+    0.1632,
+    -0.5362
+   ]
+  },
+  "face_vertices": 3196,
+  "textured_parts": [
+   "LowerTorso",
+   "UpperTorso"
+  ]
  },
  "Male_Muscular": {
   "height": 6.776,
@@ -4397,23 +5213,23 @@
    ]
   },
   "tris": {
-   "LowerTorso": 2634,
-   "UpperTorso": 4632,
-   "Head": 8490,
-   "RightUpperArm": 604,
-   "RightLowerArm": 528,
-   "RightHand": 3234,
-   "RightUpperLeg": 1622,
-   "RightLowerLeg": 556,
-   "RightFoot": 2134,
-   "LeftUpperArm": 618,
-   "LeftLowerArm": 528,
-   "LeftHand": 3234,
-   "LeftUpperLeg": 1650,
-   "LeftLowerLeg": 556,
-   "LeftFoot": 2134
+   "LowerTorso": 2816,
+   "UpperTorso": 5870,
+   "Head": 8604,
+   "RightUpperArm": 626,
+   "RightLowerArm": 530,
+   "RightHand": 3230,
+   "RightUpperLeg": 410,
+   "RightLowerLeg": 576,
+   "RightFoot": 2106,
+   "LeftUpperArm": 620,
+   "LeftLowerArm": 530,
+   "LeftHand": 3230,
+   "LeftUpperLeg": 408,
+   "LeftLowerLeg": 576,
+   "LeftFoot": 2106
   },
-  "tris_total": 33154,
+  "tris_total": 32238,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 34.3,
@@ -4425,7 +5241,109 @@
    "LeftTwist": 1.1,
    "LeftLegStraighten": 5.9
   },
-  "covered_skin_faces_removed": 1525
+  "covered_skin_faces_removed": 1525,
+  "face_bones": {
+   "NC_FaceEyeL": [
+    -0.1131,
+    0.5324,
+    -0.4429
+   ],
+   "NC_FaceBrowL": [
+    -0.133,
+    0.6522,
+    -0.4728
+   ],
+   "NC_FaceCheekL": [
+    -0.1829,
+    0.4027,
+    -0.4429
+   ],
+   "NC_FaceNostrilL": [
+    -0.0499,
+    0.3468,
+    -0.552
+   ],
+   "NC_FaceMouthL": [
+    -0.1072,
+    0.2589,
+    -0.4732
+   ],
+   "NC_FaceJawL": [
+    -0.2,
+    0.2075,
+    -0.2032
+   ],
+   "NC_FaceEarL": [
+    -0.2898,
+    0.4561,
+    -0.139
+   ],
+   "NC_FaceEyeR": [
+    0.1131,
+    0.5324,
+    -0.4429
+   ],
+   "NC_FaceBrowR": [
+    0.133,
+    0.6522,
+    -0.4728
+   ],
+   "NC_FaceCheekR": [
+    0.1829,
+    0.4027,
+    -0.4429
+   ],
+   "NC_FaceNostrilR": [
+    0.0499,
+    0.3468,
+    -0.552
+   ],
+   "NC_FaceMouthR": [
+    0.1072,
+    0.2589,
+    -0.4732
+   ],
+   "NC_FaceJawR": [
+    0.2,
+    0.2075,
+    -0.2032
+   ],
+   "NC_FaceEarR": [
+    0.2898,
+    0.4561,
+    -0.139
+   ],
+   "NC_FaceNose": [
+    -0.0,
+    0.3667,
+    -0.5919
+   ],
+   "NC_FaceNoseBridge": [
+    -0.0,
+    0.5124,
+    -0.5327
+   ],
+   "NC_FaceLipUpper": [
+    -0.0,
+    0.2745,
+    -0.5381
+   ],
+   "NC_FaceLipLower": [
+    -0.0,
+    0.2461,
+    -0.5245
+   ],
+   "NC_FaceChin": [
+    -0.0,
+    0.1632,
+    -0.5362
+   ]
+  },
+  "face_vertices": 3202,
+  "textured_parts": [
+   "LowerTorso",
+   "UpperTorso"
+  ]
  },
  "Male_Skinny": {
   "height": 6.758,
@@ -4889,23 +5807,23 @@
    ]
   },
   "tris": {
-   "LowerTorso": 2692,
-   "UpperTorso": 4658,
-   "Head": 8482,
-   "RightUpperArm": 592,
-   "RightLowerArm": 502,
-   "RightHand": 3232,
-   "RightUpperLeg": 1542,
-   "RightLowerLeg": 562,
-   "RightFoot": 2122,
-   "LeftUpperArm": 598,
-   "LeftLowerArm": 502,
-   "LeftHand": 3232,
-   "LeftUpperLeg": 1554,
-   "LeftLowerLeg": 562,
-   "LeftFoot": 2122
+   "LowerTorso": 2760,
+   "UpperTorso": 6012,
+   "Head": 8624,
+   "RightUpperArm": 584,
+   "RightLowerArm": 494,
+   "RightHand": 3234,
+   "RightUpperLeg": 382,
+   "RightLowerLeg": 572,
+   "RightFoot": 2106,
+   "LeftUpperArm": 614,
+   "LeftLowerArm": 494,
+   "LeftHand": 3234,
+   "LeftUpperLeg": 406,
+   "LeftLowerLeg": 572,
+   "LeftFoot": 2106
   },
-  "tris_total": 32954,
+  "tris_total": 32194,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 34.1,
@@ -4917,6 +5835,108 @@
    "LeftTwist": 1.0,
    "LeftLegStraighten": 5.9
   },
-  "covered_skin_faces_removed": 1581
+  "covered_skin_faces_removed": 1581,
+  "face_bones": {
+   "NC_FaceEyeL": [
+    -0.1129,
+    0.5315,
+    -0.4421
+   ],
+   "NC_FaceBrowL": [
+    -0.1328,
+    0.651,
+    -0.472
+   ],
+   "NC_FaceCheekL": [
+    -0.1826,
+    0.4019,
+    -0.4421
+   ],
+   "NC_FaceNostrilL": [
+    -0.0498,
+    0.3462,
+    -0.551
+   ],
+   "NC_FaceMouthL": [
+    -0.107,
+    0.2585,
+    -0.4724
+   ],
+   "NC_FaceJawL": [
+    -0.1997,
+    0.2072,
+    -0.2028
+   ],
+   "NC_FaceEarL": [
+    -0.2893,
+    0.4553,
+    -0.1387
+   ],
+   "NC_FaceEyeR": [
+    0.1129,
+    0.5315,
+    -0.4421
+   ],
+   "NC_FaceBrowR": [
+    0.1328,
+    0.651,
+    -0.472
+   ],
+   "NC_FaceCheekR": [
+    0.1826,
+    0.4019,
+    -0.4421
+   ],
+   "NC_FaceNostrilR": [
+    0.0498,
+    0.3462,
+    -0.551
+   ],
+   "NC_FaceMouthR": [
+    0.107,
+    0.2585,
+    -0.4724
+   ],
+   "NC_FaceJawR": [
+    0.1997,
+    0.2072,
+    -0.2028
+   ],
+   "NC_FaceEarR": [
+    0.2893,
+    0.4553,
+    -0.1387
+   ],
+   "NC_FaceNose": [
+    -0.0,
+    0.3661,
+    -0.5908
+   ],
+   "NC_FaceNoseBridge": [
+    -0.0,
+    0.5115,
+    -0.5318
+   ],
+   "NC_FaceLipUpper": [
+    -0.0,
+    0.274,
+    -0.5371
+   ],
+   "NC_FaceLipLower": [
+    -0.0,
+    0.2456,
+    -0.5236
+   ],
+   "NC_FaceChin": [
+    -0.0,
+    0.1629,
+    -0.5352
+   ]
+  },
+  "face_vertices": 3208,
+  "textured_parts": [
+   "LowerTorso",
+   "UpperTorso"
+  ]
  }
 }

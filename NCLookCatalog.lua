@@ -18,6 +18,8 @@ C.SLOTS = {
 	{ id = "Skin", name = "Skin", icon = "✋", required = true },
 	{ id = "Hair", name = "Hair", icon = "💇" },
 	{ id = "FacialHair", name = "Beard", icon = "🧔" },
+	{ id = "Eyes", name = "Eyes", icon = "👁️", required = true },
+	{ id = "Brows", name = "Brows", icon = "〰️", required = true },
 	{ id = "Tattoo", name = "Arm Ink", icon = "🖋️" },
 	{ id = "Tattoo2", name = "Face & Neck Ink", icon = "✒️" },
 	{ id = "Bottom", name = "Bottoms", icon = "👖", required = true },
@@ -41,7 +43,7 @@ C.SLOTS = {
 
 -- the studio's category tabs group the slots
 C.TABS = {
-	{ name = "Body", slots = { "Skin", "Hair", "FacialHair", "Tattoo", "Tattoo2" } },
+	{ name = "Body", slots = { "Skin", "Eyes", "Brows", "Hair", "FacialHair", "Tattoo", "Tattoo2" } },
 	{ name = "Clothes", slots = { "Top", "Outer", "Bottom", "Shoes" } },
 	{ name = "Headwear", slots = { "Head", "Face", "Mask" } },
 	{ name = "Bling", slots = { "Neck", "Neck2", "Grillz", "Ears", "Wrist", "Wrist2", "Rings" } },
@@ -94,6 +96,9 @@ C.PALETTES = {
 		"#B3122E", "#2B2B2B", "#4A2B6B", "#1B2A41" },
 	lens = { "#111111", "#2A2F38", "#3B2A1F", "#7A1022", "#2E4A7A", "#E8A33D", "#F4A6C8", "#9CC3E6", "#F5F5F2" },
 	sole = { "#F5F5F2", "#111111", "#C8963E", "#8C8C8C", "#B3122E", "#2E4A7A" },
+	-- eye colours: browns, hazel, amber, greens, greys, blues
+	eye = { "#2B1A10", "#3D2616", "#4E3420", "#5E3E22", "#6E4B2A", "#7A5A30", "#8A6A3A", "#A07A3A", "#6B6A3A", "#56683F",
+		"#3F6B4A", "#2F5E46", "#6E7B7E", "#8A949A", "#5C7A9A", "#3E6A9E", "#2F4F7F", "#7FA6C9" },
 	ink = { "#1A1A1A", "#26303C", "#2B3A4A", "#3B2A1F", "#1F4F3A", "#7A1022" },
 	camo = { "#4B5320", "#6B7B3A", "#C8B88A", "#8C8C8C", "#2B2B2B", "#F4A6C8", "#4F7CC2", "#B3122E" },
 }
@@ -179,6 +184,14 @@ I("hair_bun", "Hair", "Top Bun", 200, "bun", {}, H, "#3B2A1F", nil, nil, { "cute
 I("hair_claw_clip", "Hair", "Claw Clip Twist", 240, "bun", { low = true, claw = true }, H, "#6A4630", "fabric", "#C68E5A", { "tiktok", "cute" }, T)
 I("hair_space_buns", "Hair", "Space Buns", 240, "bun", { two = true }, H, "#F4A6C8", nil, nil, { "cute", "retro" })
 I("hair_man_bun", "Hair", "Man Bun", 220, "bun", { low = true }, H, "#2C2019", nil, nil, { "coast", "fantasy" })
+
+------------------------------------------------------------------ eyes and brows (real meshes on the MakeHuman faces)
+I("eyes_natural", "Eyes", "Natural Eyes", 0, "eyes", {}, "eye", "#4E3420")
+I("brows_natural", "Brows", "Natural Brows", 0, "meshface", { piece = "Brows_Natural" }, H, "#2C2019")
+I("brows_thick", "Brows", "Thick Brows", 0, "meshface", { piece = "Brows_Thick" }, H, "#1C1512", nil, nil, { "street", "tiktok" }, T)
+I("brows_arched", "Brows", "Arched Brows", 0, "meshface", { piece = "Brows_Arched" }, H, "#2C2019", nil, nil, { "business", "cute" })
+I("brows_straight", "Brows", "Straight Brows", 0, "meshface", { piece = "Brows_Straight" }, H, "#2C2019", nil, nil, { "tiktok" }, T)
+I("brows_thin", "Brows", "Thin Brows", 0, "meshface", { piece = "Brows_Thin" }, H, "#3B2A1F", nil, nil, { "retro" })
 
 ------------------------------------------------------------------ facial hair
 I("beard_stubble", "FacialHair", "Five O'Clock Shadow", 0, "stubble", {}, H, "#1C1512", nil, nil, { "street", "business" })
@@ -775,11 +788,86 @@ C.LOOKS = {
 -- the free starter look everyone spawns in before choosing
 C.DEFAULT_LOOK = {
 	Skin = { id = "skin", c1 = "#CF9670" },
+	Eyes = { id = "eyes_natural", c1 = "#4E3420" },
+	Brows = { id = "brows_natural", c1 = "#2C2019" },
 	Hair = { id = "hair_low_taper", c1 = "#1C1512" },
 	Top = { id = "top_tee", c1 = "#F5F5F2", c2 = "#111111" },
 	Bottom = { id = "bot_jeans", c1 = "#34507A" },
 	Shoes = { id = "shoe_white_low", c1 = "#F5F5F2", c2 = "#F5F5F2" },
 }
+
+---------------------------------------------------------------------------------------------------- face shape
+-- Sliders for the MakeHuman faces (Character Studio, Body tab, "Face shape"). Each moves face bones (NC_Face*, made
+-- by build_makehuman_rig.py) by `moves` studs per full slider (-1 .. 1), in the head's space: +X = the character's
+-- left, +Y up, -Z forward. NCHead applies them; the brows, lips, lashes, stubble and eyes follow their bones.
+-- Saved in the look as FaceShape = { v = { [slider id] = number } }. Free, so they never change the price.
+C.FACE_SLIDERS = {
+	{ id = "eyeSpacing", name = "Eye spacing", moves = { NC_FaceEyeL = Vector3.new(-0.012, 0, 0), NC_FaceEyeR = Vector3.new(0.012, 0, 0) } },
+	{ id = "eyeHeight", name = "Eye height", moves = { NC_FaceEyeL = Vector3.new(0, 0.015, 0), NC_FaceEyeR = Vector3.new(0, 0.015, 0) } },
+	{ id = "browHeight", name = "Brow height", moves = { NC_FaceBrowL = Vector3.new(0, 0.022, 0), NC_FaceBrowR = Vector3.new(0, 0.022, 0) } },
+	{ id = "noseLength", name = "Nose length", moves = { NC_FaceNose = Vector3.new(0, -0.012, -0.032) } },
+	{ id = "noseWidth", name = "Nose width", moves = { NC_FaceNostrilL = Vector3.new(-0.018, 0, 0), NC_FaceNostrilR = Vector3.new(0.018, 0, 0) } },
+	{ id = "noseBridge", name = "Nose bridge", moves = { NC_FaceNoseBridge = Vector3.new(0, 0, -0.022) } },
+	{ id = "cheeks", name = "Cheekbones", moves = { NC_FaceCheekL = Vector3.new(-0.022, 0.004, -0.01), NC_FaceCheekR = Vector3.new(0.022, 0.004, -0.01) } },
+	{ id = "mouthWidth", name = "Mouth width", moves = { NC_FaceMouthL = Vector3.new(-0.018, 0, 0), NC_FaceMouthR = Vector3.new(0.018, 0, 0) } },
+	{ id = "lips", name = "Lip fullness", moves = { NC_FaceLipUpper = Vector3.new(0, 0.007, -0.012), NC_FaceLipLower = Vector3.new(0, -0.008, -0.012) } },
+	{ id = "jawWidth", name = "Jaw width", moves = { NC_FaceJawL = Vector3.new(-0.035, 0, 0), NC_FaceJawR = Vector3.new(0.035, 0, 0) } },
+	{ id = "chin", name = "Chin length", moves = { NC_FaceChin = Vector3.new(0, -0.032, -0.012) } },
+	{ id = "ears", name = "Ears out", moves = { NC_FaceEarL = Vector3.new(-0.028, 0, 0), NC_FaceEarR = Vector3.new(0.028, 0, 0) } },
+}
+C.FACE_SLIDER_BY_ID = {}
+for _, sl in ipairs(C.FACE_SLIDERS) do
+	C.FACE_SLIDER_BY_ID[sl.id] = sl
+end
+-- a clean FaceShape entry from anything a client sent (known sliders only, -1 .. 1, two decimals), or nil
+function C.CleanFaceShape(raw)
+	if type(raw) ~= "table" or type(raw.v) ~= "table" then
+		return nil
+	end
+	local v, any = {}, false
+	for id, x in pairs(raw.v) do
+		if type(id) == "string" and C.FACE_SLIDER_BY_ID[id] and type(x) == "number" and x == x then
+			x = math.round(math.clamp(x, -1, 1) * 100) / 100
+			if x ~= 0 then
+				v[id] = x
+				any = true
+			end
+		end
+	end
+	return any and { v = v } or nil
+end
+
+---------------------------------------------------------------------------------------------------- mesh hair
+-- On the MakeHuman bodies these items wear real mesh hair that grows out of a soft hairline (NCHead), one style per
+-- body; the procedural version stays as the fallback (stock avatars, a body with no matching style, the previews).
+local MESH = {
+	hair_buzz = { Male = "Buzz" }, hair_buzz_fade = { Male = "Buzz" }, hair_waves = { Male = "Buzz" },
+	hair_waves_fade = { Male = "Buzz" }, hair_crew = { Male = "Crop", Female = "Pixie" },
+	hair_low_taper = { Male = "TaperFade", Female = "Pixie" }, hair_mid_fade = { Male = "TaperFade" },
+	hair_high_fade_part = { Male = "HighFade" }, hair_burst_fade = { Male = "HighFade" },
+	hair_french_crop = { Male = "Crop", Female = "Pixie" }, hair_side_part = { Male = "SidePart", Female = "Pixie" },
+	hair_slick_back = { Male = "SidePart" }, hair_curly_top = { Male = "CurlyTop" },
+	hair_sponge_twists = { Male = "Twists" }, hair_twists_long = { Male = "Twists" },
+	hair_messy_twists = { Male = "Twists" },
+	hair_locs_short = { Male = "Locs", Female = "Locs" }, hair_locs_long = { Male = "Locs", Female = "Locs" },
+	hair_locs_front = { Male = "Locs", Female = "Locs" }, hair_freeform = { Male = "Locs", Female = "Locs" },
+	hair_long_straight = { Female = "LongStraight" }, hair_long_sleek = { Female = "LongStraight" },
+	hair_long_bangs = { Female = "LongStraight" }, hair_butterfly = { Female = "LongStraight" },
+	hair_bob = { Female = "Bob" }, hair_italian_bob = { Female = "Bob" }, hair_pixie = { Female = "Pixie", Male = "Crop" },
+	hair_pony = { Female = "Ponytail" }, hair_high_pony = { Female = "Ponytail" },
+	hair_claw_clip = { Female = "LowBun" }, hair_man_bun = { Female = "LowBun" },
+}
+local STUBBLE = { beard_stubble = "Stubble", beard_heavy_stubble = "StubbleHeavy" }
+for _, it in ipairs(C.ITEMS) do
+	local m = MESH[it.id]
+	if m then
+		it.p = { Male = m.Male, Female = m.Female, fb = { fam = it.fam, p = it.p } }
+		it.fam = "meshhair"
+	elseif STUBBLE[it.id] then
+		it.p = { Male = STUBBLE[it.id], fb = { fam = it.fam, p = it.p } }
+		it.fam = "meshface"
+	end
+end
 
 ---------------------------------------------------------------------------------------------------- index + checks
 C.ITEMS_BY_ID = {}

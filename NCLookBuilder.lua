@@ -20,6 +20,20 @@ local B = {}
 
 B.FOLDER = "NC_Look"
 
+-- NCHead (mesh hair and face pieces for the MakeHuman heads), if it's installed next to this module
+local HeadModule
+local function getHead()
+	if HeadModule == nil then
+		local m = script.Parent and script.Parent:FindFirstChild("NCHead")
+		HeadModule = false
+		if m then
+			local ok, mod = pcall(require, m)
+			HeadModule = ok and mod or false
+		end
+	end
+	return HeadModule or nil
+end
+
 local V3 = Vector3.new
 local rad = math.rad
 
@@ -281,6 +295,20 @@ local function rows(n, c, d, x)
 end
 
 F.bald = function()
+	return {}
+end
+-- real mesh hair and face pieces on the MakeHuman heads (NCHead). p.Male / p.Female name the piece on each body;
+-- p.fb = { fam, p } is the procedural version for bodies without them (stock avatars, the offline previews).
+local function meshOrFallback(pp)
+	local fb = pp.fb
+	if fb and F[fb.fam] then
+		return F[fb.fam](fb.p or {})
+	end
+	return {}
+end
+F.meshhair = meshOrFallback
+F.meshface = meshOrFallback
+F.eyes = function() -- eye colour: NCLookBuilder.ApplyEyes
 	return {}
 end
 F.buzz = function(pp)
@@ -2099,13 +2127,53 @@ function B.resolve(look, Catalog)
 	return out
 end
 
+-- the base-layer texture of a MakeHuman part (tagged NC_BaseLayer by AssembleMakeHumanBodies: the tank top or
+-- shorts in rib knit / colour, skin see-through). on = show it, off = put it away in the part (NC_Stash).
+-- Returns whether the part has one.
+function B.BaseTexture(part, on)
+	if not part:GetAttribute("NC_BaseLayer") then
+		return false
+	end
+	local stash = part:FindFirstChild("NC_Stash")
+	local sa = part:FindFirstChildOfClass("SurfaceAppearance") or (stash and stash:FindFirstChildOfClass("SurfaceAppearance"))
+	local tid = part:GetAttribute("NC_TextureID")
+	if on then
+		if sa then
+			sa.Parent = part
+		end
+		if tid and part:IsA("MeshPart") then
+			pcall(function()
+				part.TextureID = tid
+			end)
+		end
+	else
+		if sa then
+			if not stash then
+				stash = Instance.new("Folder")
+				stash.Name = "NC_Stash"
+				stash.Parent = part
+			end
+			sa.Parent = stash
+		end
+		if part:IsA("MeshPart") then
+			pcall(function()
+				part.TextureID = ""
+			end)
+		end
+	end
+	return sa ~= nil or (type(tid) == "string" and tid ~= "")
+end
+
 -- strip anything on the torso / hips / thighs that could show skin (a skin texture, a SurfaceAppearance) and
--- put the plain base layer on. Safe to call on any character at any time; Apply calls it too.
+-- put the plain base layer on. Safe to call on any character at any time; Apply calls it too. (A MakeHuman part's
+-- own tagged base-layer texture is kept: the tank top and shorts are real geometry in its mesh.)
 function B.ApplyBaseLayer(char)
 	for region, colour in pairs(B.BASE_LAYER) do
 		for _, name in ipairs(REGION_PARTS[region]) do
 			local part = char:FindFirstChild(name)
-			if part and part:IsA("BasePart") then
+			if part and part:IsA("BasePart") and part:GetAttribute("NC_BaseLayer") then
+				B.BaseTexture(part, true)
+			elseif part and part:IsA("BasePart") then
 				for _, ch in ipairs(part:GetChildren()) do
 					if ch:IsA("SurfaceAppearance") or ch:IsA("Decal") or ch:IsA("Texture") then
 						ch:Destroy()
@@ -2134,8 +2202,14 @@ function B.ApplyEyes(char, irisColour)
 	if not (head and head:IsA("BasePart")) then
 		return
 	end
+	-- which head the eyes were made for: a GUID attribute on the head (the debug id needs plugin rights)
+	local headId = head:GetAttribute("NC_HeadId")
+	if not headId then
+		headId = game:GetService("HttpService"):GenerateGUID(false)
+		head:SetAttribute("NC_HeadId", headId)
+	end
 	local old = char:FindFirstChild("NC_Eyes")
-	if old and not irisColour and old:GetAttribute("For") == head:GetDebugId() then
+	if old and not irisColour and old:GetAttribute("For") == headId then
 		return
 	end
 	if old then
@@ -2149,7 +2223,7 @@ function B.ApplyEyes(char, irisColour)
 			if not folder then
 				folder = Instance.new("Folder")
 				folder.Name = "NC_Eyes"
-				folder:SetAttribute("For", head:GetDebugId())
+				folder:SetAttribute("For", headId)
 			end
 			local centre = CFrame.new(at.WorldPosition) * (head.CFrame - head.CFrame.Position)
 			local function bit(name, shape, size, cf, colour, mat)
@@ -2234,7 +2308,7 @@ function B.Plan(look, Catalog, opts)
 		regions[name] = { colour = skin, material = Enum.Material.SmoothPlastic }
 	end
 	for name, colour in pairs(B.BASE_LAYER) do
-		regions[name] = { colour = colour, material = FAB }
+		regions[name] = { colour = colour, material = FAB, base = true }
 	end
 
 	-- pass 1: every item's body colours (so pass 2 knows which regions are bare skin, for tattoos)
@@ -2302,9 +2376,33 @@ function B.Apply(char, look, Catalog, opts)
 	folder.Name = B.FOLDER
 	local fr = B.frames(char)
 	local regions, built, hatOn = B.Plan(look, Catalog, opts)
+	local Head = getHead()
+	if Head then
+		Head.ApplyShape(char, look.FaceShape, Catalog.FACE_SLIDERS) -- before anything is placed on the face
+	end
+	local hf = Head and Head.frame(char)
 	for _, b in ipairs(built) do
 		local item, ctx, pieces, skip = b.item, b.ctx, b.pieces, b.skip
 		local asset = opts.assets and opts.assets[item.id]
+		if item.fam == "eyes" then
+			B.ApplyEyes(char, b.e.c1)
+			continue
+		end
+		if hf and not skip and (item.fam == "meshhair" or item.fam == "meshface") then
+			local model = Instance.new("Model")
+			model.Name = item.id
+			local worn
+			if item.fam == "meshhair" then
+				worn = Head.WearHair(hf, item.p, model, ctx.hair or ctx.c1, ctx.skin, hatOn)
+			else
+				worn = Head.WearPiece(hf, item.p, model, colourFor(item.p.c or "c1", ctx))
+			end
+			if worn then -- (true, or "none": this body doesn't get one, e.g. stubble on a female body)
+				model.Parent = folder
+				continue
+			end
+			model:Destroy()
+		end
 		if asset and not skip then
 			local acc = asset:Clone()
 			acc:SetAttribute("NC_Look", item.id)
@@ -2327,12 +2425,39 @@ function B.Apply(char, look, Catalog, opts)
 		end
 	end
 
+	local skinColour = regions.Head and regions.Head.colour
+	-- MakeHuman bodies carry the tank top and shorts as real geometry (tagged, textured torso parts); their other
+	-- parts are plain skin, so the painted base layer isn't needed on the thighs there
+	local geomBase = false
+	for _, n in ipairs({ "UpperTorso", "LowerTorso" }) do
+		local part = char:FindFirstChild(n)
+		if part and part:GetAttribute("NC_BaseLayer") then
+			geomBase = true
+		end
+	end
 	for region, st in pairs(regions) do
 		for _, name in ipairs(REGION_PARTS[region]) do
 			local part = char:FindFirstChild(name)
-			if part and part:IsA("BasePart") then
-				part.Color = st.colour
-				part.Material = st.material
+			if part and part:IsA("BasePart") and part:GetAttribute("NC_BaseLayer") then
+				-- a MakeHuman part with the tank top / shorts in its mesh and texture: the texture shows the base
+				-- layer and the part's colour shows through on the skin. An item that paints this part (an old
+				-- painted top) hides the texture and colours the whole part instead.
+				if (st.base or st.bare) and B.BaseTexture(part, true) then
+					part.Color = skinColour or st.colour
+					part.Material = Enum.Material.SmoothPlastic
+				else
+					B.BaseTexture(part, false)
+					part.Color = st.colour
+					part.Material = st.material
+				end
+			elseif part and part:IsA("BasePart") then
+				if geomBase and st.base and skinColour then
+					part.Color = skinColour
+					part.Material = Enum.Material.SmoothPlastic
+				else
+					part.Color = st.colour
+					part.Material = st.material
+				end
 				-- standard avatar heads carry a mesh with its own texture: keep the face decal, drop the texture
 				if part:IsA("MeshPart") and region ~= "Head" then
 					pcall(function()
@@ -2345,6 +2470,9 @@ function B.Apply(char, look, Catalog, opts)
 				end
 			end
 		end
+	end
+	if Head and regions.Head then
+		Head.ApplyFace(char, regions.Head.colour) -- lips (tinted from the skin) and the lash line
 	end
 	folder.Parent = char
 	char:SetAttribute("NC_LookApplied", os.clock())

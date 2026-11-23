@@ -1,0 +1,1316 @@
+{
+ "Male": {
+  "pieces": [
+   {
+    "mesh": "Hair_Buzz",
+    "kind": "Hair",
+    "key": "Buzz",
+    "label": "Buzz Cut",
+    "offset": [
+     0.0003,
+     0.084,
+     0.3739
+    ],
+    "size": [
+     0.5921,
+     0.707,
+     0.6493
+    ],
+    "tris": 9646
+   },
+   {
+    "mesh": "Hair_Buzz_Cap",
+    "kind": "HairCap",
+    "key": "Buzz",
+    "label": "Buzz Cut",
+    "offset": [
+     0.0003,
+     0.083,
+     0.3739
+    ],
+    "size": [
+     0.5921,
+     0.7048,
+     0.6493
+    ],
+    "tris": 9646
+   },
+   {
+    "mesh": "Hair_Buzz_Fade",
+    "kind": "HairFade",
+    "key": "Buzz",
+    "label": "Buzz Cut",
+    "offset": [
+     -0.0,
+     0.0165,
+     0.2808
+    ],
+    "size": [
+     0.6599,
+     0.7221,
+     0.5921
+    ],
+    "tris": 12024
+   },
+   {
+    "mesh": "Hair_Crop",
+    "kind": "Hair",
+    "key": "Crop",
+    "label": "Short Crop",
+    "offset": [
+     0.0007,
+     0.1097,
+     0.3824
+    ],
+    "size": [
+     0.6435,
+     0.753,
+     0.6855
+    ],
+    "tris": 9590
+   },
+   {
+    "mesh": "Hair_Crop_Cap",
+    "kind": "HairCap",
+    "key": "Crop",
+    "label": "Short Crop",
+    "offset": [
+     0.0007,
+     0.0843,
+     0.3824
+    ],
+    "size": [
+     0.6435,
+     0.7022,
+     0.6855
+    ],
+    "tris": 9590
+   },
+   {
+    "mesh": "Hair_Crop_Fade",
+    "kind": "HairFade",
+    "key": "Crop",
+    "label": "Short Crop",
+    "offset": [
+     -0.0,
+     0.0201,
+     0.2885
+    ],
+    "size": [
+     0.6599,
+     0.7292,
+     0.6074
+    ],
+    "tris": 12908
+   },
+   {
+    "mesh": "Hair_TaperFade",
+    "kind": "Hair",
+    "key": "TaperFade",
+    "label": "Low Taper Fade",
+    "offset": [
+     0.0005,
+     0.1748,
+     0.3969
+    ],
+    "size": [
+     0.6954,
+     0.6592,
+     0.723
+    ],
+    "tris": 8218
+   },
+   {
+    "mesh": "Hair_TaperFade_Cap",
+    "kind": "HairCap",
+    "key": "TaperFade",
+    "label": "Low Taper Fade",
+    "offset": [
+     0.0005,
+     0.1403,
+     0.3969
+    ],
+    "size": [
+     0.6954,
+     0.5901,
+     0.723
+    ],
+    "tris": 8218
+   },
+   {
+    "mesh": "Hair_TaperFade_Fade",
+    "kind": "HairFade",
+    "key": "TaperFade",
+    "label": "Low Taper Fade",
+    "offset": [
+     -0.0,
+     0.0179,
+     0.3337
+    ],
+    "size": [
+     0.6599,
+     0.7248,
+     0.6978
+    ],
+    "tris": 14984
+   },
+   {
+    "mesh": "Hair_HighFade",
+    "kind": "Hair",
+    "key": "HighFade",
+    "label": "High Skin Fade",
+    "offset": [
+     -0.0004,
+     0.2868,
+     0.4018
+    ],
+    "size": [
+     0.7154,
+     0.4567,
+     0.7337
+    ],
+    "tris": 4872
+   },
+   {
+    "mesh": "Hair_HighFade_Cap",
+    "kind": "HairCap",
+    "key": "HighFade",
+    "label": "High Skin Fade",
+    "offset": [
+     -0.0004,
+     0.2469,
+     0.4018
+    ],
+    "size": [
+     0.7154,
+     0.3769,
+     0.7337
+    ],
+    "tris": 4872
+   },
+   {
+    "mesh": "Hair_HighFade_Fade",
+    "kind": "HairFade",
+    "key": "HighFade",
+    "label": "High Skin Fade",
+    "offset": [
+     -0.0,
+     0.0179,
+     0.3341
+    ],
+    "size": [
+     0.6599,
+     0.7248,
+     0.6986
+    ],
+    "tris": 15498
+   },
+   {
+    "mesh": "Hair_SidePart",
+    "kind": "Hair",
+    "key": "SidePart",
+    "label": "Side Part",
+    "offset": [
+     0.0163,
+     0.1335,
+     0.4068
+    ],
+    "size": [
+     0.7154,
+     0.8076,
+     0.7422
+    ],
+    "tris": 9752
+   },
+   {
+    "mesh": "Hair_SidePart_Cap",
+    "kind": "HairCap",
+    "key": "SidePart",
+    "label": "Side Part",
+    "offset": [
+     0.0163,
+     0.0831,
+     0.4068
+    ],
+    "size": [
+     0.7154,
+     0.7066,
+     0.7422
+    ],
+    "tris": 9752
+   },
+   {
+    "mesh": "Hair_SidePart_Fade",
+    "kind": "HairFade",
+    "key": "SidePart",
+    "label": "Side Part",
+    "offset": [
+     -0.0,
+     0.019,
+     0.2859
+    ],
+    "size": [
+     0.6599,
+     0.727,
+     0.6022
+    ],
+    "tris": 12636
+   },
+   {
+    "mesh": "Hair_CurlyTop",
+    "kind": "Hair",
+    "key": "CurlyTop",
+    "label": "Curly Top",
+    "offset": [
+     -0.0067,
+     0.1708,
+     0.4219
+    ],
+    "size": [
+     0.8348,
+     0.8216,
+     0.7814
+    ],
+    "tris": 8030
+   },
+   {
+    "mesh": "Hair_CurlyTop_Cap",
+    "kind": "HairCap",
+    "key": "CurlyTop",
+    "label": "Curly Top",
+    "offset": [
+     -0.0048,
+     0.124,
+     0.4232
+    ],
+    "size": [
+     0.831,
+     0.728,
+     0.7788
+    ],
+    "tris": 8030
+   },
+   {
+    "mesh": "Hair_CurlyTop_Fade",
+    "kind": "HairFade",
+    "key": "CurlyTop",
+    "label": "Curly Top",
+    "offset": [
+     -0.0,
+     0.0179,
+     0.3339
+    ],
+    "size": [
+     0.6599,
+     0.7248,
+     0.6982
+    ],
+    "tris": 14818
+   },
+   {
+    "mesh": "Hair_Locs",
+    "kind": "Hair",
+    "key": "Locs",
+    "label": "Shoulder Locs",
+    "offset": [
+     0.0004,
+     -0.3396,
+     0.3359
+    ],
+    "size": [
+     1.5682,
+     1.7004,
+     1.1733
+    ],
+    "tris": 17000
+   },
+   {
+    "mesh": "Hair_Locs_Cap",
+    "kind": "HairCap",
+    "key": "Locs",
+    "label": "Shoulder Locs",
+    "offset": [
+     -0.0002,
+     -0.3772,
+     0.4105
+    ],
+    "size": [
+     1.5774,
+     1.6251,
+     0.9247
+    ],
+    "tris": 17000
+   },
+   {
+    "mesh": "Hair_Locs_Fade",
+    "kind": "HairFade",
+    "key": "Locs",
+    "label": "Shoulder Locs",
+    "offset": [
+     -0.0,
+     0.0165,
+     0.2808
+    ],
+    "size": [
+     0.6599,
+     0.7221,
+     0.5921
+    ],
+    "tris": 12024
+   },
+   {
+    "mesh": "Hair_Twists",
+    "kind": "Hair",
+    "key": "Twists",
+    "label": "Short Twists Over Eyes",
+    "offset": [
+     -0.0061,
+     -0.0106,
+     0.3058
+    ],
+    "size": [
+     0.9559,
+     1.0108,
+     1.1361
+    ],
+    "tris": 16999
+   },
+   {
+    "mesh": "Hair_Twists_Cap",
+    "kind": "HairCap",
+    "key": "Twists",
+    "label": "Short Twists Over Eyes",
+    "offset": [
+     0.0132,
+     -0.0389,
+     0.4487
+    ],
+    "size": [
+     0.9187,
+     0.9485,
+     0.8201
+    ],
+    "tris": 14900
+   },
+   {
+    "mesh": "Hair_Twists_Fade",
+    "kind": "HairFade",
+    "key": "Twists",
+    "label": "Short Twists Over Eyes",
+    "offset": [
+     -0.0,
+     0.0165,
+     0.3338
+    ],
+    "size": [
+     0.6599,
+     0.7221,
+     0.698
+    ],
+    "tris": 15482
+   },
+   {
+    "mesh": "Brows_Natural",
+    "kind": "Brows",
+    "key": "Natural",
+    "label": "Natural",
+    "offset": [
+     -0.0,
+     0.1132,
+     0.0517
+    ],
+    "size": [
+     0.522,
+     0.0494,
+     0.3085
+    ],
+    "tris": 240
+   },
+   {
+    "mesh": "Brows_Thick",
+    "kind": "Brows",
+    "key": "Thick",
+    "label": "Thick",
+    "offset": [
+     -0.0,
+     0.11,
+     0.063
+    ],
+    "size": [
+     0.5322,
+     0.06,
+     0.3316
+    ],
+    "tris": 240
+   },
+   {
+    "mesh": "Brows_Arched",
+    "kind": "Brows",
+    "key": "Arched",
+    "label": "Arched",
+    "offset": [
+     -0.0,
+     0.131,
+     0.0546
+    ],
+    "size": [
+     0.5221,
+     0.0637,
+     0.3121
+    ],
+    "tris": 240
+   },
+   {
+    "mesh": "Brows_Straight",
+    "kind": "Brows",
+    "key": "Straight",
+    "label": "Straight",
+    "offset": [
+     -0.0,
+     0.0979,
+     0.0446
+    ],
+    "size": [
+     0.5163,
+     0.0429,
+     0.295
+    ],
+    "tris": 240
+   },
+   {
+    "mesh": "Brows_Thin",
+    "kind": "Brows",
+    "key": "Thin",
+    "label": "Thin",
+    "offset": [
+     -0.0,
+     0.1242,
+     0.0431
+    ],
+    "size": [
+     0.512,
+     0.0447,
+     0.2896
+    ],
+    "tris": 240
+   },
+   {
+    "mesh": "LashLine",
+    "kind": "LashLine",
+    "key": "LashLine",
+    "label": "Lash Line",
+    "offset": [
+     0.0001,
+     0.0194,
+     -0.0624
+    ],
+    "size": [
+     0.3432,
+     0.0213,
+     0.0335
+    ],
+    "tris": 240
+   },
+   {
+    "mesh": "Lips",
+    "kind": "Lips",
+    "key": "Lips",
+    "label": "Lips",
+    "offset": [
+     -0.0,
+     -0.2836,
+     -0.0827
+    ],
+    "size": [
+     0.2112,
+     0.1014,
+     0.1064
+    ],
+    "tris": 760
+   },
+   {
+    "mesh": "Stubble",
+    "kind": "Stubble",
+    "key": "Stubble",
+    "label": "Stubble",
+    "offset": [
+     0.0009,
+     -0.261,
+     0.137
+    ],
+    "size": [
+     0.6564,
+     0.4621,
+     0.5226
+    ],
+    "tris": 8758
+   },
+   {
+    "mesh": "StubbleHeavy",
+    "kind": "StubbleHeavy",
+    "key": "StubbleHeavy",
+    "label": "Heavy Stubble",
+    "offset": [
+     -0.0,
+     -0.2718,
+     0.1183
+    ],
+    "size": [
+     0.6609,
+     0.5588,
+     0.5601
+    ],
+    "tris": 12568
+   }
+  ],
+  "bones": {
+   "NC_FaceEyeL": {
+    "at": [
+     -0.1133,
+     0.0,
+     0.0
+    ],
+    "reach": 0.11
+   },
+   "NC_FaceBrowL": {
+    "at": [
+     -0.1333,
+     0.12,
+     -0.03
+    ],
+    "reach": 0.1
+   },
+   "NC_FaceCheekL": {
+    "at": [
+     -0.1833,
+     -0.13,
+     0.0
+    ],
+    "reach": 0.13
+   },
+   "NC_FaceNostrilL": {
+    "at": [
+     -0.05,
+     -0.186,
+     -0.1093
+    ],
+    "reach": 0.05
+   },
+   "NC_FaceMouthL": {
+    "at": [
+     -0.1074,
+     -0.274,
+     -0.0304
+    ],
+    "reach": 0.06
+   },
+   "NC_FaceJawL": {
+    "at": [
+     -0.2004,
+     -0.3255,
+     0.2402
+    ],
+    "reach": 0.16
+   },
+   "NC_FaceEarL": {
+    "at": [
+     -0.2904,
+     -0.0764,
+     0.3045
+    ],
+    "reach": 0.14
+   },
+   "NC_FaceEyeR": {
+    "at": [
+     0.1133,
+     0.0,
+     0.0
+    ],
+    "reach": 0.11
+   },
+   "NC_FaceBrowR": {
+    "at": [
+     0.1333,
+     0.12,
+     -0.03
+    ],
+    "reach": 0.1
+   },
+   "NC_FaceCheekR": {
+    "at": [
+     0.1833,
+     -0.13,
+     0.0
+    ],
+    "reach": 0.13
+   },
+   "NC_FaceNostrilR": {
+    "at": [
+     0.05,
+     -0.186,
+     -0.1093
+    ],
+    "reach": 0.05
+   },
+   "NC_FaceMouthR": {
+    "at": [
+     0.1074,
+     -0.274,
+     -0.0304
+    ],
+    "reach": 0.06
+   },
+   "NC_FaceJawR": {
+    "at": [
+     0.2004,
+     -0.3255,
+     0.2402
+    ],
+    "reach": 0.16
+   },
+   "NC_FaceEarR": {
+    "at": [
+     0.2904,
+     -0.0764,
+     0.3045
+    ],
+    "reach": 0.14
+   },
+   "NC_FaceNose": {
+    "at": [
+     -0.0,
+     -0.166,
+     -0.1493
+    ],
+    "reach": 0.07
+   },
+   "NC_FaceNoseBridge": {
+    "at": [
+     -0.0,
+     -0.02,
+     -0.09
+    ],
+    "reach": 0.06
+   },
+   "NC_FaceLipUpper": {
+    "at": [
+     -0.0,
+     -0.2584,
+     -0.0954
+    ],
+    "reach": 0.045
+   },
+   "NC_FaceLipLower": {
+    "at": [
+     0.0,
+     -0.2869,
+     -0.0818
+    ],
+    "reach": 0.045
+   },
+   "NC_FaceChin": {
+    "at": [
+     -0.0,
+     -0.3699,
+     -0.0935
+    ],
+    "reach": 0.11
+   }
+  },
+  "eyeMid": [
+   -0.0,
+   6.3176,
+   -0.4874
+  ],
+  "eyeSpan": 0.2266828880246196
+ },
+ "Female": {
+  "pieces": [
+   {
+    "mesh": "Hair_Pixie",
+    "kind": "Hair",
+    "key": "Pixie",
+    "label": "Pixie Cut",
+    "offset": [
+     0.0122,
+     0.0977,
+     0.3404
+    ],
+    "size": [
+     0.6431,
+     0.7096,
+     0.5944
+    ],
+    "tris": 9996
+   },
+   {
+    "mesh": "Hair_Pixie_Cap",
+    "kind": "HairCap",
+    "key": "Pixie",
+    "label": "Pixie Cut",
+    "offset": [
+     0.0122,
+     0.0761,
+     0.3404
+    ],
+    "size": [
+     0.6431,
+     0.6663,
+     0.5944
+    ],
+    "tris": 9996
+   },
+   {
+    "mesh": "Hair_Pixie_Fade",
+    "kind": "HairFade",
+    "key": "Pixie",
+    "label": "Pixie Cut",
+    "offset": [
+     -0.0,
+     0.0133,
+     0.2303
+    ],
+    "size": [
+     0.6033,
+     0.6853,
+     0.4677
+    ],
+    "tris": 14578
+   },
+   {
+    "mesh": "Hair_Locs",
+    "kind": "Hair",
+    "key": "Locs",
+    "label": "Long Locs",
+    "offset": [
+     -0.0005,
+     -0.5171,
+     0.2664
+    ],
+    "size": [
+     1.6415,
+     1.9801,
+     1.0902
+    ],
+    "tris": 16999
+   },
+   {
+    "mesh": "Hair_Locs_Cap",
+    "kind": "HairCap",
+    "key": "Locs",
+    "label": "Long Locs",
+    "offset": [
+     -0.0015,
+     -0.5464,
+     0.333
+    ],
+    "size": [
+     1.6428,
+     1.9016,
+     0.9442
+    ],
+    "tris": 16999
+   },
+   {
+    "mesh": "Hair_Locs_Fade",
+    "kind": "HairFade",
+    "key": "Locs",
+    "label": "Long Locs",
+    "offset": [
+     -0.0,
+     0.0122,
+     0.2286
+    ],
+    "size": [
+     0.6033,
+     0.6829,
+     0.4642
+    ],
+    "tris": 14154
+   },
+   {
+    "mesh": "Hair_LowBun",
+    "kind": "Hair",
+    "key": "LowBun",
+    "label": "Slick Low Bun",
+    "offset": [
+     0.0017,
+     0.0294,
+     0.3768
+    ],
+    "size": [
+     0.5714,
+     0.7681,
+     0.6525
+    ],
+    "tris": 10964
+   },
+   {
+    "mesh": "Hair_LowBun_Cap",
+    "kind": "HairCap",
+    "key": "LowBun",
+    "label": "Slick Low Bun",
+    "offset": [
+     0.0017,
+     0.0237,
+     0.3768
+    ],
+    "size": [
+     0.5714,
+     0.7567,
+     0.6525
+    ],
+    "tris": 10964
+   },
+   {
+    "mesh": "Hair_LowBun_Fade",
+    "kind": "HairFade",
+    "key": "LowBun",
+    "label": "Slick Low Bun",
+    "offset": [
+     -0.0,
+     0.0122,
+     0.2286
+    ],
+    "size": [
+     0.6033,
+     0.6829,
+     0.4642
+    ],
+    "tris": 14154
+   },
+   {
+    "mesh": "Hair_Ponytail",
+    "kind": "Hair",
+    "key": "Ponytail",
+    "label": "High Ponytail",
+    "offset": [
+     0.0019,
+     -0.3162,
+     0.4447
+    ],
+    "size": [
+     0.5829,
+     1.482,
+     0.7987
+    ],
+    "tris": 11032
+   },
+   {
+    "mesh": "Hair_Ponytail_Cap",
+    "kind": "HairCap",
+    "key": "Ponytail",
+    "label": "High Ponytail",
+    "offset": [
+     0.0019,
+     -0.3264,
+     0.4447
+    ],
+    "size": [
+     0.5829,
+     1.4615,
+     0.7987
+    ],
+    "tris": 11032
+   },
+   {
+    "mesh": "Hair_Ponytail_Fade",
+    "kind": "HairFade",
+    "key": "Ponytail",
+    "label": "High Ponytail",
+    "offset": [
+     -0.0,
+     0.0122,
+     0.2286
+    ],
+    "size": [
+     0.6033,
+     0.6829,
+     0.4642
+    ],
+    "tris": 14154
+   },
+   {
+    "mesh": "Hair_LongStraight",
+    "kind": "Hair",
+    "key": "LongStraight",
+    "label": "Long Straight",
+    "offset": [
+     0.0012,
+     -0.5444,
+     0.3963
+    ],
+    "size": [
+     0.9386,
+     1.941,
+     0.6986
+    ],
+    "tris": 16999
+   },
+   {
+    "mesh": "Hair_LongStraight_Cap",
+    "kind": "HairCap",
+    "key": "LongStraight",
+    "label": "Long Straight",
+    "offset": [
+     0.0012,
+     -0.5559,
+     0.3963
+    ],
+    "size": [
+     0.9386,
+     1.918,
+     0.6985
+    ],
+    "tris": 16999
+   },
+   {
+    "mesh": "Hair_LongStraight_Fade",
+    "kind": "HairFade",
+    "key": "LongStraight",
+    "label": "Long Straight",
+    "offset": [
+     -0.0,
+     0.0122,
+     0.2286
+    ],
+    "size": [
+     0.6033,
+     0.6829,
+     0.4642
+    ],
+    "tris": 14154
+   },
+   {
+    "mesh": "Hair_Bob",
+    "kind": "Hair",
+    "key": "Bob",
+    "label": "Chin Bob",
+    "offset": [
+     0.0009,
+     -0.0922,
+     0.3626
+    ],
+    "size": [
+     0.8482,
+     1.0516,
+     0.6386
+    ],
+    "tris": 17000
+   },
+   {
+    "mesh": "Hair_Bob_Cap",
+    "kind": "HairCap",
+    "key": "Bob",
+    "label": "Chin Bob",
+    "offset": [
+     0.0009,
+     -0.1069,
+     0.3626
+    ],
+    "size": [
+     0.8482,
+     1.0223,
+     0.6386
+    ],
+    "tris": 17000
+   },
+   {
+    "mesh": "Hair_Bob_Fade",
+    "kind": "HairFade",
+    "key": "Bob",
+    "label": "Chin Bob",
+    "offset": [
+     -0.0,
+     0.0122,
+     0.2286
+    ],
+    "size": [
+     0.6033,
+     0.6829,
+     0.4642
+    ],
+    "tris": 14154
+   },
+   {
+    "mesh": "Brows_Natural",
+    "kind": "Brows",
+    "key": "Natural",
+    "label": "Natural",
+    "offset": [
+     -0.0,
+     0.1134,
+     0.068
+    ],
+    "size": [
+     0.5205,
+     0.0411,
+     0.3328
+    ],
+    "tris": 240
+   },
+   {
+    "mesh": "Brows_Thick",
+    "kind": "Brows",
+    "key": "Thick",
+    "label": "Thick",
+    "offset": [
+     -0.0,
+     0.0944,
+     0.0513
+    ],
+    "size": [
+     0.5049,
+     0.0804,
+     0.3024
+    ],
+    "tris": 240
+   },
+   {
+    "mesh": "Brows_Arched",
+    "kind": "Brows",
+    "key": "Arched",
+    "label": "Arched",
+    "offset": [
+     -0.0,
+     0.1308,
+     0.0849
+    ],
+    "size": [
+     0.5208,
+     0.0568,
+     0.3601
+    ],
+    "tris": 240
+   },
+   {
+    "mesh": "Brows_Straight",
+    "kind": "Brows",
+    "key": "Straight",
+    "label": "Straight",
+    "offset": [
+     -0.0,
+     0.0995,
+     0.078
+    ],
+    "size": [
+     0.5161,
+     0.0314,
+     0.356
+    ],
+    "tris": 240
+   },
+   {
+    "mesh": "Brows_Thin",
+    "kind": "Brows",
+    "key": "Thin",
+    "label": "Thin",
+    "offset": [
+     0.0,
+     0.1245,
+     0.0757
+    ],
+    "size": [
+     0.5123,
+     0.0401,
+     0.3418
+    ],
+    "tris": 240
+   },
+   {
+    "mesh": "LashLine",
+    "kind": "LashLine",
+    "key": "LashLine",
+    "label": "Lash Line",
+    "offset": [
+     0.0001,
+     0.0196,
+     -0.0537
+    ],
+    "size": [
+     0.3284,
+     0.0222,
+     0.0337
+    ],
+    "tris": 240
+   },
+   {
+    "mesh": "Lips",
+    "kind": "Lips",
+    "key": "Lips",
+    "label": "Lips",
+    "offset": [
+     0.0,
+     -0.2326,
+     -0.0865
+    ],
+    "size": [
+     0.1894,
+     0.0953,
+     0.1
+    ],
+    "tris": 760
+   }
+  ],
+  "bones": {
+   "NC_FaceEyeL": {
+    "at": [
+     -0.1063,
+     0.0,
+     0.0
+    ],
+    "reach": 0.11
+   },
+   "NC_FaceBrowL": {
+    "at": [
+     -0.1263,
+     0.12,
+     -0.03
+    ],
+    "reach": 0.1
+   },
+   "NC_FaceCheekL": {
+    "at": [
+     -0.1763,
+     -0.13,
+     0.0
+    ],
+    "reach": 0.13
+   },
+   "NC_FaceNostrilL": {
+    "at": [
+     -0.05,
+     -0.153,
+     -0.1068
+    ],
+    "reach": 0.05
+   },
+   "NC_FaceMouthL": {
+    "at": [
+     -0.0964,
+     -0.2301,
+     -0.0375
+    ],
+    "reach": 0.06
+   },
+   "NC_FaceJawL": {
+    "at": [
+     -0.176,
+     -0.2776,
+     0.1818
+    ],
+    "reach": 0.16
+   },
+   "NC_FaceEarL": {
+    "at": [
+     -0.2638,
+     -0.0781,
+     0.2482
+    ],
+    "reach": 0.14
+   },
+   "NC_FaceEyeR": {
+    "at": [
+     0.1063,
+     0.0,
+     0.0
+    ],
+    "reach": 0.11
+   },
+   "NC_FaceBrowR": {
+    "at": [
+     0.1263,
+     0.12,
+     -0.03
+    ],
+    "reach": 0.1
+   },
+   "NC_FaceCheekR": {
+    "at": [
+     0.1763,
+     -0.13,
+     0.0
+    ],
+    "reach": 0.13
+   },
+   "NC_FaceNostrilR": {
+    "at": [
+     0.05,
+     -0.153,
+     -0.1068
+    ],
+    "reach": 0.05
+   },
+   "NC_FaceMouthR": {
+    "at": [
+     0.0964,
+     -0.2301,
+     -0.0375
+    ],
+    "reach": 0.06
+   },
+   "NC_FaceJawR": {
+    "at": [
+     0.176,
+     -0.2776,
+     0.1818
+    ],
+    "reach": 0.16
+   },
+   "NC_FaceEarR": {
+    "at": [
+     0.2638,
+     -0.0781,
+     0.2482
+    ],
+    "reach": 0.14
+   },
+   "NC_FaceNose": {
+    "at": [
+     -0.0,
+     -0.133,
+     -0.1468
+    ],
+    "reach": 0.07
+   },
+   "NC_FaceNoseBridge": {
+    "at": [
+     -0.0,
+     -0.02,
+     -0.09
+    ],
+    "reach": 0.06
+   },
+   "NC_FaceLipUpper": {
+    "at": [
+     -0.0,
+     -0.2124,
+     -0.0991
+    ],
+    "reach": 0.045
+   },
+   "NC_FaceLipLower": {
+    "at": [
+     0.0,
+     -0.2392,
+     -0.0852
+    ],
+    "reach": 0.045
+   },
+   "NC_FaceChin": {
+    "at": [
+     -0.0,
+     -0.3108,
+     -0.0912
+    ],
+    "reach": 0.11
+   }
+  },
+  "eyeMid": [
+   -0.0,
+   5.5097,
+   -0.4109
+  ],
+  "eyeSpan": 0.2126347601945911
+ }
+}

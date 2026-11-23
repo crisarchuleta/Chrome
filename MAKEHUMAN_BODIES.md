@@ -33,8 +33,18 @@ How each body is made:
 4. **No nudity:** skin that the tank top and shorts fully cover is deleted, and the base layer is joined into the
    body mesh. It can't be taken off, and nothing can poke through it. `NCLookBuilder` still paints the torso, hips
    and thighs as clothes on top of that.
-5. The body is split into the 15 R15 MeshParts by weight. The seams share weights, so they never open. Every cut is
-   capped, and the eye openings are left open.
+5. The body is split into the 15 R15 MeshParts. The lines between parts are where colouring by part needs them:
+   the whole tank top is in UpperTorso and the whole shorts in LowerTorso, so their hems are the edges of the torso,
+   arms and thighs. The neck goes with the Head. Arms and legs are cut straight across at the elbow, wrist, knee and
+   ankle, and the shoulder along a sleeve seam. The seams share weights, so they never open. Every cut is capped,
+   the eye openings are left open, and no stray points are left in any part (they made every part's bounds span the
+   whole body).
+6. **One texture a part** (Roblox gives each MeshPart one). UpperTorso and LowerTorso each get their own baked
+   colour map: rib knit on the tank top, the shorts' colour on the shorts, and see-through on skin, so the part's
+   colour (the skin tone) shows there. Every other part is plain skin with no texture, so it can be tinted.
+   `AssembleMakeHumanBodies` tags the two textured parts `NC_BaseLayer`. `NCLookBuilder` keeps that texture and
+   sets the skin colour under it, and it puts the texture away only when an item paints the whole part.
+7. **19 face bones** (`NC_Face*`, children of Head) for the face shape sliders. See HEADS.md.
 
 About 33,000 triangles per body. The biggest single part is the head at 8,600, which is under Roblox's 20,000 per
 MeshPart limit.
@@ -73,7 +83,9 @@ MeshPart limit.
 3. Import each `NC_Body_*.fbx` with the **3D Importer**. Set Rig type to **R15**, keep the default scale, and don't
    rename the models.
 4. Select all ten imported models. Paste `AssembleMakeHumanBodies.lua` into the command bar and press Enter. They
-   go to `ServerStorage.NC_Bodies`, and `Male_Average` becomes `StarterPlayer.StarterCharacter`.
+   go to `ServerStorage.NC_Bodies`, and `Male_Average` becomes `StarterPlayer.StarterCharacter`. It measures the
+   floor from the lowest point of each body's meshes and sets HipHeight and every attachment from there. It also
+   removes any texture the importer put on the skin-only parts.
 5. To play with the human animations, rename `NCAnimationsHuman` to `NCAnimations` in ReplicatedStorage (as for the
    old human body).
 6. Press Play. Check the arm swing, the fingers in the jog, the seams at the shoulders and hips, and the eyes. If an

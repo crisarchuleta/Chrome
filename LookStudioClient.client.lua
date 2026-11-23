@@ -98,7 +98,11 @@ local S = {
 local function copyLook(look)
 	local out = {}
 	for k, e in pairs(look or {}) do
-		out[k] = { id = e.id, c1 = e.c1, c2 = e.c2 }
+		if k == "FaceShape" then
+			out.FaceShape = Catalog.CleanFaceShape(e)
+		else
+			out[k] = { id = e.id, c1 = e.c1, c2 = e.c2 }
+		end
 	end
 	return out
 end
@@ -524,10 +528,10 @@ local function lookCard(lk, order)
 	local cost = Catalog.Cost(lk.look, S.owned)
 	label((coll and coll.name or "") .. "  ·  " .. (cost > 0 and ("$" .. cost) or "Owned"), 11, COL.dim, FONT, { Position = UDim2.new(0, 8, 1, -20), Size = UDim2.new(1, -16, 0, 16), Parent = card })
 	card.MouseButton1Click:Connect(function()
-		local skin = S.draft.Skin
+		local keep = { Skin = S.draft.Skin, Eyes = S.draft.Eyes, Brows = S.draft.Brows, FaceShape = S.draft.FaceShape }
 		S.draft = copyLook(lk.look)
-		if skin then
-			S.draft.Skin = skin -- presets never change who you are
+		for k, v in pairs(keep) do
+			S.draft[k] = v -- presets never change who you are (skin, eyes, brows, face shape)
 		end
 		-- keep your own hair colour when the look doesn't specify one
 		renderDraft()
@@ -569,6 +573,70 @@ local function setChip(b, on)
 	b.TextColor3 = on and COL.bg or COL.text
 end
 
+-- face shape: one card per slider (drag or tap the bar), plus a reset card. Free; saved with the look.
+local slideDrag -- { bar, id, set } while a finger / mouse is on a slider
+local lastRender = 0
+local function renderSoon()
+	if os.clock() - lastRender > 0.08 then
+		lastRender = os.clock()
+		renderDraft()
+	end
+end
+local function faceShapeCards()
+	local v = (S.draft.FaceShape and S.draft.FaceShape.v) or {}
+	for i, sl in ipairs(Catalog.FACE_SLIDERS) do
+		local card = new("Frame", { BackgroundColor3 = COL.card, LayoutOrder = i, Parent = grid }, { corner(10), stroke(COL.cardHi) })
+		label(sl.name, 13, COL.text, FONT_B, { Position = UDim2.fromOffset(10, 8), Size = UDim2.new(1, -20, 0, 18), Parent = card })
+		local val = label("", 12, COL.dim, FONT, { Position = UDim2.fromOffset(10, 28), Size = UDim2.new(1, -20, 0, 16), Parent = card })
+		local bar = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = COL.cardHi, Position = UDim2.new(0, 14, 0, 58),
+			Size = UDim2.new(1, -28, 0, 8), Parent = card }, { new("UICorner", { CornerRadius = UDim.new(1, 0) }) })
+		new("Frame", { BackgroundColor3 = COL.dim, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(2, 14), Parent = bar })
+		local knob = new("Frame", { BackgroundColor3 = COL.accent, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(20, 20), Parent = bar },
+			{ new("UICorner", { CornerRadius = UDim.new(1, 0) }) })
+		local function show(x)
+			knob.Position = UDim2.fromScale((x + 1) / 2, 0.5)
+			val.Text = x == 0 and "Natural" or ((x > 0 and "+" or "") .. math.round(x * 100) .. "%")
+		end
+		local function set(px)
+			local a = math.clamp((px - bar.AbsolutePosition.X) / math.max(bar.AbsoluteSize.X, 1), 0, 1)
+			local x = math.round((a * 2 - 1) * 20) / 20
+			if math.abs(x) < 0.06 then
+				x = 0 -- a little snap to natural
+			end
+			S.draft.FaceShape = S.draft.FaceShape or { v = {} }
+			S.draft.FaceShape.v[sl.id] = x ~= 0 and x or nil
+			show(x)
+			renderSoon()
+		end
+		show(v[sl.id] or 0)
+		bar.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				slideDrag = { set = set }
+				set(input.Position.X)
+			end
+		end)
+	end
+	local reset = button("↺ Reset face", COL.cardHi, { LayoutOrder = #Catalog.FACE_SLIDERS + 1, TextSize = 14, Parent = grid })
+	reset.MouseButton1Click:Connect(function()
+		S.draft.FaceShape = nil
+		renderDraft()
+		refreshGrid()
+	end)
+	colourPanelFor(nil)
+	selLabel.Text = "Face shape: drag a bar. Free, and saved with your look when you press Wear."
+end
+UIS.InputChanged:Connect(function(input)
+	if slideDrag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		slideDrag.set(input.Position.X)
+	end
+end)
+UIS.InputEnded:Connect(function(input)
+	if slideDrag and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+		slideDrag = nil
+		renderDraft()
+	end
+end)
+
 local tabButtons, slotButtons = {}, {}
 local function buildSlotBar()
 	for _, b in ipairs(slotButtons) do
@@ -585,7 +653,7 @@ local function buildSlotBar()
 	if not tabDef then
 		return
 	end
-	if not S.slot or not table.find(tabDef.slots, S.slot) then
+	if not S.slot or (not table.find(tabDef.slots, S.slot) and not (S.slot == "_FaceShape" and tabDef.name == "Body")) then
 		S.slot = tabDef.slots[1]
 	end
 	for i, slotId in ipairs(tabDef.slots) do
@@ -595,6 +663,21 @@ local function buildSlotBar()
 		setChip(b, slotId == S.slot)
 		b.MouseButton1Click:Connect(function()
 			S.slot = slotId
+			buildSlotBar()
+			refreshGrid()
+		end)
+		table.insert(slotButtons, b)
+	end
+	-- face shape sliders (MakeHuman faces only: they need the face bones)
+	if tabDef.name == "Body" and Catalog.FACE_SLIDERS then
+		local b = button("🙂 Face shape", COL.card, { Size = UDim2.fromOffset(0, 32), AutomaticSize = Enum.AutomaticSize.X, TextSize = 13, LayoutOrder = 50, Parent = slotBar })
+		pad(10).Parent = b
+		setChip(b, S.slot == "_FaceShape")
+		b.MouseButton1Click:Connect(function()
+			S.slot = "_FaceShape"
+			zoom = "face"
+			yaw = math.rad(180)
+			placeCamera()
 			buildSlotBar()
 			refreshGrid()
 		end)
@@ -664,6 +747,8 @@ function refreshGrid()
 		end
 		colourPanelFor(nil)
 		selLabel.Text = "Saved outfits store what you're wearing. Wear a look first, then save it here."
+	elseif S.slot == "_FaceShape" then
+		faceShapeCards()
 	else
 		local list = Catalog.ITEMS_BY_SLOT[S.slot] or {}
 		local n = 0

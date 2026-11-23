@@ -23,6 +23,7 @@ Start with:
 | Studio packages | `NeonCoastBuildingKit.rbxmx`, `NeonCoastAnimations.rbxmx`, `NeonCoastCharacterStudio.rbxmx` | Drag into Studio (the Character Studio one into ServerScriptService) |
 | Character Studio | `NCLookCatalog.lua`, `NCLookBuilder.lua`, `LookStudioService.server.lua`, `LookStudioClient.client.lua` | See CHARACTER_STUDIO.md |
 | Player bodies (MakeHuman) | `NC_Body_*.fbx`, `NCBodyData.lua`, `NCBodyService.server.lua`, `AssembleMakeHumanBodies.lua`, `build_makehuman_rig.py` | See MAKEHUMAN_BODIES.md |
+| Faces and hair (MakeHuman) | `NC_Head_*.fbx`, `NCHead.lua`, `NCHeadData.lua`, `AssembleHeads.lua`, `build_heads.py` | See HEADS.md |
 | Blender build scripts | `build_*.py`, `nc_*.py`, `make_kit_data.py`, `qa_buildings.py` | Run with Blender 5.3 (commands in STATUS.md) |
 | Generated layout/data | `*.json` | Read by `make_kit_data.py` and the QA scripts |
 | 3D assets | `*.glb`, `NeonCoastHuman.fbx`, `*.blend` | Upload to Roblox as Models |

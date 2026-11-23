@@ -45,8 +45,23 @@ for _, model in game:GetService("Selection"):Get() do
 	hum.Parent = model
 	hum.RigType = Enum.HumanoidRigType.R15
 	pcall(function() hum.AutomaticScalingEnabled = false end)
-	hum.HipHeight = B.hipHeight
-	local origin = hrp.CFrame * CFrame.new(0, -B.hrpY, 0)
+	-- the floor is the lowest point of the body's meshes (the importer doesn't put the root part exactly on the
+	-- rig's root bone, so nothing is measured from it vertically)
+	local floorY = math.huge
+	for _, d in model:GetDescendants() do
+		if d:IsA("MeshPart") and d ~= hrp then
+			local h = d.Size / 2
+			for _, sx in { -1, 1 } do
+				for _, sy in { -1, 1 } do
+					for _, sz in { -1, 1 } do
+						floorY = math.min(floorY, (d.CFrame * Vector3.new(sx * h.X, sy * h.Y, sz * h.Z)).Y)
+					end
+				end
+			end
+		end
+	end
+	hum.HipHeight = math.max(0.5, hrp.Position.Y - hrp.Size.Y / 2 - floorY)
+	local origin = CFrame.new(hrp.Position.X, floorY, hrp.Position.Z) * hrp.CFrame.Rotation
 	for _, a in B.attachments do
 		local part = model:FindFirstChild(a[1])
 		if part then
@@ -58,6 +73,27 @@ for _, model in game:GetService("Selection"):Get() do
 	end
 	for _, d in model:GetDescendants() do
 		if d:IsA("MeshPart") then
+			-- one texture a part: the torso parts carry the tank top / shorts map (skin see-through, so the part's
+			-- colour shows there); every other part is plain skin and must not keep any texture
+			local sa = d:FindFirstChildOfClass("SurfaceAppearance")
+			if d.Name == "UpperTorso" or d.Name == "LowerTorso" then
+				if sa or d.TextureID ~= "" then
+					d:SetAttribute("NC_BaseLayer", true)
+					if d.TextureID ~= "" then
+						d:SetAttribute("NC_TextureID", d.TextureID)
+					end
+					if sa then
+						pcall(function() sa.AlphaMode = Enum.AlphaMode.Overlay end)
+					end
+				else
+					warn(id .. ": " .. d.Name .. " came in without its base-layer texture (import with textures on)")
+				end
+			else
+				if sa then
+					sa:Destroy()
+				end
+				d.TextureID = ""
+			end
 			d.CanCollide = d.Name == "UpperTorso" or d.Name == "LowerTorso" or d.Name == "Head"
 			pcall(function() d.CollisionFidelity = Enum.CollisionFidelity.Box end)
 			d.Anchored = false
