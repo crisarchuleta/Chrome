@@ -103,6 +103,37 @@ pipeline as `build_human.py`, upload them, and point their items at the asset id
 `NCLookBuilder.FACE`. If grillz or glasses sit a little off on the final head, change the numbers there once and every
 item follows.
 
+## Real 3D clothes on the MakeHuman bodies (Nov 2026)
+
+The procedural pieces above are the fallback. The real clothes are now sculpted-style meshes fitted to each of the
+ten rigged MakeHuman bodies (`NeonCoast_MakeHumanRig.blend` from `build_makehuman_rig.py`), with the SevenM / Tha
+Bronx 3 / realistic hood screenshots as the style target: boxy oversized hoodies, a pink camo zip-up, black-on-black
+fits, baggy stacked denim, chunky chains, gloves and shades.
+
+- `nc_garments.py` (Blender, pure bpy + numpy + scipy) makes every garment from the body itself:
+  1. It fuses the skin, tank and shorts into one clean shell (voxel remesh) so there are no seams to follow.
+  2. It cuts that surface along clean hem lines: a ring around the neck, sleeve ends along the arm, the waist and the ankles.
+  3. It loosens the cloth with drape envelopes. Tops hang straight down from the chest (the radius never shrinks going
+     down), sleeves become round tubes that gather at a rib cuff, pant legs become round tubes from the thigh to a wide
+     opening, and the stacks wobble around the lower leg.
+  4. It lets cloth hang past the body: hoodie hems drop below the hips, and pant legs drop onto the shoes.
+  5. It smooths the result and pushes it outside the body and every layer underneath (tops over pants over shoes),
+     so nothing pokes through on any body type.
+  It also makes hoods, kangaroo pockets, drawstrings, zips, stand / shirt / lapel / turtleneck collars, open fronts,
+  puffer baffles, camo (vertex colours), cargo pockets, jogger cuffs, skirts, lofted sneakers with a flat outsole and
+  round toe, gloves, Cuban-link chains with a medallion, fitted caps, beanies and wraparound shades.
+- `skin_to_rig` gives each garment the body's bone weights (sleeves can use arm and hand bones; the rest of the cloth
+  can't, and each pant leg only follows its own leg). So the clothes move with the R15 rig and `NCAnimationsHuman`.
+- `nc_outfits.py` holds the reference looks (`sevenm`, `pinkcamo`, `tee_cargo`, `puffer_sweats`).
+- `nc_catalog3d.py` maps every Top / Outer / Bottom / Shoes item in `NCLookCatalog` (about 150) to the garment maker,
+  using the item's own colours.
+- `build_wardrobe.py` builds them on all ten bodies. It saves `NeonCoast_Wardrobe_<Body>.blend` (one collection per
+  look) and game-ready FBX files: subdivision off, decimated to about 7k triangles per piece, skinned to the rig, ready
+  for Studio's 3D importer.
+  `blender -b -P build_wardrobe.py -- NeonCoast_MakeHumanRig.blend wardrobe`
+- The base layer (white tank, shorts, `NC_Modesty`) is part of the body under every garment. Clothes only ever add
+  layers on top, so there is still no nudity anywhere.
+
 ## The research behind it (Nov 2026)
 
 What players asked for, and what the web shows is popular right now:
