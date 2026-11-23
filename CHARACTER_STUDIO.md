@@ -137,6 +137,19 @@ that hugs the skin, so it looks like part of the skin, not a sticker.
   2. `NCInk.Apply(character, ink)` whenever the look changes.
 
   The layers bind to the rig's bones by name.
+- **Wired into Character Studio.**
+  - The old painted Arm Ink and Face & Neck Ink slots are gone. A look now carries an `Ink` table, and the presets
+    that had tattoos use real ink instead.
+  - `NCLookBuilder.Apply` calls `B.ApplyInk`. On a body that NCBodyService tagged with `NC_BodyId`, it attaches that
+    body's layers once (again after a body swap) and then applies the look's ink. Stock avatars get no ink.
+  - The Body tab has a 🖋️ Tattoos picker. You pick a spot (left or right upper arm, forearm, hand or leg, then neck
+    or face), then a tattoo that fits it. A full sleeve goes on either arm spot and covers the whole arm. Tap a
+    tattoo again to take it off.
+  - Each tattoo is bought once. It's owned as `ink:<id>`, the footer and the server add it to the price, and after
+    that it's free on any spot. The server keeps only known ids on spots they fit (`NCLookCatalog.CleanInk`).
+    Presets keep your own tattoos unless the preset comes with its own.
+  - The Studio package `.rbxmx` now carries NCInk and NCInkCatalog (moved to ReplicatedStorage) and NCInkSetup
+    (moved to ServerStorage).
 - **Rebuilding.**
   1. `python tools/ink/compose.py <out>` makes the PNGs and the catalog.
   2. `python tools/ink/build_ink.py rig.blend <out>` makes the layers.

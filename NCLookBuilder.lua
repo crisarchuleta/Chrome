@@ -2192,6 +2192,30 @@ function B.ApplyBaseLayer(char)
 	B.ApplyEyes(char)
 end
 
+-- real tattoos on the MakeHuman bodies (NCInk, see CHARACTER_STUDIO.md "Real tattoos"): the body's 13 skin-hugging
+-- ink layers are attached once per body (NCBodyService tags each body with NC_BodyId, e.g. "Male_Average"), then the
+-- look's Ink table picks each layer's texture. Clothes sit above the layers, so covered ink hides by itself. Stock
+-- avatars (no NC_BodyId) get no ink. Safe to call any time; Apply calls it.
+function B.ApplyInk(char, ink, Catalog)
+	local Ink = Catalog and Catalog.InkModule and Catalog.InkModule()
+	local bodyId = char:GetAttribute("NC_BodyId")
+	if not (Ink and bodyId) then
+		return false
+	end
+	local folder = char:FindFirstChild("NCInk")
+	if not folder or folder:GetAttribute("NC_InkBody") ~= bodyId then
+		if not Ink.Attach(char, bodyId) then
+			return false
+		end
+		folder = char:FindFirstChild("NCInk")
+		if folder then
+			folder:SetAttribute("NC_InkBody", bodyId)
+		end
+	end
+	Ink.Apply(char, ink or {})
+	return true
+end
+
 -- eyes for the MakeHuman bodies: their heads have real eye openings and an NC_<Side>EyeAttachment at the centre of
 -- each eyeball (put there by AssembleMakeHumanBodies, radius in the Head's NC_EyeRadius attribute). A white
 -- eyeball, an iris and a pupil, welded to the head, looking straight ahead. Bodies without the attachments (stock
@@ -2474,6 +2498,7 @@ function B.Apply(char, look, Catalog, opts)
 	if Head and regions.Head then
 		Head.ApplyFace(char, regions.Head.colour) -- lips (tinted from the skin) and the lash line
 	end
+	pcall(B.ApplyInk, char, look.Ink, Catalog)
 	folder.Parent = char
 	char:SetAttribute("NC_LookApplied", os.clock())
 	return folder

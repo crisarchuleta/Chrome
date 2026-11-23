@@ -20,8 +20,6 @@ C.SLOTS = {
 	{ id = "FacialHair", name = "Beard", icon = "🧔" },
 	{ id = "Eyes", name = "Eyes", icon = "👁️", required = true },
 	{ id = "Brows", name = "Brows", icon = "〰️", required = true },
-	{ id = "Tattoo", name = "Arm Ink", icon = "🖋️" },
-	{ id = "Tattoo2", name = "Face & Neck Ink", icon = "✒️" },
 	{ id = "Bottom", name = "Bottoms", icon = "👖", required = true },
 	{ id = "Top", name = "Tops", icon = "👕", required = true },
 	{ id = "Outer", name = "Jackets", icon = "🧥" },
@@ -43,7 +41,7 @@ C.SLOTS = {
 
 -- the studio's category tabs group the slots
 C.TABS = {
-	{ name = "Body", slots = { "Skin", "Eyes", "Brows", "Hair", "FacialHair", "Tattoo", "Tattoo2" } },
+	{ name = "Body", slots = { "Skin", "Eyes", "Brows", "Hair", "FacialHair" } },
 	{ name = "Clothes", slots = { "Top", "Outer", "Bottom", "Shoes" } },
 	{ name = "Headwear", slots = { "Head", "Face", "Mask" } },
 	{ name = "Bling", slots = { "Neck", "Neck2", "Grillz", "Ears", "Wrist", "Wrist2", "Rings" } },
@@ -215,20 +213,6 @@ I("beard_soul_patch", "FacialHair", "Soul Patch", 60, "soulpatch", {}, H, "#1C15
 
 ------------------------------------------------------------------ tattoos (only show on bare skin: sleeves cover arm ink)
 local K = "ink"
-I("ink_sleeve_r", "Tattoo", "Full Sleeve (Right Arm)", 300, "tattoo", { kind = "sleeve" }, K, "#26303C", nil, nil, { "lowrider", "hood", "rap" }, T)
-I("ink_sleeves", "Tattoo", "Full Sleeves (Both Arms)", 550, "tattoo", { kind = "sleeve", both = true }, K, "#26303C", nil, nil, { "lowrider", "hood", "rap" }, T)
-I("ink_half", "Tattoo", "Forearm Half Sleeves", 300, "tattoo", { kind = "half", both = true }, K, "#1A1A1A", nil, nil, { "lowrider", "street" })
-I("ink_script_familia", "Tattoo", "Forearm Script: FAMILIA / LOYALTY", 250, "tattoo", { kind = "forearm", both = true, text = "FAMILIA", text2 = "LOYALTY" }, K, "#1A1A1A", nil, nil, { "lowrider" }, T)
-I("ink_script_blessed", "Tattoo", "Forearm Script: BLESSED", 150, "tattoo", { kind = "forearm", text = "BLESSED" }, K, "#1A1A1A", nil, nil, { "street", "rap" })
-I("ink_script_mama", "Tattoo", "Forearm Script: MAMA / PAPA", 200, "tattoo", { kind = "forearm", both = true, text = "MAMA", text2 = "PAPA" }, K, "#26303C", nil, nil, { "lowrider" })
-I("ink_rose", "Tattoo", "Rose Forearms", 220, "tattoo", { kind = "rose", both = true }, K, "#7A1022", nil, nil, { "lowrider", "retro" })
-I("ink_calves", "Tattoo", "Calf Ink", 250, "tattoo", { kind = "calf", both = true }, K, "#26303C", nil, nil, { "lowrider", "coast" })
-I("ink_neck_familia", "Tattoo2", "Neck Script: FAMILIA", 200, "tattoo", { kind = "neck", text = "FAMILIA" }, K, "#1A1A1A", nil, nil, { "lowrider", "hood" }, T)
-I("ink_neck_blessed", "Tattoo2", "Neck Script: BLESSED", 200, "tattoo", { kind = "neck", text = "BLESSED" }, K, "#1A1A1A", nil, nil, { "rap", "hood" })
-I("ink_face_star", "Tattoo2", "Small Star Under Eye", 150, "tattoo", { kind = "face", mark = "star" }, K, "#1A1A1A", nil, nil, { "hood", "rap" }, T)
-I("ink_face_cross", "Tattoo2", "Small Cross Under Eye", 150, "tattoo", { kind = "face", mark = "cross" }, K, "#1A1A1A", nil, nil, { "lowrider", "hood" })
-I("ink_face_script", "Tattoo2", "Eyebrow Script: BLESSED", 180, "tattoo", { kind = "face", mark = "script", text = "BLESSED" }, K, "#1A1A1A", nil, nil, { "rap", "hood" })
-I("ink_hands", "Tattoo2", "Hand Script: LOVE / LIFE", 180, "tattoo", { kind = "hands", both = true, text = "LOVE", text2 = "LIFE" }, K, "#1A1A1A", nil, nil, { "lowrider", "street" })
 
 ------------------------------------------------------------------ tops
 local F = "fabric"
@@ -609,19 +593,19 @@ C.LOOKS = {
 
 	-- Lowrider (Chicano lowrider culture: fashion only, no gang names, colours or numbers)
 	look("low_classic", "Lowrider Classic", "lowrider", { Hair = e("hair_bald"), Top = e("top_long_white"), Bottom = e("bot_khakis"), Shoes = e("shoe_classic"),
-		Face = e("eye_shades_black"), FacialHair = e("beard_goatee"), Neck = e("chain_rosary"), Tattoo = e("ink_script_familia"),
-		Tattoo2 = e("ink_neck_familia"), Waist = e("belt_leather") }, TN),
+		Face = e("eye_shades_black"), FacialHair = e("beard_goatee"), Neck = e("chain_rosary"), Waist = e("belt_leather"),
+		Ink = { L = { lower = "fa_script_familia" }, R = { lower = "fa_rosa" }, neck = "nk_rosa_lado" } }, TN),
 	look("low_flannel", "Top-Button Flannel", "lowrider", { Hair = e("hair_slick_back"), Head = e("hat_hairnet"), Top = e("top_button_flannel"),
 		Bottom = e("bot_work_creased"), Shoes = e("shoe_classic"), Face = e("eye_shades_black"), FacialHair = e("beard_pencil"),
-		Tattoo2 = e("ink_face_cross") }, TN),
+		Ink = { face = "fc_cruz" } }, TN),
 	look("low_zoot", "Zoot Suit Sharp", "lowrider", { Hair = e("hair_pomp"), Head = e("hat_fedora", "#111111"), Top = e("top_dress_shirt"), Neck = e("neck_tie_black"),
 		Outer = e("out_zoot"), Bottom = e("bot_zoot"), Shoes = e("shoe_two_tone"), Waist = e("belt_wallet_chain"), FacialHair = e("beard_pencil") }, TN),
 	look("low_cruiser", "Sunday Cruiser", "lowrider", { Hair = e("hair_buzz_fade"), Head = e("hat_folded_bandana"), Top = e("top_tank"), Outer = e("out_suspenders"),
-		Bottom = e("bot_shorts_socks"), Shoes = e("shoe_classic"), Tattoo = e("ink_sleeves"), Neck = e("chain_rosary_gold"),
-		Face = e("eye_shades_black") }, TN),
+		Bottom = e("bot_shorts_socks"), Shoes = e("shoe_classic"), Neck = e("chain_rosary_gold"),
+		Face = e("eye_shades_black"), Ink = { L = { upper = "sl_rosas_nubes" }, R = { upper = "sl_reloj_rosa" } } }, TN),
 	look("low_barrio", "Barrio Sleeves", "lowrider", { Hair = e("hair_buzz"), Top = e("top_tank"), Bottom = e("bot_work_creased", "#111111"), Shoes = e("shoe_classic", "#111111"),
-		Tattoo = e("ink_sleeves"), Tattoo2 = e("ink_neck_blessed"), FacialHair = e("beard_goatee"), Neck = e("chain_cross_gold"),
-		Face = e("eye_shades_black"), Wrist = e("watch_gold") }, T),
+		FacialHair = e("beard_goatee"), Neck = e("chain_cross_gold"), Face = e("eye_shades_black"), Wrist = e("watch_gold"),
+		Ink = { L = { upper = "sl_smile_cry" }, R = { upper = "sl_corona" }, neck = "nk_cruz" } }, T),
 
 	-- Rap Royalty
 	look("rap_iced_out", "Iced Out Rapper", "rap", { Hair = e("hair_locs_gold"), Top = e("top_tee_black"), Outer = e("out_fur"), Bottom = e("bot_leather"),
@@ -820,6 +804,96 @@ C.FACE_SLIDER_BY_ID = {}
 for _, sl in ipairs(C.FACE_SLIDERS) do
 	C.FACE_SLIDER_BY_ID[sl.id] = sl
 end
+---------------------------------------------------------------------------------------------------- real ink
+-- A look's tattoos are its Ink table: { L = { upper, lower, hand, leg }, R = { ... }, neck, face } of NCInkCatalog
+-- ids, printed on the MakeHuman bodies' ink layers by NCInk (see CHARACTER_STUDIO.md "Real tattoos"). Each tattoo is
+-- bought once (owned as "ink:<id>") and can then go on any spot it fits.
+C.INK_SPOTS = {
+	{ key = "L.upper", side = "L", spot = "upper", area = "Arm", name = "Left upper arm" },
+	{ key = "L.lower", side = "L", spot = "lower", area = "Arm", name = "Left forearm" },
+	{ key = "L.hand", side = "L", spot = "hand", area = "Hand", name = "Left hand" },
+	{ key = "L.leg", side = "L", spot = "leg", area = "Leg", name = "Left leg" },
+	{ key = "R.upper", side = "R", spot = "upper", area = "Arm", name = "Right upper arm" },
+	{ key = "R.lower", side = "R", spot = "lower", area = "Arm", name = "Right forearm" },
+	{ key = "R.hand", side = "R", spot = "hand", area = "Hand", name = "Right hand" },
+	{ key = "R.leg", side = "R", spot = "leg", area = "Leg", name = "Right leg" },
+	{ key = "neck", spot = "neck", area = "Neck", name = "Neck" },
+	{ key = "face", spot = "face", area = "Face", name = "Face" },
+}
+local inkMod
+function C.InkModule()
+	if inkMod == nil then
+		inkMod = false
+		local RS = game:GetService("ReplicatedStorage")
+		local m = RS:FindFirstChild("NCInk")
+		if m and RS:FindFirstChild("NCInkCatalog") then
+			local ok, res = pcall(require, m)
+			inkMod = ok and res or false
+		end
+	end
+	return inkMod or nil
+end
+function C.InkCatalog()
+	local RS = game:GetService("ReplicatedStorage")
+	local m = RS:FindFirstChild("NCInkCatalog")
+	local ok, res = pcall(function()
+		return m and require(m)
+	end)
+	return ok and res or nil
+end
+-- does this tattoo fit that spot? (a full arm sleeve goes in upper or lower; upper-only / lower-only pieces only there)
+function C.InkFits(item, spot)
+	if not item then
+		return false
+	end
+	if spot.area ~= item.area then
+		return false
+	end
+	if spot.spot == "upper" then
+		return item.zone == "upper" or item.zone == "full"
+	elseif spot.spot == "lower" then
+		return item.zone == "lower" or item.zone == "full"
+	end
+	return true
+end
+-- a clean Ink table from anything a client sent (known ids on spots they fit), or nil when there's no ink
+function C.CleanInk(raw)
+	local IC = C.InkCatalog()
+	if type(raw) ~= "table" or not IC then
+		return nil
+	end
+	local out, any = {}, false
+	for _, sp in ipairs(C.INK_SPOTS) do
+		local id
+		if sp.side then
+			id = type(raw[sp.side]) == "table" and raw[sp.side][sp.spot]
+		else
+			id = raw[sp.spot]
+		end
+		local it = type(id) == "string" and IC.BY_ID[id]
+		if it and C.InkFits(it, sp) then
+			if sp.side then
+				out[sp.side] = out[sp.side] or {}
+				out[sp.side][sp.spot] = id
+			else
+				out[sp.spot] = id
+			end
+			any = true
+		end
+	end
+	return any and out or nil
+end
+function C.InkIds(ink)
+	local ids = {}
+	for _, sp in ipairs(C.INK_SPOTS) do
+		local id = ink and (sp.side and (ink[sp.side] or {})[sp.spot] or (not sp.side and ink[sp.spot]))
+		if type(id) == "string" and not table.find(ids, id) then
+			table.insert(ids, id)
+		end
+	end
+	return ids
+end
+
 -- a clean FaceShape entry from anything a client sent (known sliders only, -1 .. 1, two decimals), or nil
 function C.CleanFaceShape(raw)
 	if type(raw) ~= "table" or type(raw.v) ~= "table" then
@@ -898,7 +972,9 @@ end
 for _, lk in ipairs(C.LOOKS) do
 	for slot, en in pairs(lk.look) do
 		local it = C.ITEMS_BY_ID[en.id]
-		if not it or it.slot ~= slot then
+		if slot == "Ink" or slot == "FaceShape" then
+			continue -- (not a slot item: real ink is checked by C.CleanInk when it's worn)
+		elseif not it or it.slot ~= slot then
 			warn("NCLookCatalog: look " .. lk.id .. " has a bad " .. slot .. " item " .. tostring(en.id))
 			lk.look[slot] = nil
 		end
@@ -936,11 +1012,23 @@ end
 -- what a look costs a player who owns `owned` ({ [itemId] = true })
 function C.Cost(lookTable, owned)
 	local total, missing = 0, {}
-	for _, en in pairs(lookTable) do
-		local it = C.ITEMS_BY_ID[en.id]
+	for slot, en in pairs(lookTable) do
+		local it = slot ~= "Ink" and slot ~= "FaceShape" and C.ITEMS_BY_ID[en.id]
 		if it and it.price > 0 and not (owned and owned[it.id]) and not table.find(missing, it.id) then
 			total += it.price
 			table.insert(missing, it.id)
+		end
+	end
+	-- real ink: each tattoo is bought once (owned as "ink:<id>")
+	local IC = lookTable.Ink and C.InkCatalog()
+	if IC then
+		for _, id in ipairs(C.InkIds(lookTable.Ink)) do
+			local it = IC.BY_ID[id]
+			local key = "ink:" .. id
+			if it and (it.price or 0) > 0 and not (owned and owned[key]) then
+				total += it.price
+				table.insert(missing, key)
+			end
 		end
 	end
 	return total, missing

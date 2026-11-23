@@ -100,6 +100,8 @@ local function copyLook(look)
 	for k, e in pairs(look or {}) do
 		if k == "FaceShape" then
 			out.FaceShape = Catalog.CleanFaceShape(e)
+		elseif k == "Ink" then
+			out.Ink = Catalog.CleanInk(e)
 		else
 			out[k] = { id = e.id, c1 = e.c1, c2 = e.c2 }
 		end
@@ -529,6 +531,9 @@ local function lookCard(lk, order)
 	label((coll and coll.name or "") .. "  ·  " .. (cost > 0 and ("$" .. cost) or "Owned"), 11, COL.dim, FONT, { Position = UDim2.new(0, 8, 1, -20), Size = UDim2.new(1, -16, 0, 16), Parent = card })
 	card.MouseButton1Click:Connect(function()
 		local keep = { Skin = S.draft.Skin, Eyes = S.draft.Eyes, Brows = S.draft.Brows, FaceShape = S.draft.FaceShape }
+		if not lk.look.Ink then
+			keep.Ink = S.draft.Ink -- your tattoos stay unless the look comes with its own
+		end
 		S.draft = copyLook(lk.look)
 		for k, v in pairs(keep) do
 			S.draft[k] = v -- presets never change who you are (skin, eyes, brows, face shape)
@@ -625,6 +630,100 @@ local function faceShapeCards()
 	colourPanelFor(nil)
 	selLabel.Text = "Face shape: drag a bar. Free, and saved with your look when you press Wear."
 end
+-- real tattoos (NCInk): pick a spot, then a tattoo that fits it. Each tattoo is bought once, then free on any spot.
+S.inkSpot = "L.upper"
+local function inkGet(sp)
+	local ink = S.draft.Ink
+	if not ink then
+		return nil
+	end
+	if sp.side then
+		return ink[sp.side] and ink[sp.side][sp.spot]
+	end
+	return ink[sp.spot]
+end
+local function inkSet(sp, id)
+	local ink = S.draft.Ink or {}
+	if sp.side then
+		ink[sp.side] = ink[sp.side] or {}
+		ink[sp.side][sp.spot] = id
+		if next(ink[sp.side]) == nil then
+			ink[sp.side] = nil
+		end
+	else
+		ink[sp.spot] = id
+	end
+	S.draft.Ink = next(ink) and ink or nil
+end
+local function inkCards()
+	local IC = Catalog.InkCatalog()
+	if not IC then
+		label("Tattoos aren't installed in this place yet.", 14, COL.dim, FONT, { Size = UDim2.fromOffset(320, 40), Parent = grid })
+		colourPanelFor(nil)
+		return
+	end
+	local ids = game:GetService("ReplicatedStorage"):FindFirstChild("NCInkIds")
+	local cur
+	local order = 0
+	for _, sp in ipairs(Catalog.INK_SPOTS) do
+		order += 1
+		local on = sp.key == S.inkSpot
+		if on then
+			cur = sp
+		end
+		local id = inkGet(sp)
+		local it = id and IC.BY_ID[id]
+		local b = new("TextButton", { Text = "", AutoButtonColor = true, BackgroundColor3 = on and COL.accent or COL.card, LayoutOrder = order, Parent = grid },
+			{ corner(10), stroke(on and COL.accent or COL.cardHi) })
+		label(sp.name, 13, on and COL.bg or COL.text, FONT_B, { Position = UDim2.fromOffset(8, 8), Size = UDim2.new(1, -16, 0, 18), Parent = b })
+		label(it and it.name or "Bare", 12, on and COL.bg or COL.dim, FONT, { Position = UDim2.fromOffset(8, 30), Size = UDim2.new(1, -16, 0, 34),
+			TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top, Parent = b })
+		b.MouseButton1Click:Connect(function()
+			S.inkSpot = sp.key
+			refreshGrid()
+		end)
+	end
+	cur = cur or Catalog.INK_SPOTS[1]
+	order += 1
+	local none = button("✕ Bare " .. cur.name:lower(), COL.cardHi, { LayoutOrder = order, TextSize = 13, Parent = grid })
+	none.MouseButton1Click:Connect(function()
+		inkSet(cur, nil)
+		renderDraft()
+		updateFooter()
+		refreshGrid()
+	end)
+	local list = {}
+	for _, it in ipairs(IC.ITEMS) do
+		if Catalog.InkFits(it, cur) and (S.search == "" or it.name:lower():find(S.search:lower(), 1, true)) then
+			table.insert(list, it)
+		end
+	end
+	for _, it in ipairs(list) do
+		order += 1
+		local worn = inkGet(cur) == it.id
+		local card = new("TextButton", { Text = "", AutoButtonColor = true, BackgroundColor3 = worn and COL.cardHi or COL.card, LayoutOrder = order, Parent = grid },
+			{ corner(10), stroke(worn and COL.accent or COL.cardHi, worn and 2 or 1) })
+		local file = it.files[cur.side or "C"] or it.files.C or it.files.L
+		local tex = ids and file and ids:FindFirstChild(file)
+		if tex and tex.Value ~= "" then
+			new("ImageLabel", { BackgroundTransparency = 1, Image = tex.Value, ScaleType = Enum.ScaleType.Fit, Position = UDim2.fromOffset(6, 6),
+				Size = UDim2.new(1, -12, 1, -46), Parent = card })
+		end
+		label((it.colour and "🎨 " or "") .. it.name, 12, COL.text, FONT_B, { Position = UDim2.new(0, 8, 1, -38), Size = UDim2.new(1, -16, 0, 18), Parent = card })
+		local owned = S.owned["ink:" .. it.id]
+		label(owned and "Owned" or ("$" .. (it.price or 0)), 12, owned and COL.good or COL.gold, FONT_B,
+			{ Position = UDim2.new(0, 8, 1, -20), Size = UDim2.new(1, -16, 0, 16), Parent = card })
+		card.MouseButton1Click:Connect(function()
+			inkSet(cur, worn and nil or it.id) -- tap again to take it off
+			renderDraft()
+			updateFooter()
+			refreshGrid()
+		end)
+	end
+	colourPanelFor(nil)
+	selLabel.Text = "Tattoos: pick a spot, then a tattoo. Full sleeves cover the whole arm. Clothes cover what's under them."
+end
+
 UIS.InputChanged:Connect(function(input)
 	if slideDrag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 		slideDrag.set(input.Position.X)
@@ -653,7 +752,7 @@ local function buildSlotBar()
 	if not tabDef then
 		return
 	end
-	if not S.slot or (not table.find(tabDef.slots, S.slot) and not (S.slot == "_FaceShape" and tabDef.name == "Body")) then
+	if not S.slot or (not table.find(tabDef.slots, S.slot) and not ((S.slot == "_FaceShape" or S.slot == "_Ink") and tabDef.name == "Body")) then
 		S.slot = tabDef.slots[1]
 	end
 	for i, slotId in ipairs(tabDef.slots) do
@@ -677,6 +776,20 @@ local function buildSlotBar()
 			S.slot = "_FaceShape"
 			zoom = "face"
 			yaw = math.rad(180)
+			placeCamera()
+			buildSlotBar()
+			refreshGrid()
+		end)
+		table.insert(slotButtons, b)
+	end
+	-- real tattoos (MakeHuman bodies)
+	if tabDef.name == "Body" and Catalog.INK_SPOTS then
+		local b = button("🖋️ Tattoos", COL.card, { Size = UDim2.fromOffset(0, 32), AutomaticSize = Enum.AutomaticSize.X, TextSize = 13, LayoutOrder = 51, Parent = slotBar })
+		pad(10).Parent = b
+		setChip(b, S.slot == "_Ink")
+		b.MouseButton1Click:Connect(function()
+			S.slot = "_Ink"
+			zoom = "body"
 			placeCamera()
 			buildSlotBar()
 			refreshGrid()
@@ -749,6 +862,8 @@ function refreshGrid()
 		selLabel.Text = "Saved outfits store what you're wearing. Wear a look first, then save it here."
 	elseif S.slot == "_FaceShape" then
 		faceShapeCards()
+	elseif S.slot == "_Ink" then
+		inkCards()
 	else
 		local list = Catalog.ITEMS_BY_SLOT[S.slot] or {}
 		local n = 0

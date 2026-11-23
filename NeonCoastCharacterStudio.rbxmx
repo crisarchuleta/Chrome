@@ -20,8 +20,6 @@ C.SLOTS = {
 	{ id = "FacialHair", name = "Beard", icon = "🧔" },
 	{ id = "Eyes", name = "Eyes", icon = "👁️", required = true },
 	{ id = "Brows", name = "Brows", icon = "〰️", required = true },
-	{ id = "Tattoo", name = "Arm Ink", icon = "🖋️" },
-	{ id = "Tattoo2", name = "Face & Neck Ink", icon = "✒️" },
 	{ id = "Bottom", name = "Bottoms", icon = "👖", required = true },
 	{ id = "Top", name = "Tops", icon = "👕", required = true },
 	{ id = "Outer", name = "Jackets", icon = "🧥" },
@@ -43,7 +41,7 @@ C.SLOTS = {
 
 -- the studio's category tabs group the slots
 C.TABS = {
-	{ name = "Body", slots = { "Skin", "Eyes", "Brows", "Hair", "FacialHair", "Tattoo", "Tattoo2" } },
+	{ name = "Body", slots = { "Skin", "Eyes", "Brows", "Hair", "FacialHair" } },
 	{ name = "Clothes", slots = { "Top", "Outer", "Bottom", "Shoes" } },
 	{ name = "Headwear", slots = { "Head", "Face", "Mask" } },
 	{ name = "Bling", slots = { "Neck", "Neck2", "Grillz", "Ears", "Wrist", "Wrist2", "Rings" } },
@@ -215,20 +213,6 @@ I("beard_soul_patch", "FacialHair", "Soul Patch", 60, "soulpatch", {}, H, "#1C15
 
 ------------------------------------------------------------------ tattoos (only show on bare skin: sleeves cover arm ink)
 local K = "ink"
-I("ink_sleeve_r", "Tattoo", "Full Sleeve (Right Arm)", 300, "tattoo", { kind = "sleeve" }, K, "#26303C", nil, nil, { "lowrider", "hood", "rap" }, T)
-I("ink_sleeves", "Tattoo", "Full Sleeves (Both Arms)", 550, "tattoo", { kind = "sleeve", both = true }, K, "#26303C", nil, nil, { "lowrider", "hood", "rap" }, T)
-I("ink_half", "Tattoo", "Forearm Half Sleeves", 300, "tattoo", { kind = "half", both = true }, K, "#1A1A1A", nil, nil, { "lowrider", "street" })
-I("ink_script_familia", "Tattoo", "Forearm Script: FAMILIA / LOYALTY", 250, "tattoo", { kind = "forearm", both = true, text = "FAMILIA", text2 = "LOYALTY" }, K, "#1A1A1A", nil, nil, { "lowrider" }, T)
-I("ink_script_blessed", "Tattoo", "Forearm Script: BLESSED", 150, "tattoo", { kind = "forearm", text = "BLESSED" }, K, "#1A1A1A", nil, nil, { "street", "rap" })
-I("ink_script_mama", "Tattoo", "Forearm Script: MAMA / PAPA", 200, "tattoo", { kind = "forearm", both = true, text = "MAMA", text2 = "PAPA" }, K, "#26303C", nil, nil, { "lowrider" })
-I("ink_rose", "Tattoo", "Rose Forearms", 220, "tattoo", { kind = "rose", both = true }, K, "#7A1022", nil, nil, { "lowrider", "retro" })
-I("ink_calves", "Tattoo", "Calf Ink", 250, "tattoo", { kind = "calf", both = true }, K, "#26303C", nil, nil, { "lowrider", "coast" })
-I("ink_neck_familia", "Tattoo2", "Neck Script: FAMILIA", 200, "tattoo", { kind = "neck", text = "FAMILIA" }, K, "#1A1A1A", nil, nil, { "lowrider", "hood" }, T)
-I("ink_neck_blessed", "Tattoo2", "Neck Script: BLESSED", 200, "tattoo", { kind = "neck", text = "BLESSED" }, K, "#1A1A1A", nil, nil, { "rap", "hood" })
-I("ink_face_star", "Tattoo2", "Small Star Under Eye", 150, "tattoo", { kind = "face", mark = "star" }, K, "#1A1A1A", nil, nil, { "hood", "rap" }, T)
-I("ink_face_cross", "Tattoo2", "Small Cross Under Eye", 150, "tattoo", { kind = "face", mark = "cross" }, K, "#1A1A1A", nil, nil, { "lowrider", "hood" })
-I("ink_face_script", "Tattoo2", "Eyebrow Script: BLESSED", 180, "tattoo", { kind = "face", mark = "script", text = "BLESSED" }, K, "#1A1A1A", nil, nil, { "rap", "hood" })
-I("ink_hands", "Tattoo2", "Hand Script: LOVE / LIFE", 180, "tattoo", { kind = "hands", both = true, text = "LOVE", text2 = "LIFE" }, K, "#1A1A1A", nil, nil, { "lowrider", "street" })
 
 ------------------------------------------------------------------ tops
 local F = "fabric"
@@ -609,19 +593,19 @@ C.LOOKS = {
 
 	-- Lowrider (Chicano lowrider culture: fashion only, no gang names, colours or numbers)
 	look("low_classic", "Lowrider Classic", "lowrider", { Hair = e("hair_bald"), Top = e("top_long_white"), Bottom = e("bot_khakis"), Shoes = e("shoe_classic"),
-		Face = e("eye_shades_black"), FacialHair = e("beard_goatee"), Neck = e("chain_rosary"), Tattoo = e("ink_script_familia"),
-		Tattoo2 = e("ink_neck_familia"), Waist = e("belt_leather") }, TN),
+		Face = e("eye_shades_black"), FacialHair = e("beard_goatee"), Neck = e("chain_rosary"), Waist = e("belt_leather"),
+		Ink = { L = { lower = "fa_script_familia" }, R = { lower = "fa_rosa" }, neck = "nk_rosa_lado" } }, TN),
 	look("low_flannel", "Top-Button Flannel", "lowrider", { Hair = e("hair_slick_back"), Head = e("hat_hairnet"), Top = e("top_button_flannel"),
 		Bottom = e("bot_work_creased"), Shoes = e("shoe_classic"), Face = e("eye_shades_black"), FacialHair = e("beard_pencil"),
-		Tattoo2 = e("ink_face_cross") }, TN),
+		Ink = { face = "fc_cruz" } }, TN),
 	look("low_zoot", "Zoot Suit Sharp", "lowrider", { Hair = e("hair_pomp"), Head = e("hat_fedora", "#111111"), Top = e("top_dress_shirt"), Neck = e("neck_tie_black"),
 		Outer = e("out_zoot"), Bottom = e("bot_zoot"), Shoes = e("shoe_two_tone"), Waist = e("belt_wallet_chain"), FacialHair = e("beard_pencil") }, TN),
 	look("low_cruiser", "Sunday Cruiser", "lowrider", { Hair = e("hair_buzz_fade"), Head = e("hat_folded_bandana"), Top = e("top_tank"), Outer = e("out_suspenders"),
-		Bottom = e("bot_shorts_socks"), Shoes = e("shoe_classic"), Tattoo = e("ink_sleeves"), Neck = e("chain_rosary_gold"),
-		Face = e("eye_shades_black") }, TN),
+		Bottom = e("bot_shorts_socks"), Shoes = e("shoe_classic"), Neck = e("chain_rosary_gold"),
+		Face = e("eye_shades_black"), Ink = { L = { upper = "sl_rosas_nubes" }, R = { upper = "sl_reloj_rosa" } } }, TN),
 	look("low_barrio", "Barrio Sleeves", "lowrider", { Hair = e("hair_buzz"), Top = e("top_tank"), Bottom = e("bot_work_creased", "#111111"), Shoes = e("shoe_classic", "#111111"),
-		Tattoo = e("ink_sleeves"), Tattoo2 = e("ink_neck_blessed"), FacialHair = e("beard_goatee"), Neck = e("chain_cross_gold"),
-		Face = e("eye_shades_black"), Wrist = e("watch_gold") }, T),
+		FacialHair = e("beard_goatee"), Neck = e("chain_cross_gold"), Face = e("eye_shades_black"), Wrist = e("watch_gold"),
+		Ink = { L = { upper = "sl_smile_cry" }, R = { upper = "sl_corona" }, neck = "nk_cruz" } }, T),
 
 	-- Rap Royalty
 	look("rap_iced_out", "Iced Out Rapper", "rap", { Hair = e("hair_locs_gold"), Top = e("top_tee_black"), Outer = e("out_fur"), Bottom = e("bot_leather"),
@@ -820,6 +804,96 @@ C.FACE_SLIDER_BY_ID = {}
 for _, sl in ipairs(C.FACE_SLIDERS) do
 	C.FACE_SLIDER_BY_ID[sl.id] = sl
 end
+---------------------------------------------------------------------------------------------------- real ink
+-- A look's tattoos are its Ink table: { L = { upper, lower, hand, leg }, R = { ... }, neck, face } of NCInkCatalog
+-- ids, printed on the MakeHuman bodies' ink layers by NCInk (see CHARACTER_STUDIO.md "Real tattoos"). Each tattoo is
+-- bought once (owned as "ink:<id>") and can then go on any spot it fits.
+C.INK_SPOTS = {
+	{ key = "L.upper", side = "L", spot = "upper", area = "Arm", name = "Left upper arm" },
+	{ key = "L.lower", side = "L", spot = "lower", area = "Arm", name = "Left forearm" },
+	{ key = "L.hand", side = "L", spot = "hand", area = "Hand", name = "Left hand" },
+	{ key = "L.leg", side = "L", spot = "leg", area = "Leg", name = "Left leg" },
+	{ key = "R.upper", side = "R", spot = "upper", area = "Arm", name = "Right upper arm" },
+	{ key = "R.lower", side = "R", spot = "lower", area = "Arm", name = "Right forearm" },
+	{ key = "R.hand", side = "R", spot = "hand", area = "Hand", name = "Right hand" },
+	{ key = "R.leg", side = "R", spot = "leg", area = "Leg", name = "Right leg" },
+	{ key = "neck", spot = "neck", area = "Neck", name = "Neck" },
+	{ key = "face", spot = "face", area = "Face", name = "Face" },
+}
+local inkMod
+function C.InkModule()
+	if inkMod == nil then
+		inkMod = false
+		local RS = game:GetService("ReplicatedStorage")
+		local m = RS:FindFirstChild("NCInk")
+		if m and RS:FindFirstChild("NCInkCatalog") then
+			local ok, res = pcall(require, m)
+			inkMod = ok and res or false
+		end
+	end
+	return inkMod or nil
+end
+function C.InkCatalog()
+	local RS = game:GetService("ReplicatedStorage")
+	local m = RS:FindFirstChild("NCInkCatalog")
+	local ok, res = pcall(function()
+		return m and require(m)
+	end)
+	return ok and res or nil
+end
+-- does this tattoo fit that spot? (a full arm sleeve goes in upper or lower; upper-only / lower-only pieces only there)
+function C.InkFits(item, spot)
+	if not item then
+		return false
+	end
+	if spot.area ~= item.area then
+		return false
+	end
+	if spot.spot == "upper" then
+		return item.zone == "upper" or item.zone == "full"
+	elseif spot.spot == "lower" then
+		return item.zone == "lower" or item.zone == "full"
+	end
+	return true
+end
+-- a clean Ink table from anything a client sent (known ids on spots they fit), or nil when there's no ink
+function C.CleanInk(raw)
+	local IC = C.InkCatalog()
+	if type(raw) ~= "table" or not IC then
+		return nil
+	end
+	local out, any = {}, false
+	for _, sp in ipairs(C.INK_SPOTS) do
+		local id
+		if sp.side then
+			id = type(raw[sp.side]) == "table" and raw[sp.side][sp.spot]
+		else
+			id = raw[sp.spot]
+		end
+		local it = type(id) == "string" and IC.BY_ID[id]
+		if it and C.InkFits(it, sp) then
+			if sp.side then
+				out[sp.side] = out[sp.side] or {}
+				out[sp.side][sp.spot] = id
+			else
+				out[sp.spot] = id
+			end
+			any = true
+		end
+	end
+	return any and out or nil
+end
+function C.InkIds(ink)
+	local ids = {}
+	for _, sp in ipairs(C.INK_SPOTS) do
+		local id = ink and (sp.side and (ink[sp.side] or {})[sp.spot] or (not sp.side and ink[sp.spot]))
+		if type(id) == "string" and not table.find(ids, id) then
+			table.insert(ids, id)
+		end
+	end
+	return ids
+end
+
 -- a clean FaceShape entry from anything a client sent (known sliders only, -1 .. 1, two decimals), or nil
 function C.CleanFaceShape(raw)
 	if type(raw) ~= "table" or type(raw.v) ~= "table" then
@@ -898,7 +972,9 @@ end
 for _, lk in ipairs(C.LOOKS) do
 	for slot, en in pairs(lk.look) do
 		local it = C.ITEMS_BY_ID[en.id]
-		if not it or it.slot ~= slot then
+		if slot == "Ink" or slot == "FaceShape" then
+			continue -- (not a slot item: real ink is checked by C.CleanInk when it's worn)
+		elseif not it or it.slot ~= slot then
 			warn("NCLookCatalog: look " .. lk.id .. " has a bad " .. slot .. " item " .. tostring(en.id))
 			lk.look[slot] = nil
 		end
@@ -936,11 +1012,23 @@ end
 -- what a look costs a player who owns `owned` ({ [itemId] = true })
 function C.Cost(lookTable, owned)
 	local total, missing = 0, {}
-	for _, en in pairs(lookTable) do
-		local it = C.ITEMS_BY_ID[en.id]
+	for slot, en in pairs(lookTable) do
+		local it = slot ~= "Ink" and slot ~= "FaceShape" and C.ITEMS_BY_ID[en.id]
 		if it and it.price > 0 and not (owned and owned[it.id]) and not table.find(missing, it.id) then
 			total += it.price
 			table.insert(missing, it.id)
+		end
+	end
+	-- real ink: each tattoo is bought once (owned as "ink:<id>")
+	local IC = lookTable.Ink and C.InkCatalog()
+	if IC then
+		for _, id in ipairs(C.InkIds(lookTable.Ink)) do
+			local it = IC.BY_ID[id]
+			local key = "ink:" .. id
+			if it and (it.price or 0) > 0 and not (owned and owned[key]) then
+				total += it.price
+				table.insert(missing, key)
+			end
 		end
 	end
 	return total, missing
@@ -3141,6 +3229,30 @@ function B.ApplyBaseLayer(char)
 	B.ApplyEyes(char)
 end
 
+-- real tattoos on the MakeHuman bodies (NCInk, see CHARACTER_STUDIO.md "Real tattoos"): the body's 13 skin-hugging
+-- ink layers are attached once per body (NCBodyService tags each body with NC_BodyId, e.g. "Male_Average"), then the
+-- look's Ink table picks each layer's texture. Clothes sit above the layers, so covered ink hides by itself. Stock
+-- avatars (no NC_BodyId) get no ink. Safe to call any time; Apply calls it.
+function B.ApplyInk(char, ink, Catalog)
+	local Ink = Catalog and Catalog.InkModule and Catalog.InkModule()
+	local bodyId = char:GetAttribute("NC_BodyId")
+	if not (Ink and bodyId) then
+		return false
+	end
+	local folder = char:FindFirstChild("NCInk")
+	if not folder or folder:GetAttribute("NC_InkBody") ~= bodyId then
+		if not Ink.Attach(char, bodyId) then
+			return false
+		end
+		folder = char:FindFirstChild("NCInk")
+		if folder then
+			folder:SetAttribute("NC_InkBody", bodyId)
+		end
+	end
+	Ink.Apply(char, ink or {})
+	return true
+end
+
 -- eyes for the MakeHuman bodies: their heads have real eye openings and an NC_<Side>EyeAttachment at the centre of
 -- each eyeball (put there by AssembleMakeHumanBodies, radius in the Head's NC_EyeRadius attribute). A white
 -- eyeball, an iris and a pupil, welded to the head, looking straight ahead. Bodies without the attachments (stock
@@ -3423,6 +3535,7 @@ function B.Apply(char, look, Catalog, opts)
 	if Head and regions.Head then
 		Head.ApplyFace(char, regions.Head.colour) -- lips (tinted from the skin) and the lash line
 	end
+	pcall(B.ApplyInk, char, look.Ink, Catalog)
 	folder.Parent = char
 	char:SetAttribute("NC_LookApplied", os.clock())
 	return folder
@@ -3455,7 +3568,7 @@ local InsertService = game:GetService("InsertService")
 -- ServerScriptService), move the shared modules to ReplicatedStorage and the client to StarterPlayerScripts
 do
 	local here = script.Parent
-	for _, n in ipairs({ "NCLookCatalog", "NCLookBuilder", "NCBodyData", "NCHead", "NCHeadData" }) do
+	for _, n in ipairs({ "NCLookCatalog", "NCLookBuilder", "NCBodyData", "NCHead", "NCHeadData", "NCInk", "NCInkCatalog" }) do
 		local m = here:FindFirstChild(n)
 		if m and m:IsA("ModuleScript") then
 			local old = RS:FindFirstChild(n)
@@ -3464,6 +3577,15 @@ do
 			end
 			m.Parent = RS
 		end
+	end
+	local setup = here:FindFirstChild("NCInkSetup") -- the one-time tattoo texture setup (run from the command bar)
+	if setup and setup:IsA("ModuleScript") then
+		local SS = game:GetService("ServerStorage")
+		local old = SS:FindFirstChild("NCInkSetup")
+		if old then
+			old:Destroy()
+		end
+		setup.Parent = SS
 	end
 	local cl = here:FindFirstChild("LookStudioClient")
 	if cl then
@@ -3535,6 +3657,8 @@ local function copyLook(look)
 	for slot, e in pairs(look) do
 		if slot == "FaceShape" then
 			out.FaceShape = Catalog.CleanFaceShape(e)
+		elseif slot == "Ink" then
+			out.Ink = Catalog.CleanInk(e)
 		else
 			out[slot] = { id = e.id, c1 = e.c1, c2 = e.c2 }
 		end
@@ -3564,6 +3688,7 @@ local function sanitize(raw)
 		end
 	end
 	look.FaceShape = Catalog.CleanFaceShape(raw.FaceShape)
+	look.Ink = Catalog.CleanInk(raw.Ink) -- real tattoos (NCInk): known ids on spots they fit
 	return look
 end
 
@@ -3646,8 +3771,10 @@ local function load(player)
 			d.look = sanitize(data.look) or d.look
 			d.made = data.made == true or data.look ~= nil
 			if type(data.owned) == "table" then
+				local IC = Catalog.InkCatalog()
 				for _, id in ipairs(data.owned) do
-					if Catalog.ITEMS_BY_ID[id] then
+					local inkId = type(id) == "string" and id:match("^ink:(.+)$")
+					if Catalog.ITEMS_BY_ID[id] or (inkId and IC and IC.BY_ID[inkId]) then
 						d.owned[id] = true
 					end
 				end
@@ -3905,6 +4032,8 @@ local function copyLook(look)
 	for k, e in pairs(look or {}) do
 		if k == "FaceShape" then
 			out.FaceShape = Catalog.CleanFaceShape(e)
+		elseif k == "Ink" then
+			out.Ink = Catalog.CleanInk(e)
 		else
 			out[k] = { id = e.id, c1 = e.c1, c2 = e.c2 }
 		end
@@ -4334,6 +4463,9 @@ local function lookCard(lk, order)
 	label((coll and coll.name or "") .. "  ·  " .. (cost > 0 and ("$" .. cost) or "Owned"), 11, COL.dim, FONT, { Position = UDim2.new(0, 8, 1, -20), Size = UDim2.new(1, -16, 0, 16), Parent = card })
 	card.MouseButton1Click:Connect(function()
 		local keep = { Skin = S.draft.Skin, Eyes = S.draft.Eyes, Brows = S.draft.Brows, FaceShape = S.draft.FaceShape }
+		if not lk.look.Ink then
+			keep.Ink = S.draft.Ink -- your tattoos stay unless the look comes with its own
+		end
 		S.draft = copyLook(lk.look)
 		for k, v in pairs(keep) do
 			S.draft[k] = v -- presets never change who you are (skin, eyes, brows, face shape)
@@ -4430,6 +4562,100 @@ local function faceShapeCards()
 	colourPanelFor(nil)
 	selLabel.Text = "Face shape: drag a bar. Free, and saved with your look when you press Wear."
 end
+-- real tattoos (NCInk): pick a spot, then a tattoo that fits it. Each tattoo is bought once, then free on any spot.
+S.inkSpot = "L.upper"
+local function inkGet(sp)
+	local ink = S.draft.Ink
+	if not ink then
+		return nil
+	end
+	if sp.side then
+		return ink[sp.side] and ink[sp.side][sp.spot]
+	end
+	return ink[sp.spot]
+end
+local function inkSet(sp, id)
+	local ink = S.draft.Ink or {}
+	if sp.side then
+		ink[sp.side] = ink[sp.side] or {}
+		ink[sp.side][sp.spot] = id
+		if next(ink[sp.side]) == nil then
+			ink[sp.side] = nil
+		end
+	else
+		ink[sp.spot] = id
+	end
+	S.draft.Ink = next(ink) and ink or nil
+end
+local function inkCards()
+	local IC = Catalog.InkCatalog()
+	if not IC then
+		label("Tattoos aren't installed in this place yet.", 14, COL.dim, FONT, { Size = UDim2.fromOffset(320, 40), Parent = grid })
+		colourPanelFor(nil)
+		return
+	end
+	local ids = game:GetService("ReplicatedStorage"):FindFirstChild("NCInkIds")
+	local cur
+	local order = 0
+	for _, sp in ipairs(Catalog.INK_SPOTS) do
+		order += 1
+		local on = sp.key == S.inkSpot
+		if on then
+			cur = sp
+		end
+		local id = inkGet(sp)
+		local it = id and IC.BY_ID[id]
+		local b = new("TextButton", { Text = "", AutoButtonColor = true, BackgroundColor3 = on and COL.accent or COL.card, LayoutOrder = order, Parent = grid },
+			{ corner(10), stroke(on and COL.accent or COL.cardHi) })
+		label(sp.name, 13, on and COL.bg or COL.text, FONT_B, { Position = UDim2.fromOffset(8, 8), Size = UDim2.new(1, -16, 0, 18), Parent = b })
+		label(it and it.name or "Bare", 12, on and COL.bg or COL.dim, FONT, { Position = UDim2.fromOffset(8, 30), Size = UDim2.new(1, -16, 0, 34),
+			TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top, Parent = b })
+		b.MouseButton1Click:Connect(function()
+			S.inkSpot = sp.key
+			refreshGrid()
+		end)
+	end
+	cur = cur or Catalog.INK_SPOTS[1]
+	order += 1
+	local none = button("✕ Bare " .. cur.name:lower(), COL.cardHi, { LayoutOrder = order, TextSize = 13, Parent = grid })
+	none.MouseButton1Click:Connect(function()
+		inkSet(cur, nil)
+		renderDraft()
+		updateFooter()
+		refreshGrid()
+	end)
+	local list = {}
+	for _, it in ipairs(IC.ITEMS) do
+		if Catalog.InkFits(it, cur) and (S.search == "" or it.name:lower():find(S.search:lower(), 1, true)) then
+			table.insert(list, it)
+		end
+	end
+	for _, it in ipairs(list) do
+		order += 1
+		local worn = inkGet(cur) == it.id
+		local card = new("TextButton", { Text = "", AutoButtonColor = true, BackgroundColor3 = worn and COL.cardHi or COL.card, LayoutOrder = order, Parent = grid },
+			{ corner(10), stroke(worn and COL.accent or COL.cardHi, worn and 2 or 1) })
+		local file = it.files[cur.side or "C"] or it.files.C or it.files.L
+		local tex = ids and file and ids:FindFirstChild(file)
+		if tex and tex.Value ~= "" then
+			new("ImageLabel", { BackgroundTransparency = 1, Image = tex.Value, ScaleType = Enum.ScaleType.Fit, Position = UDim2.fromOffset(6, 6),
+				Size = UDim2.new(1, -12, 1, -46), Parent = card })
+		end
+		label((it.colour and "🎨 " or "") .. it.name, 12, COL.text, FONT_B, { Position = UDim2.new(0, 8, 1, -38), Size = UDim2.new(1, -16, 0, 18), Parent = card })
+		local owned = S.owned["ink:" .. it.id]
+		label(owned and "Owned" or ("$" .. (it.price or 0)), 12, owned and COL.good or COL.gold, FONT_B,
+			{ Position = UDim2.new(0, 8, 1, -20), Size = UDim2.new(1, -16, 0, 16), Parent = card })
+		card.MouseButton1Click:Connect(function()
+			inkSet(cur, worn and nil or it.id) -- tap again to take it off
+			renderDraft()
+			updateFooter()
+			refreshGrid()
+		end)
+	end
+	colourPanelFor(nil)
+	selLabel.Text = "Tattoos: pick a spot, then a tattoo. Full sleeves cover the whole arm. Clothes cover what's under them."
+end
+
 UIS.InputChanged:Connect(function(input)
 	if slideDrag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 		slideDrag.set(input.Position.X)
@@ -4458,7 +4684,7 @@ local function buildSlotBar()
 	if not tabDef then
 		return
 	end
-	if not S.slot or (not table.find(tabDef.slots, S.slot) and not (S.slot == "_FaceShape" and tabDef.name == "Body")) then
+	if not S.slot or (not table.find(tabDef.slots, S.slot) and not ((S.slot == "_FaceShape" or S.slot == "_Ink") and tabDef.name == "Body")) then
 		S.slot = tabDef.slots[1]
 	end
 	for i, slotId in ipairs(tabDef.slots) do
@@ -4482,6 +4708,20 @@ local function buildSlotBar()
 			S.slot = "_FaceShape"
 			zoom = "face"
 			yaw = math.rad(180)
+			placeCamera()
+			buildSlotBar()
+			refreshGrid()
+		end)
+		table.insert(slotButtons, b)
+	end
+	-- real tattoos (MakeHuman bodies)
+	if tabDef.name == "Body" and Catalog.INK_SPOTS then
+		local b = button("🖋️ Tattoos", COL.card, { Size = UDim2.fromOffset(0, 32), AutomaticSize = Enum.AutomaticSize.X, TextSize = 13, LayoutOrder = 51, Parent = slotBar })
+		pad(10).Parent = b
+		setChip(b, S.slot == "_Ink")
+		b.MouseButton1Click:Connect(function()
+			S.slot = "_Ink"
+			zoom = "body"
 			placeCamera()
 			buildSlotBar()
 			refreshGrid()
@@ -4554,6 +4794,8 @@ function refreshGrid()
 		selLabel.Text = "Saved outfits store what you're wearing. Wear a look first, then save it here."
 	elseif S.slot == "_FaceShape" then
 		faceShapeCards()
+	elseif S.slot == "_Ink" then
+		inkCards()
 	else
 		local list = Catalog.ITEMS_BY_SLOT[S.slot] or {}
 		local n = 0
@@ -5616,4 +5858,393 @@ D.Female = {
 	eyeSpan = 0.2126,
 }
 return D
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX9"><Properties><string name="Name">NCInk</string><ProtectedString name="Source"><![CDATA[--!nonstrict
+-- NCInk (ModuleScript in ReplicatedStorage): real tattoo ink for the MakeHuman bodies.
+--
+-- How it works (same idea as the car vinyls): every body has 13 thin "ink layer" MeshParts that sit 1 mm above the
+-- skin with the exact same bone weights, so they bend with the body and look printed on. A tattoo is just a
+-- transparent PNG set as the layer's TextureID. Clothes sit above the layer, so anything covered by clothes hides
+-- the ink with no extra code. Nothing is ever printed on the torso.
+--
+-- Pieces:
+--   NC_Ink_<Body>.fbx      the 13 layers (Ink_LeftUpperArm ... Ink_Face) skinned to that body's rig. Import each
+--                          into ReplicatedStorage.NCInkRigs as a Model named <Body> (e.g. "Male_Average").
+--   NCInkSwatches.glb      every tattoo PNG on its own plane. Import it once into Workspace, run
+--                          NCInkSetup.Prepare(model) from the command bar: it saves each texture's asset id into
+--                          ReplicatedStorage.NCInkIds (StringValues named after the file) and you can delete the model.
+--   NCInkCatalog           the tattoo list (generated from ink_catalog.json).
+--
+-- A look's ink is a table:
+--   { L = { upper = id, lower = id, hand = id, leg = id }, R = { ... }, neck = id, face = id }
+-- A full sleeve (zone "full") fills both upper and lower on that arm; a leg sleeve fills the thigh and calf.
+local RS = game:GetService("ReplicatedStorage")
+local Catalog = require(RS:WaitForChild("NCInkCatalog"))
+
+local Ink = {}
+
+-- which layers each area/zone prints on (layer names without the side)
+Ink.ZONES = {
+	Arm = { upper = { "UpperArm" }, lower = { "LowerArm" }, full = { "UpperArm", "LowerArm" } },
+	Leg = { lower = { "LowerLeg" }, full = { "UpperLeg", "LowerLeg" } },
+	Hand = { hand = { "Hand" } },
+	Neck = { neck = { "NeckHead", "NeckUpperTorso" } },
+	Face = { face = { "Face" } },
+}
+Ink.LAYERS = {
+	"Ink_LeftUpperArm", "Ink_LeftLowerArm", "Ink_LeftHand", "Ink_LeftUpperLeg", "Ink_LeftLowerLeg",
+	"Ink_RightUpperArm", "Ink_RightLowerArm", "Ink_RightHand", "Ink_RightUpperLeg", "Ink_RightLowerLeg",
+	"Ink_NeckHead", "Ink_NeckUpperTorso", "Ink_Face",
+}
+
+local function textureId(file)
+	local ids = RS:FindFirstChild("NCInkIds")
+	local v = ids and ids:FindFirstChild(file)
+	return v and v.Value or ""
+end
+
+-- clone the body's ink layers into a character (call once after the body is built or swapped).
+-- Skinned MeshParts bind to Bones by name inside the same Model, so the layers follow the character's rig.
+function Ink.Attach(character, bodyName)
+	local rigs = RS:FindFirstChild("NCInkRigs")
+	local src = rigs and rigs:FindFirstChild(bodyName)
+	if not src then
+		warn("[NCInk] no ink layers for body", bodyName)
+		return false
+	end
+	local folder = character:FindFirstChild("NCInk")
+	if folder then
+		folder:Destroy()
+	end
+	folder = Instance.new("Model")
+	folder.Name = "NCInk"
+	for _, name in ipairs(Ink.LAYERS) do
+		local mp = src:FindFirstChild(name, true)
+		if mp and mp:IsA("MeshPart") then
+			local c = mp:Clone()
+			c.Anchored = false
+			c.CanCollide = false
+			c.CanQuery = false
+			c.CanTouch = false
+			c.Massless = true
+			c.CastShadow = false
+			c.TextureID = ""
+			c.Transparency = 1
+			c.Parent = folder
+			-- keep the layer welded to its body part too, so it never drifts if skinning is off
+			local partName = name:gsub("^Ink_", ""):gsub("^Neck", "")
+			local part = character:FindFirstChild(partName == "Face" and "Head" or partName)
+			if part and part:IsA("BasePart") then
+				local w = Instance.new("WeldConstraint")
+				w.Part0, w.Part1 = part, c
+				w.Parent = c
+			end
+		end
+	end
+	folder.Parent = character
+	return true
+end
+
+-- the texture each layer gets for an ink table (layer name -> file name)
+function Ink.Resolve(ink)
+	local out = {}
+	local function put(item, side)
+		if not item then
+			return
+		end
+		local zones = Ink.ZONES[item.area] and Ink.ZONES[item.area][item.zone]
+		if not zones then
+			return
+		end
+		local file = item.files[side] or item.files.C
+		for _, z in ipairs(zones) do
+			local layer = (side == "L" and "Ink_Left" or side == "R" and "Ink_Right" or "Ink_") .. z
+			out[layer] = file
+		end
+	end
+	ink = ink or {}
+	for _, side in ipairs({ "L", "R" }) do
+		local s = ink[side] or {}
+		local up, lo = Catalog.BY_ID[s.upper or ""], Catalog.BY_ID[s.lower or ""]
+		-- a full sleeve wins both halves of the arm
+		if up and up.zone == "full" then
+			put(up, side)
+		elseif lo and lo.zone == "full" then
+			put(lo, side)
+		else
+			put(up, side)
+			put(lo, side)
+		end
+		put(Catalog.BY_ID[s.hand or ""], side)
+		put(Catalog.BY_ID[s.leg or ""], side)
+	end
+	put(Catalog.BY_ID[ink.neck or ""], "C")
+	put(Catalog.BY_ID[ink.face or ""], "C")
+	return out
+end
+
+-- show the ink on a character that already has its layers attached
+function Ink.Apply(character, ink)
+	local folder = character:FindFirstChild("NCInk")
+	if not folder then
+		return
+	end
+	local want = Ink.Resolve(ink)
+	for _, name in ipairs(Ink.LAYERS) do
+		local mp = folder:FindFirstChild(name)
+		if mp then
+			local file = want[name]
+			local id = file and textureId(file) or ""
+			mp.TextureID = id
+			mp.Transparency = (id ~= "") and 0 or 1
+		end
+	end
+end
+
+-- server check: is this a valid ink table? (only catalog ids, right area for each spot)
+function Ink.Validate(ink)
+	if type(ink) ~= "table" then
+		return false
+	end
+	local ok = { upper = "Arm", lower = "Arm", hand = "Hand", leg = "Leg" }
+	for _, side in ipairs({ "L", "R" }) do
+		local s = ink[side]
+		if s ~= nil then
+			if type(s) ~= "table" then
+				return false
+			end
+			for k, id in pairs(s) do
+				local it = Catalog.BY_ID[id]
+				if not ok[k] or not it or it.area ~= ok[k] then
+					return false
+				end
+				if k == "upper" and it.zone == "lower" or k == "lower" and it.zone == "upper" then
+					return false
+				end
+			end
+		end
+	end
+	for k, area in pairs({ neck = "Neck", face = "Face" }) do
+		if ink[k] ~= nil then
+			local it = Catalog.BY_ID[ink[k]]
+			if not it or it.area ~= area then
+				return false
+			end
+		end
+	end
+	return true
+end
+
+-- total price of an ink table (each tattoo counted once, even if it covers two layers)
+function Ink.Price(ink)
+	local seen, total = {}, 0
+	local function add(id)
+		local it = id and Catalog.BY_ID[id]
+		if it and not seen[id] then
+			seen[id] = true
+			total += it.price
+		end
+	end
+	for _, side in ipairs({ "L", "R" }) do
+		for _, id in pairs((ink or {})[side] or {}) do
+			add(id)
+		end
+	end
+	add((ink or {}).neck)
+	add((ink or {}).face)
+	return total
+end
+
+return Ink
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX10"><Properties><string name="Name">NCInkCatalog</string><ProtectedString name="Source"><![CDATA[--!nonstrict
+-- NCInkCatalog (ModuleScript in ReplicatedStorage): GENERATED by tools/ink/make_lua_catalog.py from ink_catalog.json.
+-- Every tattoo is an original, PG design (no gang names, numbers, symbols, weapons or bad words; words come
+-- from the fixed safe list below). area/zone say which ink layers a tattoo prints on (see NCInk.ZONES);
+-- files are the texture names per side (L/R for limbs, C for neck and face) that NCInkSetup maps to asset ids.
+local C = {}
+
+C.WORDS = {"Familia", "Lealtad", "Respeto", "Bendecido", "Fe", "Amor", "Mama", "Papa", "Vida", "Loyalty", "Blessed", "Faith", "Respect", "Family", "Hope", "Love", "Sueños", "Costa", "Smile Now", "Cry Later", "Esperanza", "Corazón"}
+
+C.ITEMS = {
+	{ id = "sl_rosas_nubes", name = "Rosas y Nubes", area = "Arm", zone = "full", colour = false, price = 600, files = { L = "sl_rosas_nubes_L", R = "sl_rosas_nubes_R" }, tags = { "chicano", "sleeve" } },
+	{ id = "sl_reloj_rosa", name = "Reloj y Rosa", area = "Arm", zone = "full", colour = false, price = 600, files = { L = "sl_reloj_rosa_L", R = "sl_reloj_rosa_R" }, tags = { "chicano", "sleeve" } },
+	{ id = "sl_smile_cry", name = "Smile Now Cry Later", area = "Arm", zone = "full", colour = false, price = 600, files = { L = "sl_smile_cry_L", R = "sl_smile_cry_R" }, tags = { "chicano", "sleeve", "script" } },
+	{ id = "sl_suerte", name = "Suerte", area = "Arm", zone = "full", colour = false, price = 600, files = { L = "sl_suerte_L", R = "sl_suerte_R" }, tags = { "chicano", "sleeve" } },
+	{ id = "sl_costa", name = "Costa Sunset", area = "Arm", zone = "full", colour = true, price = 650, files = { L = "sl_costa_L", R = "sl_costa_R" }, tags = { "colour", "sleeve", "cali" } },
+	{ id = "sl_koi", name = "Koi y Olas", area = "Arm", zone = "full", colour = true, price = 650, files = { L = "sl_koi_L", R = "sl_koi_R" }, tags = { "colour", "sleeve", "japanese" } },
+	{ id = "sl_muertos", name = "Dia de Muertos", area = "Arm", zone = "full", colour = true, price = 650, files = { L = "sl_muertos_L", R = "sl_muertos_R" }, tags = { "colour", "sleeve", "chicano" } },
+	{ id = "sl_sol_luna", name = "Sol y Luna", area = "Arm", zone = "full", colour = false, price = 600, files = { L = "sl_sol_luna_L", R = "sl_sol_luna_R" }, tags = { "sleeve", "geometric" } },
+	{ id = "sl_lowrider", name = "Lowrider Life", area = "Arm", zone = "full", colour = false, price = 600, files = { L = "sl_lowrider_L", R = "sl_lowrider_R" }, tags = { "chicano", "sleeve", "cars" } },
+	{ id = "sl_corona", name = "Corona y Rosario", area = "Arm", zone = "full", colour = false, price = 600, files = { L = "sl_corona_L", R = "sl_corona_R" }, tags = { "chicano", "sleeve", "faith" } },
+	{ id = "sl_jardin", name = "Jardin de Mariposas", area = "Arm", zone = "full", colour = true, price = 650, files = { L = "sl_jardin_L", R = "sl_jardin_R" }, tags = { "colour", "sleeve", "flowers" } },
+	{ id = "sl_nautico", name = "Nautico", area = "Arm", zone = "full", colour = false, price = 600, files = { L = "sl_nautico_L", R = "sl_nautico_R" }, tags = { "sleeve", "traditional" } },
+	{ id = "hs_rosas", name = "Rosas Half Sleeve", area = "Arm", zone = "upper", colour = false, price = 350, files = { L = "hs_rosas_L", R = "hs_rosas_R" }, tags = { "chicano", "half" } },
+	{ id = "hs_reloj", name = "Reloj Half Sleeve", area = "Arm", zone = "upper", colour = false, price = 350, files = { L = "hs_reloj_L", R = "hs_reloj_R" }, tags = { "chicano", "half" } },
+	{ id = "hs_calavera", name = "Calavera Color", area = "Arm", zone = "upper", colour = true, price = 400, files = { L = "hs_calavera_L", R = "hs_calavera_R" }, tags = { "colour", "half", "chicano" } },
+	{ id = "hs_mandala", name = "Mandala Half Sleeve", area = "Arm", zone = "upper", colour = false, price = 350, files = { L = "hs_mandala_L", R = "hs_mandala_R" }, tags = { "geometric", "half" } },
+	{ id = "hs_koi", name = "Koi Half Sleeve", area = "Arm", zone = "upper", colour = true, price = 400, files = { L = "hs_koi_L", R = "hs_koi_R" }, tags = { "colour", "half", "japanese" } },
+	{ id = "hs_mascaras", name = "Mascaras Half Sleeve", area = "Arm", zone = "upper", colour = false, price = 350, files = { L = "hs_mascaras_L", R = "hs_mascaras_R" }, tags = { "chicano", "half" } },
+	{ id = "hs_palmas", name = "Palm Sunset Color", area = "Arm", zone = "upper", colour = true, price = 400, files = { L = "hs_palmas_L", R = "hs_palmas_R" }, tags = { "colour", "half", "cali" } },
+	{ id = "hs_mariposas", name = "Mariposas Color", area = "Arm", zone = "upper", colour = true, price = 400, files = { L = "hs_mariposas_L", R = "hs_mariposas_R" }, tags = { "colour", "half" } },
+	{ id = "hs_brujula", name = "Brujula y Rosa", area = "Arm", zone = "upper", colour = false, price = 350, files = { L = "hs_brujula_L", R = "hs_brujula_R" }, tags = { "traditional", "half" } },
+	{ id = "fs_rosario", name = "Rosas y Rosario", area = "Arm", zone = "lower", colour = false, price = 350, files = { L = "fs_rosario_L", R = "fs_rosario_R" }, tags = { "chicano", "forearm-sleeve", "faith" } },
+	{ id = "fs_reloj", name = "Reloj y Nubes", area = "Arm", zone = "lower", colour = false, price = 350, files = { L = "fs_reloj_L", R = "fs_reloj_R" }, tags = { "chicano", "forearm-sleeve" } },
+	{ id = "fs_carrucha", name = "Cruiser Forearm", area = "Arm", zone = "lower", colour = false, price = 350, files = { L = "fs_carrucha_L", R = "fs_carrucha_R" }, tags = { "chicano", "forearm-sleeve", "cars" } },
+	{ id = "fs_suerte", name = "Dados y Cartas", area = "Arm", zone = "lower", colour = false, price = 350, files = { L = "fs_suerte_L", R = "fs_suerte_R" }, tags = { "chicano", "forearm-sleeve" } },
+	{ id = "fs_koi", name = "Koi Forearm Color", area = "Arm", zone = "lower", colour = true, price = 400, files = { L = "fs_koi_L", R = "fs_koi_R" }, tags = { "colour", "forearm-sleeve", "japanese" } },
+	{ id = "fs_cerezo", name = "Cerezo Forearm Color", area = "Arm", zone = "lower", colour = true, price = 400, files = { L = "fs_cerezo_L", R = "fs_cerezo_R" }, tags = { "colour", "forearm-sleeve", "flowers" } },
+	{ id = "fs_ciudad", name = "Ciudad Forearm", area = "Arm", zone = "lower", colour = false, price = 350, files = { L = "fs_ciudad_L", R = "fs_ciudad_R" }, tags = { "forearm-sleeve", "cali" } },
+	{ id = "fs_familia", name = "Familia Forearm", area = "Arm", zone = "lower", colour = false, price = 350, files = { L = "fs_familia_L", R = "fs_familia_R" }, tags = { "chicano", "forearm-sleeve", "script" } },
+	{ id = "fa_script_familia", name = "\"Familia\" Script", area = "Arm", zone = "lower", colour = false, price = 200, files = { L = "fa_script_familia_L", R = "fa_script_familia_R" }, tags = { "script", "forearm" } },
+	{ id = "fa_script_lealtad", name = "\"Lealtad\" Script", area = "Arm", zone = "lower", colour = false, price = 200, files = { L = "fa_script_lealtad_L", R = "fa_script_lealtad_R" }, tags = { "script", "forearm" } },
+	{ id = "fa_script_respeto", name = "\"Respeto\" Script", area = "Arm", zone = "lower", colour = false, price = 200, files = { L = "fa_script_respeto_L", R = "fa_script_respeto_R" }, tags = { "script", "forearm" } },
+	{ id = "fa_script_bendecido", name = "\"Bendecido\" Script", area = "Arm", zone = "lower", colour = false, price = 200, files = { L = "fa_script_bendecido_L", R = "fa_script_bendecido_R" }, tags = { "script", "forearm" } },
+	{ id = "fa_script_loyalty", name = "\"Loyalty\" Script", area = "Arm", zone = "lower", colour = false, price = 200, files = { L = "fa_script_loyalty_L", R = "fa_script_loyalty_R" }, tags = { "script", "forearm" } },
+	{ id = "fa_script_blessed", name = "\"Blessed\" Script", area = "Arm", zone = "lower", colour = false, price = 200, files = { L = "fa_script_blessed_L", R = "fa_script_blessed_R" }, tags = { "script", "forearm" } },
+	{ id = "fa_script_faith", name = "\"Faith\" Script", area = "Arm", zone = "lower", colour = false, price = 200, files = { L = "fa_script_faith_L", R = "fa_script_faith_R" }, tags = { "script", "forearm" } },
+	{ id = "fa_script_mama", name = "\"Mama\" Script", area = "Arm", zone = "lower", colour = false, price = 200, files = { L = "fa_script_mama_L", R = "fa_script_mama_R" }, tags = { "script", "forearm" } },
+	{ id = "fa_script_esperanza", name = "\"Esperanza\" Script", area = "Arm", zone = "lower", colour = false, price = 200, files = { L = "fa_script_esperanza_L", R = "fa_script_esperanza_R" }, tags = { "script", "forearm" } },
+	{ id = "fa_rosa", name = "Rosa Forearm", area = "Arm", zone = "lower", colour = false, price = 200, files = { L = "fa_rosa_L", R = "fa_rosa_R" }, tags = { "forearm", "flowers" } },
+	{ id = "fa_rosa_roja", name = "Red Rose Forearm", area = "Arm", zone = "lower", colour = true, price = 250, files = { L = "fa_rosa_roja_L", R = "fa_rosa_roja_R" }, tags = { "colour", "forearm", "flowers" } },
+	{ id = "fa_golondrina", name = "Golondrina", area = "Arm", zone = "lower", colour = true, price = 250, files = { L = "fa_golondrina_L", R = "fa_golondrina_R" }, tags = { "colour", "forearm", "traditional" } },
+	{ id = "fa_cruz", name = "Cruz con Rayos", area = "Arm", zone = "lower", colour = false, price = 200, files = { L = "fa_cruz_L", R = "fa_cruz_R" }, tags = { "forearm", "faith" } },
+	{ id = "fa_mama", name = "Mama Heart", area = "Arm", zone = "lower", colour = true, price = 250, files = { L = "fa_mama_L", R = "fa_mama_R" }, tags = { "colour", "forearm", "script", "traditional" } },
+	{ id = "fa_microfono", name = "Microfono", area = "Arm", zone = "lower", colour = false, price = 200, files = { L = "fa_microfono_L", R = "fa_microfono_R" }, tags = { "forearm", "music" } },
+	{ id = "fa_reloj_arena", name = "Reloj de Arena", area = "Arm", zone = "lower", colour = false, price = 200, files = { L = "fa_reloj_arena_L", R = "fa_reloj_arena_R" }, tags = { "forearm" } },
+	{ id = "fa_pluma", name = "Pluma", area = "Arm", zone = "lower", colour = false, price = 200, files = { L = "fa_pluma_L", R = "fa_pluma_R" }, tags = { "forearm" } },
+	{ id = "fa_ancla", name = "Ancla", area = "Arm", zone = "lower", colour = false, price = 200, files = { L = "fa_ancla_L", R = "fa_ancla_R" }, tags = { "forearm", "traditional" } },
+	{ id = "ua_rosa", name = "Rosa Upper Arm", area = "Arm", zone = "upper", colour = false, price = 200, files = { L = "ua_rosa_L", R = "ua_rosa_R" }, tags = { "upper-arm", "flowers" } },
+	{ id = "ua_brujula", name = "Brujula", area = "Arm", zone = "upper", colour = false, price = 200, files = { L = "ua_brujula_L", R = "ua_brujula_R" }, tags = { "upper-arm", "traditional" } },
+	{ id = "ua_corona", name = "Corona", area = "Arm", zone = "upper", colour = true, price = 250, files = { L = "ua_corona_L", R = "ua_corona_R" }, tags = { "colour", "upper-arm" } },
+	{ id = "ua_golondrinas", name = "Golondrinas", area = "Arm", zone = "upper", colour = true, price = 250, files = { L = "ua_golondrinas_L", R = "ua_golondrinas_R" }, tags = { "colour", "upper-arm", "traditional" } },
+	{ id = "ua_estrella", name = "Estrella Nautica", area = "Arm", zone = "upper", colour = false, price = 200, files = { L = "ua_estrella_L", R = "ua_estrella_R" }, tags = { "upper-arm", "traditional" } },
+	{ id = "ua_amor", name = "Amor Heart", area = "Arm", zone = "upper", colour = true, price = 250, files = { L = "ua_amor_L", R = "ua_amor_R" }, tags = { "colour", "upper-arm", "script" } },
+	{ id = "ua_luna", name = "Luna y Estrellas", area = "Arm", zone = "upper", colour = false, price = 200, files = { L = "ua_luna_L", R = "ua_luna_R" }, tags = { "upper-arm" } },
+	{ id = "ua_mascaras", name = "Mascaras", area = "Arm", zone = "upper", colour = false, price = 200, files = { L = "ua_mascaras_L", R = "ua_mascaras_R" }, tags = { "upper-arm", "chicano" } },
+	{ id = "band_tribal_upper", name = "Tribal Band (Upper Arm)", area = "Arm", zone = "upper", colour = false, price = 120, files = { L = "band_tribal_upper_L", R = "band_tribal_upper_R" }, tags = { "band" } },
+	{ id = "band_tribal_lower", name = "Tribal Band (Wrist)", area = "Arm", zone = "lower", colour = false, price = 120, files = { L = "band_tribal_lower_L", R = "band_tribal_lower_R" }, tags = { "band" } },
+	{ id = "band_geo_upper", name = "Geometric Band (Upper Arm)", area = "Arm", zone = "upper", colour = false, price = 120, files = { L = "band_geo_upper_L", R = "band_geo_upper_R" }, tags = { "band" } },
+	{ id = "band_geo_lower", name = "Geometric Band (Wrist)", area = "Arm", zone = "lower", colour = false, price = 120, files = { L = "band_geo_lower_L", R = "band_geo_lower_R" }, tags = { "band" } },
+	{ id = "band_chain_upper", name = "Chain Band (Upper Arm)", area = "Arm", zone = "upper", colour = false, price = 120, files = { L = "band_chain_upper_L", R = "band_chain_upper_R" }, tags = { "band" } },
+	{ id = "band_chain_lower", name = "Chain Band (Wrist)", area = "Arm", zone = "lower", colour = false, price = 120, files = { L = "band_chain_lower_L", R = "band_chain_lower_R" }, tags = { "band" } },
+	{ id = "band_thorns_upper", name = "Thorns Band (Upper Arm)", area = "Arm", zone = "upper", colour = false, price = 120, files = { L = "band_thorns_upper_L", R = "band_thorns_upper_R" }, tags = { "band" } },
+	{ id = "band_thorns_lower", name = "Thorns Band (Wrist)", area = "Arm", zone = "lower", colour = false, price = 120, files = { L = "band_thorns_lower_L", R = "band_thorns_lower_R" }, tags = { "band" } },
+	{ id = "band_rope_upper", name = "Rope Band (Upper Arm)", area = "Arm", zone = "upper", colour = false, price = 120, files = { L = "band_rope_upper_L", R = "band_rope_upper_R" }, tags = { "band" } },
+	{ id = "band_rope_lower", name = "Rope Band (Wrist)", area = "Arm", zone = "lower", colour = false, price = 120, files = { L = "band_rope_lower_L", R = "band_rope_lower_R" }, tags = { "band" } },
+	{ id = "band_waves_upper", name = "Waves Band (Upper Arm)", area = "Arm", zone = "upper", colour = false, price = 120, files = { L = "band_waves_upper_L", R = "band_waves_upper_R" }, tags = { "band" } },
+	{ id = "band_waves_lower", name = "Waves Band (Wrist)", area = "Arm", zone = "lower", colour = false, price = 120, files = { L = "band_waves_lower_L", R = "band_waves_lower_R" }, tags = { "band" } },
+	{ id = "hd_rosa", name = "Rosa Hand", area = "Hand", zone = "hand", colour = false, price = 150, files = { L = "hd_rosa_L", R = "hd_rosa_R" }, tags = { "hand", "flowers" } },
+	{ id = "hd_rosa_roja", name = "Red Rose Hand", area = "Hand", zone = "hand", colour = true, price = 200, files = { L = "hd_rosa_roja_L", R = "hd_rosa_roja_R" }, tags = { "colour", "hand", "flowers" } },
+	{ id = "hd_estrella", name = "Estrella Hand", area = "Hand", zone = "hand", colour = false, price = 150, files = { L = "hd_estrella_L", R = "hd_estrella_R" }, tags = { "hand" } },
+	{ id = "hd_destello", name = "Destello Hand", area = "Hand", zone = "hand", colour = false, price = 150, files = { L = "hd_destello_L", R = "hd_destello_R" }, tags = { "hand" } },
+	{ id = "hd_corazon", name = "Corazon Hand", area = "Hand", zone = "hand", colour = true, price = 200, files = { L = "hd_corazon_L", R = "hd_corazon_R" }, tags = { "colour", "hand" } },
+	{ id = "hd_cruz", name = "Cruz Hand", area = "Hand", zone = "hand", colour = false, price = 150, files = { L = "hd_cruz_L", R = "hd_cruz_R" }, tags = { "hand", "faith" } },
+	{ id = "hd_corona", name = "Corona Hand", area = "Hand", zone = "hand", colour = true, price = 200, files = { L = "hd_corona_L", R = "hd_corona_R" }, tags = { "colour", "hand" } },
+	{ id = "hd_golondrina", name = "Golondrina Hand", area = "Hand", zone = "hand", colour = true, price = 200, files = { L = "hd_golondrina_L", R = "hd_golondrina_R" }, tags = { "colour", "hand", "traditional" } },
+	{ id = "hd_mandala", name = "Mandala Hand", area = "Hand", zone = "hand", colour = false, price = 150, files = { L = "hd_mandala_L", R = "hd_mandala_R" }, tags = { "hand", "geometric" } },
+	{ id = "hd_loto", name = "Loto Hand", area = "Hand", zone = "hand", colour = true, price = 200, files = { L = "hd_loto_L", R = "hd_loto_R" }, tags = { "colour", "hand", "flowers" } },
+	{ id = "hd_script_fe", name = "\"Fe\" Hand", area = "Hand", zone = "hand", colour = false, price = 150, files = { L = "hd_script_fe_L", R = "hd_script_fe_R" }, tags = { "hand", "script" } },
+	{ id = "hd_script_amor", name = "\"Amor\" Hand", area = "Hand", zone = "hand", colour = false, price = 150, files = { L = "hd_script_amor_L", R = "hd_script_amor_R" }, tags = { "hand", "script" } },
+	{ id = "hd_script_vida", name = "\"Vida\" Hand", area = "Hand", zone = "hand", colour = false, price = 150, files = { L = "hd_script_vida_L", R = "hd_script_vida_R" }, tags = { "hand", "script" } },
+	{ id = "nk_familia", name = "\"Familia\" Throat", area = "Neck", zone = "neck", colour = false, price = 200, files = { C = "nk_familia" }, tags = { "neck", "script", "chicano" } },
+	{ id = "nk_bendecido", name = "\"Bendecido\" Throat", area = "Neck", zone = "neck", colour = false, price = 200, files = { C = "nk_bendecido" }, tags = { "neck", "script" } },
+	{ id = "nk_rosa_lado", name = "Rosa Side Neck", area = "Neck", zone = "neck", colour = false, price = 200, files = { C = "nk_rosa_lado" }, tags = { "neck", "flowers" } },
+	{ id = "nk_rosa_roja", name = "Red Rose Side Neck", area = "Neck", zone = "neck", colour = true, price = 250, files = { C = "nk_rosa_roja" }, tags = { "colour", "neck", "flowers" } },
+	{ id = "nk_estrellas", name = "Estrellas Behind Ear", area = "Neck", zone = "neck", colour = false, price = 200, files = { C = "nk_estrellas" }, tags = { "neck" } },
+	{ id = "nk_corona", name = "Corona Throat", area = "Neck", zone = "neck", colour = true, price = 250, files = { C = "nk_corona" }, tags = { "colour", "neck" } },
+	{ id = "nk_mariposas", name = "Mariposas Side Neck", area = "Neck", zone = "neck", colour = true, price = 250, files = { C = "nk_mariposas" }, tags = { "colour", "neck" } },
+	{ id = "nk_respeto", name = "\"Respeto\" Banner Throat", area = "Neck", zone = "neck", colour = false, price = 200, files = { C = "nk_respeto" }, tags = { "neck", "script", "chicano" } },
+	{ id = "nk_cruz", name = "Cruz Side Neck", area = "Neck", zone = "neck", colour = false, price = 200, files = { C = "nk_cruz" }, tags = { "neck", "faith" } },
+	{ id = "fc_estrella", name = "Star Under Eye", area = "Face", zone = "face", colour = false, price = 150, files = { C = "fc_estrella" }, tags = { "face" } },
+	{ id = "fc_destello", name = "Sparkle Cheek", area = "Face", zone = "face", colour = false, price = 150, files = { C = "fc_destello" }, tags = { "face" } },
+	{ id = "fc_cruz", name = "Cross By Eye", area = "Face", zone = "face", colour = false, price = 150, files = { C = "fc_cruz" }, tags = { "face", "faith" } },
+	{ id = "fc_corazon", name = "Heart Cheek", area = "Face", zone = "face", colour = true, price = 200, files = { C = "fc_corazon" }, tags = { "colour", "face" } },
+	{ id = "fc_fe", name = "\"Fe\" Above Brow", area = "Face", zone = "face", colour = false, price = 150, files = { C = "fc_fe" }, tags = { "face", "script" } },
+	{ id = "fc_rosa", name = "Rose Cheek", area = "Face", zone = "face", colour = true, price = 200, files = { C = "fc_rosa" }, tags = { "colour", "face", "flowers" } },
+	{ id = "fc_estrellas", name = "Stars By Eye", area = "Face", zone = "face", colour = false, price = 150, files = { C = "fc_estrellas" }, tags = { "face" } },
+	{ id = "lg_rosas_nubes", name = "Rosas y Nubes Leg Sleeve", area = "Leg", zone = "full", colour = false, price = 450, files = { L = "lg_rosas_nubes_L", R = "lg_rosas_nubes_R" }, tags = { "chicano", "sleeve", "leg" } },
+	{ id = "lg_koi", name = "Koi Leg Sleeve", area = "Leg", zone = "full", colour = true, price = 500, files = { L = "lg_koi_L", R = "lg_koi_R" }, tags = { "colour", "sleeve", "leg", "japanese" } },
+	{ id = "lg_rosa", name = "Rosa Calf", area = "Leg", zone = "lower", colour = false, price = 200, files = { L = "lg_rosa_L", R = "lg_rosa_R" }, tags = { "leg", "flowers" } },
+	{ id = "lg_reloj", name = "Reloj Calf", area = "Leg", zone = "lower", colour = false, price = 200, files = { L = "lg_reloj_L", R = "lg_reloj_R" }, tags = { "leg", "chicano" } },
+	{ id = "lg_calavera", name = "Calavera Calf Color", area = "Leg", zone = "lower", colour = true, price = 250, files = { L = "lg_calavera_L", R = "lg_calavera_R" }, tags = { "colour", "leg", "chicano" } },
+	{ id = "lg_brujula", name = "Brujula Calf", area = "Leg", zone = "lower", colour = false, price = 200, files = { L = "lg_brujula_L", R = "lg_brujula_R" }, tags = { "leg", "traditional" } },
+	{ id = "lg_palmas", name = "Palm Sunset Calf", area = "Leg", zone = "lower", colour = true, price = 250, files = { L = "lg_palmas_L", R = "lg_palmas_R" }, tags = { "colour", "leg", "cali" } },
+	{ id = "lg_carro", name = "Cruiser Calf", area = "Leg", zone = "lower", colour = false, price = 200, files = { L = "lg_carro_L", R = "lg_carro_R" }, tags = { "leg", "cars" } },
+	{ id = "lg_dados", name = "Dados Calf", area = "Leg", zone = "lower", colour = false, price = 200, files = { L = "lg_dados_L", R = "lg_dados_R" }, tags = { "leg" } },
+	{ id = "lg_mandala", name = "Mandala Calf", area = "Leg", zone = "lower", colour = false, price = 200, files = { L = "lg_mandala_L", R = "lg_mandala_R" }, tags = { "leg", "geometric" } },
+	{ id = "lg_familia", name = "\"Familia\" Calf", area = "Leg", zone = "lower", colour = false, price = 200, files = { L = "lg_familia_L", R = "lg_familia_R" }, tags = { "leg", "script" } },
+	{ id = "lg_band_chain", name = "Chain Ankle Band", area = "Leg", zone = "lower", colour = false, price = 120, files = { L = "lg_band_chain_L", R = "lg_band_chain_R" }, tags = { "band", "leg" } },
+	{ id = "lg_band_thorns", name = "Thorns Ankle Band", area = "Leg", zone = "lower", colour = false, price = 120, files = { L = "lg_band_thorns_L", R = "lg_band_thorns_R" }, tags = { "band", "leg" } },
+	{ id = "lg_band_tribal", name = "Tribal Ankle Band", area = "Leg", zone = "lower", colour = false, price = 120, files = { L = "lg_band_tribal_L", R = "lg_band_tribal_R" }, tags = { "band", "leg" } },
+}
+
+C.BY_ID = {}
+for _, it in ipairs(C.ITEMS) do
+	C.BY_ID[it.id] = it
+end
+
+return C
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX11"><Properties><string name="Name">NCInkSetup</string><ProtectedString name="Source"><![CDATA[--!nonstrict
+-- NCInkSetup (ModuleScript, Studio only): one-time setup for the tattoo textures.
+--
+-- 1. File > Import 3D: NCInkSwatches.glb (every tattoo PNG on a plane named after the file). Studio uploads the
+--    images as it imports.
+-- 2. Command bar:
+--      require(game.ServerStorage.NCInkSetup).Prepare(workspace.NCInkSwatches)
+--    Each plane's texture asset id is saved to ReplicatedStorage.NCInkIds as a StringValue named after the file
+--    (e.g. "sl_rosas_nubes_L"). The report lists anything missing. Delete the swatch model afterwards.
+-- 3. Import NC_Ink_<Body>.fbx for each of the 10 bodies into ReplicatedStorage.NCInkRigs as Models named <Body>.
+local RS = game:GetService("ReplicatedStorage")
+
+local S = {}
+
+local function texOf(mp)
+	if mp.TextureID ~= "" then
+		return mp.TextureID
+	end
+	local sa = mp:FindFirstChildOfClass("SurfaceAppearance")
+	if sa and sa.ColorMap ~= "" then
+		return sa.ColorMap
+	end
+	return ""
+end
+
+function S.Prepare(model)
+	local ids = RS:FindFirstChild("NCInkIds") or Instance.new("Folder")
+	ids.Name = "NCInkIds"
+	ids.Parent = RS
+	local n, missing = 0, {}
+	for _, mp in ipairs(model:GetDescendants()) do
+		if mp:IsA("MeshPart") then
+			local name = mp.Name:gsub("^Swatch_", "")
+			local id = texOf(mp)
+			if id ~= "" then
+				local v = ids:FindFirstChild(name) or Instance.new("StringValue")
+				v.Name = name
+				v.Value = id
+				v.Parent = ids
+				n += 1
+			else
+				table.insert(missing, name)
+			end
+		end
+	end
+	-- check against the catalog
+	local ok, Catalog = pcall(require, RS:FindFirstChild("NCInkCatalog"))
+	if ok then
+		for _, it in ipairs(Catalog.ITEMS) do
+			for _, file in pairs(it.files) do
+				if not ids:FindFirstChild(file) then
+					table.insert(missing, file)
+				end
+			end
+		end
+	end
+	print(("[NCInkSetup] saved %d tattoo textures, %d missing"):format(n, #missing))
+	for _, m in ipairs(missing) do
+		print("   missing:", m)
+	end
+	return n, missing
+end
+
+return S
 ]]></ProtectedString></Properties></Item></Item></roblox>

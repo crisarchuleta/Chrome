@@ -24,7 +24,7 @@ local InsertService = game:GetService("InsertService")
 -- ServerScriptService), move the shared modules to ReplicatedStorage and the client to StarterPlayerScripts
 do
 	local here = script.Parent
-	for _, n in ipairs({ "NCLookCatalog", "NCLookBuilder", "NCBodyData", "NCHead", "NCHeadData" }) do
+	for _, n in ipairs({ "NCLookCatalog", "NCLookBuilder", "NCBodyData", "NCHead", "NCHeadData", "NCInk", "NCInkCatalog" }) do
 		local m = here:FindFirstChild(n)
 		if m and m:IsA("ModuleScript") then
 			local old = RS:FindFirstChild(n)
@@ -33,6 +33,15 @@ do
 			end
 			m.Parent = RS
 		end
+	end
+	local setup = here:FindFirstChild("NCInkSetup") -- the one-time tattoo texture setup (run from the command bar)
+	if setup and setup:IsA("ModuleScript") then
+		local SS = game:GetService("ServerStorage")
+		local old = SS:FindFirstChild("NCInkSetup")
+		if old then
+			old:Destroy()
+		end
+		setup.Parent = SS
 	end
 	local cl = here:FindFirstChild("LookStudioClient")
 	if cl then
@@ -104,6 +113,8 @@ local function copyLook(look)
 	for slot, e in pairs(look) do
 		if slot == "FaceShape" then
 			out.FaceShape = Catalog.CleanFaceShape(e)
+		elseif slot == "Ink" then
+			out.Ink = Catalog.CleanInk(e)
 		else
 			out[slot] = { id = e.id, c1 = e.c1, c2 = e.c2 }
 		end
@@ -133,6 +144,7 @@ local function sanitize(raw)
 		end
 	end
 	look.FaceShape = Catalog.CleanFaceShape(raw.FaceShape)
+	look.Ink = Catalog.CleanInk(raw.Ink) -- real tattoos (NCInk): known ids on spots they fit
 	return look
 end
 
@@ -215,8 +227,10 @@ local function load(player)
 			d.look = sanitize(data.look) or d.look
 			d.made = data.made == true or data.look ~= nil
 			if type(data.owned) == "table" then
+				local IC = Catalog.InkCatalog()
 				for _, id in ipairs(data.owned) do
-					if Catalog.ITEMS_BY_ID[id] then
+					local inkId = type(id) == "string" and id:match("^ink:(.+)$")
+					if Catalog.ITEMS_BY_ID[id] or (inkId and IC and IC.BY_ID[inkId]) then
 						d.owned[id] = true
 					end
 				end
