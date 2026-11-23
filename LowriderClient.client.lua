@@ -166,7 +166,9 @@ local function simulate(car, s, dt, input)
 	end
 
 	-- steering eases in; less lock at speed
-	local speedFrac = math.clamp(math.abs(fwdSpeed) / D.TopSpeed, 0, 1)
+	local eng = Config.Engine(car:GetAttribute("Engine"))
+	local topSpeed, accel = D.TopSpeed * eng.speed, D.Accel * eng.accel
+	local speedFrac = math.clamp(math.abs(fwdSpeed) / topSpeed, 0, 1)
 	local maxSteer = math.rad(D.SteerMax + (D.SteerFast - D.SteerMax) * speedFrac)
 	s.steer = s.steer + (input.steer * maxSteer - s.steer) * math.min(1, dt * 8)
 
@@ -208,8 +210,8 @@ local function simulate(car, s, dt, input)
 			local lat = math.clamp(-vLat * grip, -mu, mu)
 			local long = 0
 			if input.throttle > 0.05 then
-				if not isFront and fwdSpeed < D.TopSpeed then
-					long = mass * D.Accel * input.throttle / 2
+				if not isFront and fwdSpeed < topSpeed then
+					long = mass * accel * input.throttle / 2
 				end
 				if fwdSpeed < -1 then
 					long += mass * D.Brake * 0.25
@@ -218,7 +220,7 @@ local function simulate(car, s, dt, input)
 				if fwdSpeed > 1 then
 					long = -mass * D.Brake * 0.25 * -input.throttle
 				elseif not isFront and fwdSpeed > -D.ReverseSpeed then
-					long = mass * D.Accel * 0.6 * input.throttle / 2
+					long = mass * accel * 0.6 * input.throttle / 2
 				end
 			elseif input.park then
 				long = -vLong * share * 10 -- parked: hold it still (clamped by grip below)
@@ -776,6 +778,7 @@ RunService.PreSimulation:Connect(function(dt)
 				updateHud(c, s)
 				hopMeter(c, s, dt)
 			end
+			Kit.SetSpeed(c, math.abs(s.fwdSpeed or 0) / 1.15 * 0.6818) -- studs/s -> mph
 		elseif (ch.Position - camPos).Magnitude < 350 then
 			-- someone else's car: follow their corner heights and pose the wheels from my own rays
 			local f, r = c:GetAttribute("HydF") or Vector2.zero, c:GetAttribute("HydR") or Vector2.zero
@@ -787,72 +790,95 @@ RunService.PreSimulation:Connect(function(dt)
 			local casts = castWheels(c, s, origin, rayParams(c), susp(c))
 			local ds = c:FindFirstChild("DriveSeat")
 			local steer = (ds and ds.SteerFloat or 0) * math.rad(24)
-			poseWheels(c, s, origin, casts, steer, ch.AssemblyLinearVelocity:Dot(origin.LookVector), dt)
+			local v = ch.AssemblyLinearVelocity:Dot(origin.LookVector)
+			poseWheels(c, s, origin, casts, steer, v, dt)
+			if (ch.Position - camPos).Magnitude < 40 then
+				Kit.SetSpeed(c, math.abs(v) / 1.15 * 0.6818)
+			end
 		end
 	end
 end)
 
----------------------------------------------------------------------------------------------------- the shop screen
+---------------------------------------------------------------------------------------------------- the tuning menu
+-- Low & Slow Kustoms: categories -> mods -> options, built from Config.Mods. Everything you pick shows on your car
+-- right away (only on your screen) with the camera on that part; BUY pays for the whole build at once.
+local PINK, CYAN, GOLD = Color3.fromRGB(255, 64, 166), Color3.fromRGB(40, 242, 242), Color3.fromRGB(255, 214, 70)
 local shopGui = Instance.new("ScreenGui")
 shopGui.Name = "LowSlowKustoms"
 shopGui.ResetOnSpawn = false
 shopGui.Enabled = false
+shopGui.IgnoreGuiInset = true
 shopGui.Parent = player.PlayerGui
 
 local panel = Instance.new("Frame")
-panel.AnchorPoint = Vector2.new(1, 0.5)
-panel.Position = UDim2.new(1, -16, 0.5, 0)
-panel.Size = UDim2.new(0, 380, 0.86, 0)
-panel.BackgroundColor3 = Color3.fromRGB(14, 12, 20)
-panel.BackgroundTransparency = 0.08
+panel.Position = UDim2.new(0, 18, 0, 60)
+panel.Size = UDim2.new(0, 360, 1, -150)
+panel.BackgroundColor3 = Color3.fromRGB(12, 10, 18)
+panel.BackgroundTransparency = 0.12
 panel.Parent = shopGui
-Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 14)
-local ps = Instance.new("UIStroke", panel)
-ps.Color = Color3.fromRGB(255, 64, 166)
-ps.Thickness = 2
-label(panel, "LOW & SLOW", UDim2.fromOffset(16, 10), UDim2.new(1, -32, 0, 30), Color3.fromRGB(255, 64, 166), Enum.Font.GothamBlack, Enum.TextXAlignment.Center)
-label(panel, "KUSTOMS", UDim2.fromOffset(16, 40), UDim2.new(1, -32, 0, 18), Color3.fromRGB(40, 242, 242), Enum.Font.GothamBlack, Enum.TextXAlignment.Center)
-local cashL = label(panel, "", UDim2.fromOffset(16, 62), UDim2.new(1, -32, 0, 16), Color3.fromRGB(150, 230, 140), Enum.Font.GothamMedium, Enum.TextXAlignment.Center)
-
-local tabsBar = Instance.new("Frame")
-tabsBar.Position = UDim2.fromOffset(10, 84)
-tabsBar.Size = UDim2.new(1, -20, 0, 58)
-tabsBar.BackgroundTransparency = 1
-tabsBar.Parent = panel
-local tl = Instance.new("UIGridLayout", tabsBar)
-tl.CellSize = UDim2.new(0.25, -4, 0, 26)
-tl.CellPadding = UDim2.fromOffset(4, 4)
+Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
+local sizeLimit = Instance.new("UISizeConstraint", panel)
+sizeLimit.MaxSize = Vector2.new(360, 760)
+local banner = Instance.new("Frame")
+banner.Size = UDim2.new(1, 0, 0, 64)
+banner.BackgroundColor3 = PINK
+banner.Parent = panel
+Instance.new("UICorner", banner).CornerRadius = UDim.new(0, 12)
+local bg = Instance.new("UIGradient", banner)
+bg.Color = ColorSequence.new(PINK, Color3.fromRGB(120, 30, 200))
+label(banner, "LOW & SLOW KUSTOMS", UDim2.fromOffset(14, 8), UDim2.new(1, -28, 0, 30), Color3.new(1, 1, 1), Enum.Font.GothamBlack)
+local crumbL = label(banner, "", UDim2.fromOffset(14, 38), UDim2.new(1, -28, 0, 18), Color3.fromRGB(255, 230, 250), Enum.Font.GothamBold)
+local cashL = label(panel, "", UDim2.new(0, 14, 0, 70), UDim2.new(1, -28, 0, 18), Color3.fromRGB(150, 230, 140), Enum.Font.GothamBold, Enum.TextXAlignment.Right)
+local backB = Instance.new("TextButton")
+backB.Position = UDim2.fromOffset(12, 68)
+backB.Size = UDim2.fromOffset(90, 22)
+backB.Text = "< BACK"
+backB.Font = Enum.Font.GothamBold
+backB.TextScaled = true
+backB.TextColor3 = CYAN
+backB.BackgroundTransparency = 1
+backB.Parent = panel
 
 local list = Instance.new("ScrollingFrame")
-list.Position = UDim2.fromOffset(10, 148)
-list.Size = UDim2.new(1, -20, 1, -238)
+list.Position = UDim2.fromOffset(10, 96)
+list.Size = UDim2.new(1, -20, 1, -96 - 108)
 list.BackgroundTransparency = 1
-list.ScrollBarThickness = 6
+list.BorderSizePixel = 0
+list.ScrollBarThickness = 5
+list.ScrollBarImageColor3 = PINK
 list.AutomaticCanvasSize = Enum.AutomaticSize.Y
 list.CanvasSize = UDim2.new()
 list.Parent = panel
 local ll = Instance.new("UIListLayout", list)
-ll.Padding = UDim.new(0, 6)
+ll.Padding = UDim.new(0, 4)
 ll.SortOrder = Enum.SortOrder.LayoutOrder
 
-local totalL = label(panel, "", UDim2.new(0, 16, 1, -84), UDim2.new(1, -32, 0, 20), Color3.fromRGB(255, 214, 70), Enum.Font.GothamBold, Enum.TextXAlignment.Center)
-local function bigButton(text, pos, color)
+-- cart bar
+local cartL = label(panel, "", UDim2.new(0, 14, 1, -102), UDim2.new(1, -28, 0, 18), GOLD, Enum.Font.GothamBold)
+local function bigButton(text, pos, size, color)
 	local b = Instance.new("TextButton")
 	b.Position = pos
-	b.Size = UDim2.new(0.5, -20, 0, 40)
+	b.Size = size
 	b.Text = text
 	b.Font = Enum.Font.GothamBlack
 	b.TextScaled = true
 	b.TextColor3 = Color3.new(1, 1, 1)
 	b.BackgroundColor3 = color
 	b.Parent = panel
-	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 10)
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
+	local pad = Instance.new("UIPadding", b)
+	pad.PaddingTop, pad.PaddingBottom = UDim.new(0, 8), UDim.new(0, 8)
 	return b
 end
-local buyB = bigButton("BUY & APPLY", UDim2.new(0, 14, 1, -56), Color3.fromRGB(200, 30, 120))
-local closeB = bigButton("CLOSE", UDim2.new(0.5, 6, 1, -56), Color3.fromRGB(50, 50, 60))
+local buyB = bigButton("BUY BUILD", UDim2.new(0, 12, 1, -78), UDim2.new(0.5, -16, 0, 40), Color3.fromRGB(200, 30, 120))
+local resetB = bigButton("UNDO ALL", UDim2.new(0.5, 4, 1, -78), UDim2.new(0.5, -16, 0, 40), Color3.fromRGB(50, 46, 64))
+local closeB = bigButton("EXIT", UDim2.new(0, 12, 1, -32), UDim2.new(1, -24, 0, 24), Color3.fromRGB(34, 30, 44))
+local hintL = label(shopGui, "Drag (or right stick) to turn the camera", UDim2.new(0.5, -200, 1, -36), UDim2.fromOffset(400, 20), Color3.fromRGB(230, 230, 236), Enum.Font.GothamMedium, Enum.TextXAlignment.Center)
+hintL.TextStrokeTransparency = 0.5
 
-local draft, saved, shopOpen, activeTab = nil, nil, false, "Car"
+local draft, saved, shopOpen = nil, nil, false
+local view = { level = "cats", cat = nil, mod = nil }
+local hoverValue = nil -- option the pointer is over (previewed without picking it)
 
 local function myLowrider()
 	local lr = workspace:FindFirstChild("Lowriders")
@@ -872,277 +898,507 @@ local function decode(attr)
 	return ok and type(v) == "table" and v or nil
 end
 
--- mirror of the server's price check (the server has the final say)
-local LIST_FOR = { paint = "Paints", finish = "Finishes", art = "Art", wheels = "Wheels", susp = "Suspension" }
-local function quote(look)
-	local unlocked = decode(player:GetAttribute("LowriderUnlocked")) or {}
-	local total = 0
-	for key, l in LIST_FOR do
-		if look[key] ~= saved[key] then
-			local it = Config.ById[l][look[key]]
-			local tag, price = l .. ":" .. look[key], it and it.price or 0
-			if not unlocked[tag] and price > 0 then
-				total += price
-			end
-		end
+local function unlockedNow()
+	return decode(player:GetAttribute("LowriderUnlocked")) or {}
+end
+
+local function cashNow()
+	local ls = player:FindFirstChild("leaderstats")
+	local c = ls and ls:FindFirstChild("Cash")
+	return c and c.Value or 0
+end
+
+local function priceText(key, value)
+	local price = Config.PriceOf(key, value)
+	if saved and saved[key] == value then
+		return "ON", CYAN
 	end
-	for key, price in { whitewall = Config.WhitewallPrice, continental = Config.ContinentalPrice, trunkSetup = Config.TrunkSetupPrice } do
-		if look[key] and not saved[key] and not unlocked["Extra:" .. key] then
-			total += price
-		end
+	if price <= 0 or unlockedNow()[key .. "=" .. value] then
+		return "owned", Color3.fromRGB(150, 230, 140)
 	end
-	return total
+	return "$" .. price, GOLD
 end
 
 local render -- forward
 local function preview()
 	local car = myLowrider()
 	if car and draft then
-		Kit.ApplyLook(car, draft)
+		local look = draft
+		if hoverValue and view.mod then
+			look = table.clone(draft)
+			look[view.mod.key] = hoverValue
+		end
+		Kit.ApplyLook(car, look)
 	end
-	local total = draft and saved and quote(draft) or 0
-	totalL.Text = total > 0 and ("Build total: $%d"):format(total) or "No changes yet"
+	if draft and saved then
+		local total, items = Config.Quote(saved, draft, unlockedNow())
+		local n = 0
+		for key in Config.ModByKey do
+			if draft[key] ~= saved[key] then
+				n += 1
+			end
+		end
+		cartL.Text = n == 0 and "No changes yet" or ("%d change%s   ·   $%d"):format(n, n == 1 and "" or "s", total)
+		cartL.TextColor3 = total > cashNow() and Color3.fromRGB(255, 90, 90) or GOLD
+	end
+	cashL.Text = ("$%d"):format(cashNow())
 end
 
-local function row(text, sub, selected, onClick, swatch)
+local order = 0
+local function nextOrder()
+	order += 1
+	return order
+end
+
+local function row(text, sub, subColor, selected, onClick, swatch, onHover)
 	local b = Instance.new("TextButton")
-	b.Size = UDim2.new(1, -8, 0, 42)
-	b.AutoButtonColor = true
+	b.Size = UDim2.new(1, -6, 0, 38)
+	b.AutoButtonColor = false
 	b.Text = ""
-	b.BackgroundColor3 = selected and Color3.fromRGB(70, 20, 60) or Color3.fromRGB(30, 26, 40)
-	b.LayoutOrder = #list:GetChildren()
+	b.BackgroundColor3 = selected and Color3.fromRGB(80, 22, 70) or Color3.fromRGB(28, 24, 38)
+	b.LayoutOrder = nextOrder()
+	b.Selectable = true
 	b.Parent = list
-	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
-	if selected then
-		local s = Instance.new("UIStroke", b)
-		s.Color = Color3.fromRGB(40, 242, 242)
-		s.Thickness = 2
-	end
-	local x = 10
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
+	local stroke = Instance.new("UIStroke", b)
+	stroke.Color = CYAN
+	stroke.Thickness = selected and 2 or 0
+	local x = 12
 	if swatch then
 		local sw = Instance.new("Frame")
 		sw.Position = UDim2.fromOffset(8, 7)
-		sw.Size = UDim2.fromOffset(28, 28)
+		sw.Size = UDim2.fromOffset(24, 24)
 		sw.BackgroundColor3 = swatch
 		sw.Parent = b
 		Instance.new("UICorner", sw).CornerRadius = UDim.new(1, 0)
-		x = 44
+		Instance.new("UIStroke", sw).Color = Color3.fromRGB(255, 255, 255)
+		x = 40
 	end
-	label(b, text, UDim2.fromOffset(x, 4), UDim2.new(1, -x - 90, 0, 20), Color3.new(1, 1, 1), Enum.Font.GothamMedium)
-	label(b, sub or "", UDim2.new(1, -88, 0, 11), UDim2.fromOffset(80, 18), Color3.fromRGB(255, 214, 70), Enum.Font.GothamBold, Enum.TextXAlignment.Right)
+	label(b, text, UDim2.fromOffset(x, 0), UDim2.new(1, -x - 84, 1, 0), Color3.new(1, 1, 1), Enum.Font.GothamMedium)
+	if sub then
+		label(b, sub, UDim2.new(1, -86, 0, 0), UDim2.new(0, 76, 1, 0), subColor or GOLD, Enum.Font.GothamBold, Enum.TextXAlignment.Right)
+	end
+	local function hi(on)
+		b.BackgroundColor3 = on and Color3.fromRGB(60, 40, 80) or (selected and Color3.fromRGB(80, 22, 70) or Color3.fromRGB(28, 24, 38))
+	end
+	b.MouseEnter:Connect(function()
+		hi(true)
+		if onHover then
+			onHover(true)
+		end
+	end)
+	b.MouseLeave:Connect(function()
+		hi(false)
+		if onHover then
+			onHover(false)
+		end
+	end)
+	b.SelectionGained:Connect(function()
+		hi(true)
+		if onHover then
+			onHover(true)
+		end
+	end)
+	b.SelectionLost:Connect(function()
+		hi(false)
+	end)
 	b.MouseButton1Click:Connect(onClick)
 	return b
 end
 
-local function header(text)
-	local t = label(list, text, UDim2.new(), UDim2.new(1, -8, 0, 22), Color3.fromRGB(40, 242, 242), Enum.Font.GothamBlack)
-	t.LayoutOrder = #list:GetChildren()
+local function note(text, h)
+	local t = label(list, text, UDim2.new(), UDim2.new(1, -6, 0, h or 44), Color3.fromRGB(200, 200, 212), Enum.Font.Gotham)
+	t.TextWrapped = true
+	t.LayoutOrder = nextOrder()
+	return t
 end
 
-local function priceTag(price, tag)
-	local unlocked = decode(player:GetAttribute("LowriderUnlocked")) or {}
-	if price <= 0 or unlocked[tag] then
-		return "owned"
+-- current value's display name
+local function valueName(m, v)
+	local o = Config.OptionOf[m.key][v]
+	if o then
+		return o.name
 	end
-	return "$" .. price
+	return Config.CustomColor(v) and "Custom" or "?"
 end
 
-local TABS = { "Car", "Paint", "Vinyls", "Wheels", "Hydraulics", "Extras" }
+---------------------------------------------------------------- custom colour picker (hue bar + saturation/value square + hex)
+local picker = Instance.new("Frame")
+picker.Size = UDim2.new(1, -6, 0, 196)
+picker.BackgroundColor3 = Color3.fromRGB(24, 20, 34)
+Instance.new("UICorner", picker).CornerRadius = UDim.new(0, 6)
+local sv = Instance.new("ImageButton")
+sv.Position = UDim2.fromOffset(10, 10)
+sv.Size = UDim2.new(1, -70, 0, 140)
+sv.AutoButtonColor = false
+sv.BackgroundColor3 = Color3.new(1, 0, 0)
+sv.Parent = picker
+local white = Instance.new("Frame", sv)
+white.Size = UDim2.fromScale(1, 1)
+white.BackgroundColor3 = Color3.new(1, 1, 1)
+local wg = Instance.new("UIGradient", white)
+wg.Transparency = NumberSequence.new(0, 1)
+local black = Instance.new("Frame", sv)
+black.Size = UDim2.fromScale(1, 1)
+black.BackgroundColor3 = Color3.new(0, 0, 0)
+local bgr = Instance.new("UIGradient", black)
+bgr.Rotation = 90
+bgr.Transparency = NumberSequence.new(1, 0)
+local svDot = Instance.new("Frame", sv)
+svDot.AnchorPoint = Vector2.new(0.5, 0.5)
+svDot.Size = UDim2.fromOffset(12, 12)
+svDot.ZIndex = 3
+Instance.new("UICorner", svDot).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", svDot).Color = Color3.new(1, 1, 1)
+local hue = Instance.new("ImageButton")
+hue.Position = UDim2.new(1, -50, 0, 10)
+hue.Size = UDim2.fromOffset(40, 140)
+hue.AutoButtonColor = false
+hue.BackgroundColor3 = Color3.new(1, 1, 1)
+hue.Parent = picker
+local hg = Instance.new("UIGradient", hue)
+hg.Rotation = 90
+local keys = {}
+for i = 0, 6 do
+	table.insert(keys, ColorSequenceKeypoint.new(i / 6, Color3.fromHSV((i / 6) % 1, 1, 1)))
+end
+hg.Color = ColorSequence.new(keys)
+local hueBar = Instance.new("Frame", hue)
+hueBar.AnchorPoint = Vector2.new(0, 0.5)
+hueBar.Size = UDim2.new(1, 0, 0, 3)
+hueBar.BackgroundColor3 = Color3.new(1, 1, 1)
+local hexBox = Instance.new("TextBox")
+hexBox.Position = UDim2.new(0, 10, 0, 158)
+hexBox.Size = UDim2.new(0.5, -14, 0, 28)
+hexBox.Font = Enum.Font.Code
+hexBox.TextScaled = true
+hexBox.TextColor3 = Color3.new(1, 1, 1)
+hexBox.BackgroundColor3 = Color3.fromRGB(40, 36, 52)
+hexBox.ClearTextOnFocus = false
+hexBox.Parent = picker
+local useB = Instance.new("TextButton")
+useB.Position = UDim2.new(0.5, 4, 0, 158)
+useB.Size = UDim2.new(0.5, -14, 0, 28)
+useB.Font = Enum.Font.GothamBlack
+useB.TextScaled = true
+useB.TextColor3 = Color3.new(1, 1, 1)
+useB.BackgroundColor3 = Color3.fromRGB(200, 30, 120)
+useB.Parent = picker
+Instance.new("UICorner", useB).CornerRadius = UDim.new(0, 6)
+local H, S, V = 0, 1, 1
+local dragging = nil
+
+local function pickerColor()
+	return Color3.fromHSV(H, S, V)
+end
+
+local function refreshPicker(live)
+	sv.BackgroundColor3 = Color3.fromHSV(H, 1, 1)
+	svDot.Position = UDim2.fromScale(S, 1 - V)
+	svDot.BackgroundColor3 = pickerColor()
+	hueBar.Position = UDim2.fromScale(0, H)
+	hexBox.Text = "#" .. pickerColor():ToHex():upper()
+	if live and view.mod then
+		hoverValue = Config.ToCustom(pickerColor())
+		preview()
+	end
+end
+
+local function dragAt(pos)
+	if dragging == "sv" then
+		S = math.clamp((pos.X - sv.AbsolutePosition.X) / sv.AbsoluteSize.X, 0, 1)
+		V = 1 - math.clamp((pos.Y - sv.AbsolutePosition.Y) / sv.AbsoluteSize.Y, 0, 1)
+	elseif dragging == "hue" then
+		H = math.clamp((pos.Y - hue.AbsolutePosition.Y) / hue.AbsoluteSize.Y, 0, 0.999)
+	end
+	refreshPicker(true)
+end
+
+for which, btn in { sv = sv, hue = hue } do
+	btn.InputBegan:Connect(function(io)
+		if io.UserInputType == Enum.UserInputType.MouseButton1 or io.UserInputType == Enum.UserInputType.Touch then
+			dragging = which
+			dragAt(io.Position)
+		end
+	end)
+end
+UserInputService.InputChanged:Connect(function(io)
+	if dragging and (io.UserInputType == Enum.UserInputType.MouseMovement or io.UserInputType == Enum.UserInputType.Touch) then
+		dragAt(io.Position)
+	end
+end)
+UserInputService.InputEnded:Connect(function(io)
+	if io.UserInputType == Enum.UserInputType.MouseButton1 or io.UserInputType == Enum.UserInputType.Touch then
+		dragging = nil
+	end
+end)
+hexBox.FocusLost:Connect(function()
+	local hex = hexBox.Text:gsub("#", ""):match("^%x%x%x%x%x%x$")
+	if hex then
+		H, S, V = Color3.fromHex(hex):ToHSV()
+	end
+	refreshPicker(true)
+end)
+useB.MouseButton1Click:Connect(function()
+	if view.mod and draft then
+		draft[view.mod.key] = Config.ToCustom(pickerColor())
+		hoverValue = nil
+		preview()
+		render()
+	end
+end)
+
+---------------------------------------------------------------- screens
 render = function()
 	for _, ch in list:GetChildren() do
-		if ch:IsA("GuiObject") then
+		if ch:IsA("GuiObject") and ch ~= picker then
 			ch:Destroy()
 		end
 	end
-	for _, ch in tabsBar:GetChildren() do
-		if ch:IsA("TextButton") then
-			ch:Destroy()
-		end
-	end
-	for _, name in TABS do
-		local b = Instance.new("TextButton")
-		b.Text = name
-		b.Font = Enum.Font.GothamBold
-		b.TextScaled = true
-		b.TextColor3 = Color3.new(1, 1, 1)
-		b.BackgroundColor3 = name == activeTab and Color3.fromRGB(200, 30, 120) or Color3.fromRGB(40, 34, 52)
-		b.Parent = tabsBar
-		Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
-		b.MouseButton1Click:Connect(function()
-			activeTab = name
-			render()
-		end)
-	end
-	cashL.Text = (function()
-		local ls = player:FindFirstChild("leaderstats")
-		local c = ls and ls:FindFirstChild("Cash")
-		return c and ("Cash: $%d"):format(c.Value) or ""
-	end)()
+	picker.Parent = nil
+	order = 0
+	preview()
 	local owns = player:GetAttribute("OwnsLowrider")
-	buyB.Visible = owns == true and draft ~= nil
-	if activeTab == "Car" or not owns or not draft then
-		header(Config.CarName)
+	local car = myLowrider()
+	buyB.Visible, resetB.Visible, cartL.Visible = draft ~= nil, draft ~= nil, draft ~= nil
+	backB.Visible = view.level ~= "cats"
+	if not owns or not draft or not car then
+		crumbL.Text = Config.CarName
 		if not owns then
-			row("Buy the " .. Config.CarName, "$" .. Config.CarPrice, false, function()
+			row("Buy the " .. Config.CarName, "$" .. Config.CarPrice, GOLD, false, function()
 				local ok, msg = ShopRF:InvokeServer("buyCar")
 				notify(msg)
 				task.wait(0.5)
 				render()
 			end)
-			label(list, "Long, low two-door hardtop. Comes on stock springs with Classic Wire 100-Spoke wheels. Customize everything here after.", UDim2.new(), UDim2.new(1, -8, 0, 60), Color3.fromRGB(200, 200, 210), Enum.Font.Gotham).TextWrapped = true
+			note("Long, low two-door hardtop on stock springs and Classic Wire 100-Spoke wheels. Change everything here after: body kit, wheels, interior, lights, hydraulics.", 74)
 		else
-			row("Bring my lowrider out", "", false, function()
+			row("Bring my lowrider out", nil, nil, false, function()
 				local ok, msg = ShopRF:InvokeServer("spawn")
 				if not ok then
 					notify(msg or "Couldn't get it out.")
 				end
 			end)
-			label(list, "Park it on the paint turntable (left bay) to customize. Take it to the hop pit (right bay) to measure your hops.", UDim2.new(), UDim2.new(1, -8, 0, 60), Color3.fromRGB(200, 200, 210), Enum.Font.Gotham).TextWrapped = true
+			note("Park it on the turntable (left bay) to customize. The hop pit (right bay) measures your hops.", 56)
 		end
 		return
 	end
-	if activeTab == "Paint" then
-		header("Candy paint")
-		for _, p in Config.Paints do
-			row(p.name, priceTag(p.price, "Paints:" .. p.id), draft.paint == p.id, function()
-				draft.paint = p.id
-				preview()
-				render()
-			end, p.color)
-		end
-		header("Finish")
-		for _, f in Config.Finishes do
-			row(f.name, priceTag(f.price, "Finishes:" .. f.id), draft.finish == f.id, function()
-				draft.finish = f.id
-				preview()
-				render()
-			end)
-		end
-	elseif activeTab == "Vinyls" then
-		header("Vinyls and airbrush")
-		local vinyls = Data.Car.Vinyls or {}
-		local missing = false
-		for _, a in Config.Art do
-			local panels = vinyls[a.id] or {}
-			local parts = #panels > 0 and (" · " .. table.concat(panels, ", ")) or ""
-			if a.id ~= "none" and #panels > 0 and Kit.VinylId(a.id, panels[1]) == "" then
-				missing = true
+	if view.level == "cats" then
+		crumbL.Text = "Pick a category"
+		for _, cat in Config.Mods do
+			local changed = 0
+			for _, m in cat.mods do
+				if draft[m.key] ~= saved[m.key] then
+					changed += 1
+				end
 			end
-			row(a.name, priceTag(a.price, "Art:" .. a.id), draft.art == a.id, function()
-				draft.art = a.id
-				preview()
-				render()
-			end).Name = a.id .. parts
-		end
-		local t = label(list, missing and "Some vinyl images aren't uploaded yet (import LowriderVinyls.glb in Studio and run NCLowriderKit.Prepare on it)." or "Printed right on the paint. Clear parts show your candy colour through, so every vinyl works with every paint.", UDim2.new(), UDim2.new(1, -8, 0, 56), Color3.fromRGB(200, 200, 210), Enum.Font.Gotham)
-		t.TextWrapped = true
-		t.LayoutOrder = 999
-	elseif activeTab == "Wheels" then
-		header("Classic Wire 100-Spoke")
-		for _, w in Config.Wheels do
-			local f = Config.WheelFinish[w.spokes]
-			row(w.name, priceTag(w.price, "Wheels:" .. w.id), draft.wheels == w.id, function()
-				draft.wheels = w.id
-				preview()
-				render()
-			end, f and f[2] or Config.Paint(draft.paint).color)
-		end
-		header("Tyres")
-		row(draft.whitewall and "Thin whitewalls: ON" or "Thin whitewalls: OFF", priceTag(Config.WhitewallPrice, "Extra:whitewall"), draft.whitewall, function()
-			draft.whitewall = not draft.whitewall
-			preview()
-			render()
-		end)
-	elseif activeTab == "Hydraulics" then
-		header("Suspension")
-		for _, sp in Config.Suspension do
-			row(sp.name, priceTag(sp.price, "Suspension:" .. sp.id), draft.susp == sp.id, function()
-				draft.susp = sp.id
-				preview()
+			row(cat.name, changed > 0 and (changed .. " changed") or ("%d mods"):format(#cat.mods), changed > 0 and GOLD or Color3.fromRGB(160, 160, 176), false, function()
+				view.level, view.cat = "mods", cat
 				render()
 			end)
 		end
-		local t = label(list, "Air bags lay the frame and lift smoothly. Hydraulics lift fast and hop. 3-pump adds three-wheel; the 4-pump competition setup hops highest and dances.", UDim2.new(), UDim2.new(1, -8, 0, 64), Color3.fromRGB(200, 200, 210), Enum.Font.Gotham)
-		t.TextWrapped = true
-		t.LayoutOrder = 999
-	elseif activeTab == "Extras" then
-		header("Extras")
-		row(draft.continental and "Continental kit: ON" or "Continental kit: OFF", priceTag(Config.ContinentalPrice, "Extra:continental"), draft.continental, function()
-			draft.continental = not draft.continental
-			preview()
-			render()
-		end)
-		row(draft.trunkSetup and "Chrome pump setup in the trunk: ON" or "Chrome pump setup in the trunk: OFF", priceTag(Config.TrunkSetupPrice, "Extra:trunkSetup"), draft.trunkSetup, function()
-			draft.trunkSetup = not draft.trunkSetup
-			preview()
-			render()
-		end)
+	elseif view.level == "mods" then
+		crumbL.Text = view.cat.name
+		for _, m in view.cat.mods do
+			local v = draft[m.key]
+			local changed = v ~= saved[m.key]
+			row(m.name, valueName(m, v), changed and GOLD or CYAN, changed, function()
+				view.level, view.mod = "opts", m
+				hoverValue = nil
+				render()
+			end, Config.ColorOf(m.key, v))
+		end
+		if view.cat.id == "vinyls" then
+			local missing = false
+			for liv, panels in (Data.Car.Vinyls or {}) do
+				if panels[1] and Kit.VinylId(liv, panels[1]) == "" then
+					missing = true
+				end
+			end
+			note(missing and "Some vinyl images aren't uploaded yet (import LowriderVinyls.glb in Studio and run NCLowriderKit.Prepare on it)." or "Printed right on the paint. Clear parts show your candy colour through, so every vinyl works with every paint.", 60)
+		elseif view.cat.id == "hydraulics" then
+			note("Air bags lay the frame and lift smoothly. Hydraulics lift fast and hop. 3-pump adds three-wheel; the 4-pump competition setup hops highest and dances.", 60)
+		end
+	else
+		local m = view.mod
+		crumbL.Text = view.cat.name .. "  >  " .. m.name
+		for _, o in m.options do
+			local t, col = priceText(m.key, o.id)
+			row(o.name, t, col, draft[m.key] == o.id, function()
+				draft[m.key] = o.id
+				hoverValue = nil
+				render()
+			end, o.color, function(on)
+				hoverValue = on and o.id or nil
+				preview()
+			end)
+		end
+		if m.custom then
+			local cur = Config.CustomColor(draft[m.key])
+			if cur then
+				row("Custom colour", priceText(m.key, draft[m.key]), CYAN, true, function() end, cur)
+			end
+			local hdr = label(list, ("CUSTOM COLOUR   ·   $%d"):format(m.custom), UDim2.new(), UDim2.new(1, -6, 0, 20), CYAN, Enum.Font.GothamBlack)
+			hdr.LayoutOrder = nextOrder()
+			local base = cur or Config.ColorOf(m.key, draft[m.key]) or Color3.new(1, 0, 0)
+			H, S, V = base:ToHSV()
+			useB.Text = "USE THIS COLOUR"
+			picker.LayoutOrder = nextOrder()
+			picker.Parent = list
+			refreshPicker(false)
+		end
 	end
 end
 
-local orbit = 0
-local orbitConn
+---------------------------------------------------------------- camera: each category looks at its part
+local CAMS = {
+	front34 = { Vector3.new(14, 6, -20), Vector3.new(0, 2, -2) },
+	side = { Vector3.new(24, 4.5, 0), Vector3.new(0, 2.2, 0) },
+	front = { Vector3.new(0, 4.5, -19), Vector3.new(0, 2.2, -8) },
+	rear34 = { Vector3.new(-13, 7, 21), Vector3.new(0, 2, 5) },
+	interior = { Vector3.new(-6.8, 4.6, 0.8), Vector3.new(0.6, 2.4, -1.2) },
+}
+do
+	local fl = Data.Car.Wheels.FL
+	local w = Vector3.new(fl[1], fl[2], fl[3])
+	local out = w.X >= 0 and 1 or -1
+	CAMS.wheel = { w + Vector3.new(out * 7, 1.2, -2.8), w }
+end
+local CAM_OF_MOD = { -- a few mods look somewhere else than their category
+	part_RearBumper = "rear34", part_Spoiler = "rear34", part_Exhaust = "rear34", part_Continental = "rear34", part_Skirts = "side",
+	part_Mirrors = "front34", part_Visor = "front34", part_Glow = "side", taillights = "rear34", part_Trunk = "rear34",
+	fin_Trunk = "rear34", part_Plaque = "rear34", plaque = "rear34", part_Dice = "interior", col_Fur = "interior",
+}
+local camConn, camEye, camTgt, yaw = nil, nil, nil, 0
+local camPrevType
+
+local function camKey()
+	if view.mod and CAM_OF_MOD[view.mod.key] then
+		return CAM_OF_MOD[view.mod.key]
+	end
+	return view.cat and view.cat.cam or "front34"
+end
+
+local dragCam = false
+UserInputService.InputBegan:Connect(function(io, gp)
+	if shopOpen and not gp and (io.UserInputType == Enum.UserInputType.MouseButton1 or io.UserInputType == Enum.UserInputType.MouseButton2 or io.UserInputType == Enum.UserInputType.Touch) then
+		dragCam = true
+	end
+end)
+UserInputService.InputEnded:Connect(function(io)
+	if io.UserInputType == Enum.UserInputType.MouseButton1 or io.UserInputType == Enum.UserInputType.MouseButton2 or io.UserInputType == Enum.UserInputType.Touch then
+		dragCam = false
+	end
+end)
+UserInputService.InputChanged:Connect(function(io, gp)
+	if not shopOpen then
+		return
+	end
+	if dragCam and (io.UserInputType == Enum.UserInputType.MouseMovement or io.UserInputType == Enum.UserInputType.Touch) then
+		yaw -= io.Delta.X * 0.008
+	elseif io.KeyCode == Enum.KeyCode.Thumbstick2 and math.abs(io.Position.X) > 0.2 then
+		yaw -= io.Position.X * 0.05
+	end
+end)
+
 local function closeShop()
 	shopOpen = false
 	shopGui.Enabled = false
+	hoverValue = nil
 	local car = myLowrider()
 	if car then
 		Kit.ApplyLook(car, decode(car:GetAttribute("Look")) or Config.StarterLook)
 	end
-	if orbitConn then
-		orbitConn:Disconnect()
-		orbitConn = nil
+	if camConn then
+		camConn:Disconnect()
+		camConn = nil
 	end
-	camera.CameraType = camPrev or Enum.CameraType.Custom
+	camera.CameraType = camPrevType or Enum.CameraType.Custom
 end
 
 local function openShop(shop)
-	saved = decode(player:GetAttribute("LowriderLook")) or table.clone(Config.StarterLook)
+	saved = Config.CleanLook(decode(player:GetAttribute("LowriderLook")))
 	draft = table.clone(saved)
 	if not player:GetAttribute("OwnsLowrider") then
 		draft = nil
 	end
-	activeTab = player:GetAttribute("OwnsLowrider") and "Paint" or "Car"
+	view = { level = "cats" }
+	yaw = 0
 	local car = myLowrider()
-	if draft and not car then
-		activeTab = "Car"
-	end
 	shopOpen = true
 	shopGui.Enabled = true
 	render()
-	preview()
-	-- slow orbit around your car while you shop (if it's parked here)
 	if car and shop and shop.PrimaryPart and (car.PrimaryPart.Position - shop.PrimaryPart.Position).Magnitude < Config.CustomizeRadius + 30 then
-		camPrev = camera.CameraType
+		camPrevType = camera.CameraType
 		camera.CameraType = Enum.CameraType.Scriptable
-		orbitConn = RunService.RenderStepped:Connect(function(dt)
+		camEye, camTgt = nil, nil
+		camConn = RunService.RenderStepped:Connect(function(dt)
 			if not car.Parent then
 				closeShop()
 				return
 			end
-			orbit += dt * 0.25
-			local centre = Kit.Origin(car).Position + Vector3.new(0, 2.5, 0)
-			local eye = centre + Vector3.new(math.cos(orbit) * 22, 7, math.sin(orbit) * 22)
-			camera.CFrame = CFrame.lookAt(eye, centre)
+			local o = Kit.Origin(car)
+			local preset = CAMS[camKey()] or CAMS.front34
+			local tgtL = preset[2]
+			local eyeL = tgtL + CFrame.Angles(0, yaw, 0):VectorToWorldSpace(preset[1] - tgtL)
+			local eye, tgt = o:PointToWorldSpace(eyeL), o:PointToWorldSpace(tgtL)
+			local a = math.min(1, dt * 5)
+			camEye = camEye and camEye:Lerp(eye, a) or eye
+			camTgt = camTgt and camTgt:Lerp(tgt, a) or tgt
+			camera.CFrame = CFrame.lookAt(camEye, camTgt)
 		end)
 	end
 end
 
+backB.MouseButton1Click:Connect(function()
+	hoverValue = nil
+	if view.level == "opts" then
+		view.level, view.mod = "mods", nil
+	else
+		view.level, view.cat = "cats", nil
+	end
+	yaw = 0
+	render()
+end)
 buyB.MouseButton1Click:Connect(function()
 	if not draft then
 		return
 	end
 	buyB.Text = "..."
 	local ok, msg = ShopRF:InvokeServer("buyLook", draft)
-	buyB.Text = "BUY & APPLY"
+	buyB.Text = "BUY BUILD"
 	notify(msg or (ok and "Done!" or "Couldn't do that."))
 	if ok then
 		saved = table.clone(draft)
 	end
 	render()
-	preview()
+end)
+resetB.MouseButton1Click:Connect(function()
+	if saved then
+		draft = table.clone(saved)
+		hoverValue = nil
+		render()
+	end
 end)
 closeB.MouseButton1Click:Connect(closeShop)
+-- gamepad B / Backspace goes back a level
+ContextActionService:BindActionAtPriority("NCShopBack", function(_, stateIn)
+	if stateIn ~= Enum.UserInputState.Begin or not shopOpen then
+		return Enum.ContextActionResult.Pass
+	end
+	if view.level == "cats" then
+		closeShop()
+	else
+		hoverValue = nil
+		if view.level == "opts" then
+			view.level, view.mod = "mods", nil
+		else
+			view.level, view.cat = "cats", nil
+		end
+		render()
+	end
+	return Enum.ContextActionResult.Sink
+end, false, 4000, Enum.KeyCode.ButtonB, Enum.KeyCode.Backspace)
 
 UiRE.OnClientEvent:Connect(function(kind, shop)
 	if kind == "open" then

@@ -5,13 +5,571 @@
 return {
 	Car = {
 		FrontBumper = {0, 1.22, -10.75},
+		Gauge = {
+			Centre = {-1.55, 2.62, -2.3},
+			Size = {1.6, 0.418},
+			Tilt = 16.7,
+		},
 		Hull = {
 			{-3.82, 0.75, -10.8, 3.82, 2.8, 10.85},
 			{-3.1, 2.8, -2.6, 3.1, 4.75, 5.2},
 		},
-		ImportMax = {4.084, 4.77, 10.75},
-		ImportMin = {-4.084, -0.25, -12.0},
+		ImportMax = {4.13, 4.77, 11.5},
+		ImportMin = {-4.13, -0.25, -12.0},
 		LidHinge = {-0.0, 2.88, 6.03},
+		OptInfo = {
+			OptContinentalKitBody = {
+				mat = "Body",
+				slot = "Continental",
+				variant = "Kit",
+			},
+			OptContinentalKitChrome = {
+				mat = "Chrome",
+				slot = "Continental",
+				variant = "Kit",
+			},
+			OptDashBilletChrome = {
+				mat = "Chrome",
+				slot = "Dash",
+				variant = "Billet",
+			},
+			OptDashBilletDash = {
+				mat = "Dash",
+				slot = "Dash",
+				variant = "Billet",
+			},
+			OptDashBilletGauge = {
+				mat = "Gauge",
+				slot = "Dash",
+				variant = "Billet",
+			},
+			OptDashClassicChrome = {
+				mat = "Chrome",
+				slot = "Dash",
+				variant = "Classic",
+			},
+			OptDashClassicDash = {
+				mat = "Dash",
+				slot = "Dash",
+				variant = "Classic",
+			},
+			OptDashClassicGauge = {
+				mat = "Gauge",
+				slot = "Dash",
+				variant = "Classic",
+			},
+			OptDashDigitalDash = {
+				mat = "Dash",
+				slot = "Dash",
+				variant = "Digital",
+			},
+			OptDashDigitalGauge = {
+				mat = "Gauge",
+				slot = "Dash",
+				variant = "Digital",
+			},
+			OptDashDigitalNeon = {
+				mat = "Neon",
+				slot = "Dash",
+				variant = "Digital",
+			},
+			OptDashWoodDash = {
+				mat = "Dash",
+				slot = "Dash",
+				variant = "Wood",
+			},
+			OptDashWoodGauge = {
+				mat = "Gauge",
+				slot = "Dash",
+				variant = "Wood",
+			},
+			OptDashWoodWood = {
+				mat = "Wood",
+				slot = "Dash",
+				variant = "Wood",
+			},
+			OptDiceOnDark = {
+				mat = "Dark",
+				slot = "Dice",
+				variant = "On",
+			},
+			OptDiceOnFur = {
+				mat = "Fur",
+				slot = "Dice",
+				variant = "On",
+			},
+			OptExhaustDualChrome = {
+				mat = "Chrome",
+				slot = "Exhaust",
+				variant = "Dual",
+			},
+			OptExhaustDualDark = {
+				mat = "Dark",
+				slot = "Exhaust",
+				variant = "Dual",
+			},
+			OptExhaustSideChrome = {
+				mat = "Chrome",
+				slot = "Exhaust",
+				variant = "Side",
+			},
+			OptExhaustSideDark = {
+				mat = "Dark",
+				slot = "Exhaust",
+				variant = "Side",
+			},
+			OptExhaustTurndownChrome = {
+				mat = "Chrome",
+				slot = "Exhaust",
+				variant = "Turndown",
+			},
+			OptFrontBumperBulletChrome = {
+				mat = "Chrome",
+				slot = "FrontBumper",
+				variant = "Bullet",
+			},
+			OptFrontBumperClassicChrome = {
+				mat = "Chrome",
+				slot = "FrontBumper",
+				variant = "Classic",
+			},
+			OptFrontBumperShavedBody = {
+				mat = "Body",
+				slot = "FrontBumper",
+				variant = "Shaved",
+			},
+			OptFrontBumperShavedChrome = {
+				mat = "Chrome",
+				slot = "FrontBumper",
+				variant = "Shaved",
+			},
+			OptFrontBumperSplitChrome = {
+				mat = "Chrome",
+				slot = "FrontBumper",
+				variant = "Split",
+			},
+			OptFrontBumperSplitDark = {
+				mat = "Dark",
+				slot = "FrontBumper",
+				variant = "Split",
+			},
+			OptFrontBumperTubeChrome = {
+				mat = "Chrome",
+				slot = "FrontBumper",
+				variant = "Tube",
+			},
+			OptGlowOnNeon = {
+				mat = "Neon",
+				slot = "Glow",
+				variant = "On",
+			},
+			OptGrilleBarsChrome = {
+				mat = "Chrome",
+				slot = "Grille",
+				variant = "Bars",
+			},
+			OptGrilleBarsDark = {
+				mat = "Dark",
+				slot = "Grille",
+				variant = "Bars",
+			},
+			OptGrilleBilletChrome = {
+				mat = "Chrome",
+				slot = "Grille",
+				variant = "Billet",
+			},
+			OptGrilleBilletDark = {
+				mat = "Dark",
+				slot = "Grille",
+				variant = "Billet",
+			},
+			OptGrilleEggcrateChrome = {
+				mat = "Chrome",
+				slot = "Grille",
+				variant = "Eggcrate",
+			},
+			OptGrilleEggcrateDark = {
+				mat = "Dark",
+				slot = "Grille",
+				variant = "Eggcrate",
+			},
+			OptGrilleMeshChrome = {
+				mat = "Chrome",
+				slot = "Grille",
+				variant = "Mesh",
+			},
+			OptGrilleMeshDark = {
+				mat = "Dark",
+				slot = "Grille",
+				variant = "Mesh",
+			},
+			OptGrilleWaterfallChrome = {
+				mat = "Chrome",
+				slot = "Grille",
+				variant = "Waterfall",
+			},
+			OptGrilleWaterfallDark = {
+				mat = "Dark",
+				slot = "Grille",
+				variant = "Waterfall",
+			},
+			OptHoodCowlBody = {
+				mat = "Body",
+				slot = "Hood",
+				variant = "Cowl",
+			},
+			OptHoodLouversBody = {
+				mat = "Body",
+				slot = "Hood",
+				variant = "Louvers",
+			},
+			OptHoodLouversDark = {
+				mat = "Dark",
+				slot = "Hood",
+				variant = "Louvers",
+			},
+			OptHoodScoopBody = {
+				mat = "Body",
+				slot = "Hood",
+				variant = "Scoop",
+			},
+			OptHoodScoopChrome = {
+				mat = "Chrome",
+				slot = "Hood",
+				variant = "Scoop",
+			},
+			OptHoodScoopDark = {
+				mat = "Dark",
+				slot = "Hood",
+				variant = "Scoop",
+			},
+			OptHoodSpearChrome = {
+				mat = "Chrome",
+				slot = "Hood",
+				variant = "Spear",
+			},
+			OptMirrorsBulletChrome = {
+				mat = "Chrome",
+				slot = "Mirrors",
+				variant = "Bullet",
+			},
+			OptMirrorsDualChrome = {
+				mat = "Chrome",
+				slot = "Mirrors",
+				variant = "Dual",
+			},
+			OptMirrorsRectChrome = {
+				mat = "Chrome",
+				slot = "Mirrors",
+				variant = "Rect",
+			},
+			OptMirrorsRectGlass = {
+				mat = "Glass",
+				slot = "Mirrors",
+				variant = "Rect",
+			},
+			OptMirrorsStemChrome = {
+				mat = "Chrome",
+				slot = "Mirrors",
+				variant = "Stem",
+			},
+			OptOrnamentCometChrome = {
+				mat = "Chrome",
+				slot = "Ornament",
+				variant = "Comet",
+			},
+			OptOrnamentSunChrome = {
+				mat = "Chrome",
+				slot = "Ornament",
+				variant = "Sun",
+			},
+			OptOrnamentWingsChrome = {
+				mat = "Chrome",
+				slot = "Ornament",
+				variant = "Wings",
+			},
+			OptPlaqueChainChrome = {
+				mat = "Chrome",
+				slot = "Plaque",
+				variant = "Chain",
+			},
+			OptPlaqueChainGauge = {
+				mat = "Gauge",
+				slot = "Plaque",
+				variant = "Chain",
+			},
+			OptRearBumperBulletChrome = {
+				mat = "Chrome",
+				slot = "RearBumper",
+				variant = "Bullet",
+			},
+			OptRearBumperClassicChrome = {
+				mat = "Chrome",
+				slot = "RearBumper",
+				variant = "Classic",
+			},
+			OptRearBumperShavedBody = {
+				mat = "Body",
+				slot = "RearBumper",
+				variant = "Shaved",
+			},
+			OptRearBumperShavedChrome = {
+				mat = "Chrome",
+				slot = "RearBumper",
+				variant = "Shaved",
+			},
+			OptRearBumperTubeChrome = {
+				mat = "Chrome",
+				slot = "RearBumper",
+				variant = "Tube",
+			},
+			OptSeatsBucketsSeat = {
+				mat = "Seat",
+				slot = "Seats",
+				variant = "Buckets",
+			},
+			OptSeatsBucketsSeatTrim = {
+				mat = "SeatTrim",
+				slot = "Seats",
+				variant = "Buckets",
+			},
+			OptSeatsDiamondSeat = {
+				mat = "Seat",
+				slot = "Seats",
+				variant = "Diamond",
+			},
+			OptSeatsDiamondSeatTrim = {
+				mat = "SeatTrim",
+				slot = "Seats",
+				variant = "Diamond",
+			},
+			OptSeatsRollsSeat = {
+				mat = "Seat",
+				slot = "Seats",
+				variant = "Rolls",
+			},
+			OptSeatsRollsSeatTrim = {
+				mat = "SeatTrim",
+				slot = "Seats",
+				variant = "Rolls",
+			},
+			OptSeatsSplitBenchSeat = {
+				mat = "Seat",
+				slot = "Seats",
+				variant = "SplitBench",
+			},
+			OptSeatsSplitBenchSeatTrim = {
+				mat = "SeatTrim",
+				slot = "Seats",
+				variant = "SplitBench",
+			},
+			OptShifterChainChrome = {
+				mat = "Chrome",
+				slot = "Shifter",
+				variant = "Chain",
+			},
+			OptShifterChainDark = {
+				mat = "Dark",
+				slot = "Shifter",
+				variant = "Chain",
+			},
+			OptShifterColumnChrome = {
+				mat = "Chrome",
+				slot = "Shifter",
+				variant = "Column",
+			},
+			OptShifterCrystalChrome = {
+				mat = "Chrome",
+				slot = "Shifter",
+				variant = "Crystal",
+			},
+			OptShifterCrystalDark = {
+				mat = "Dark",
+				slot = "Shifter",
+				variant = "Crystal",
+			},
+			OptShifterCrystalGlass = {
+				mat = "Glass",
+				slot = "Shifter",
+				variant = "Crystal",
+			},
+			OptShifterTHandleChrome = {
+				mat = "Chrome",
+				slot = "Shifter",
+				variant = "THandle",
+			},
+			OptShifterTHandleDark = {
+				mat = "Dark",
+				slot = "Shifter",
+				variant = "THandle",
+			},
+			OptShifterWoodKnobChrome = {
+				mat = "Chrome",
+				slot = "Shifter",
+				variant = "WoodKnob",
+			},
+			OptShifterWoodKnobDark = {
+				mat = "Dark",
+				slot = "Shifter",
+				variant = "WoodKnob",
+			},
+			OptShifterWoodKnobWood = {
+				mat = "Wood",
+				slot = "Shifter",
+				variant = "WoodKnob",
+			},
+			OptSkirtsChromeChrome = {
+				mat = "Chrome",
+				slot = "Skirts",
+				variant = "Chrome",
+			},
+			OptSkirtsFenderBody = {
+				mat = "Body",
+				slot = "Skirts",
+				variant = "Fender",
+			},
+			OptSkirtsFenderChrome = {
+				mat = "Chrome",
+				slot = "Skirts",
+				variant = "Fender",
+			},
+			OptSkirtsRockerBody = {
+				mat = "Body",
+				slot = "Skirts",
+				variant = "Rocker",
+			},
+			OptSkirtsRockerChrome = {
+				mat = "Chrome",
+				slot = "Skirts",
+				variant = "Rocker",
+			},
+			OptSpoilerDucktailBody = {
+				mat = "Body",
+				slot = "Spoiler",
+				variant = "Ducktail",
+			},
+			OptSpoilerFinsBody = {
+				mat = "Body",
+				slot = "Spoiler",
+				variant = "Fins",
+			},
+			OptSpoilerFinsLight = {
+				mat = "Light",
+				slot = "Spoiler",
+				variant = "Fins",
+			},
+			OptSpoilerWingBody = {
+				mat = "Body",
+				slot = "Spoiler",
+				variant = "Wing",
+			},
+			OptSpoilerWingChrome = {
+				mat = "Chrome",
+				slot = "Spoiler",
+				variant = "Wing",
+			},
+			OptSteeringBanjoChrome = {
+				mat = "Chrome",
+				slot = "Steering",
+				variant = "Banjo",
+			},
+			OptSteeringBanjoSeat = {
+				mat = "Seat",
+				slot = "Steering",
+				variant = "Banjo",
+			},
+			OptSteeringChainChrome = {
+				mat = "Chrome",
+				slot = "Steering",
+				variant = "Chain",
+			},
+			OptSteeringMiniChrome = {
+				mat = "Chrome",
+				slot = "Steering",
+				variant = "Mini",
+			},
+			OptSteeringSportChrome = {
+				mat = "Chrome",
+				slot = "Steering",
+				variant = "Sport",
+			},
+			OptSteeringSportDash = {
+				mat = "Dash",
+				slot = "Steering",
+				variant = "Sport",
+			},
+			OptSteeringWoodChrome = {
+				mat = "Chrome",
+				slot = "Steering",
+				variant = "Wood",
+			},
+			OptSteeringWoodWood = {
+				mat = "Wood",
+				slot = "Steering",
+				variant = "Wood",
+			},
+			OptTrunkShowChrome = {
+				mat = "Chrome",
+				slot = "Trunk",
+				variant = "Show",
+			},
+			OptTrunkShowDark = {
+				mat = "Dark",
+				slot = "Trunk",
+				variant = "Show",
+			},
+			OptTrunkShowGlass = {
+				mat = "Glass",
+				slot = "Trunk",
+				variant = "Show",
+			},
+			OptTrunkShowNeon = {
+				mat = "Neon",
+				slot = "Trunk",
+				variant = "Show",
+			},
+			OptTrunkStreetChrome = {
+				mat = "Chrome",
+				slot = "Trunk",
+				variant = "Street",
+			},
+			OptTrunkStreetDark = {
+				mat = "Dark",
+				slot = "Trunk",
+				variant = "Street",
+			},
+			OptVisorBodyBody = {
+				mat = "Body",
+				slot = "Visor",
+				variant = "Body",
+			},
+			OptVisorChromeChrome = {
+				mat = "Chrome",
+				slot = "Visor",
+				variant = "Chrome",
+			},
+		},
+		Options = {
+			Continental = {"Kit"},
+			Dash = {"Classic", "Wood", "Billet", "Digital"},
+			Dice = {"On"},
+			Exhaust = {"Dual", "Side", "Turndown"},
+			FrontBumper = {"Classic", "Bullet", "Shaved", "Tube", "Split"},
+			Glow = {"On"},
+			Grille = {"Bars", "Eggcrate", "Waterfall", "Mesh", "Billet"},
+			Hood = {"Spear", "Louvers", "Cowl", "Scoop"},
+			Mirrors = {"Bullet", "Dual", "Rect", "Stem"},
+			Ornament = {"Sun", "Wings", "Comet"},
+			Plaque = {"Chain"},
+			RearBumper = {"Classic", "Bullet", "Shaved", "Tube"},
+			Seats = {"Rolls", "Diamond", "SplitBench", "Buckets"},
+			Shifter = {"Column", "Chain", "Crystal", "WoodKnob", "THandle"},
+			Skirts = {"Rocker", "Chrome", "Fender"},
+			Spoiler = {"Ducktail", "Wing", "Fins"},
+			Steering = {"Chain", "Wood", "Sport", "Banjo", "Mini"},
+			Trunk = {"Street", "Show"},
+			Visor = {"Chrome", "Body"},
+		},
 		PanelOf = {
 			Lid = "trunk",
 			PanelHood = "hood",
@@ -19,7 +577,11 @@ return {
 			PanelSideL = "side",
 			PanelSideR = "side",
 		},
-		Pieces = {"Battery", "BatteryCap", "Body", "Carpet", "Chrome", "ContBody", "ContChrome", "Dash", "Glass", "Grille", "Headlight", "Interior", "Lid", "PanelHood", "PanelRoof", "PanelSideL", "PanelSideR", "Pump", "Seam", "SteeringWheel", "Taillight", "TrunkFloor", "Tuck", "Under"},
+		Pieces = {"Body", "Carpet", "Chrome", "Dash", "Glass", "Headlight", "Interior", "Lid", "OptContinentalKitBody", "OptContinentalKitChrome", "OptDashBilletChrome", "OptDashBilletDash", "OptDashBilletGauge", "OptDashClassicChrome", "OptDashClassicDash", "OptDashClassicGauge", "OptDashDigitalDash", "OptDashDigitalGauge", "OptDashDigitalNeon", "OptDashWoodDash", "OptDashWoodGauge", "OptDashWoodWood", "OptDiceOnDark", "OptDiceOnFur", "OptExhaustDualChrome", "OptExhaustDualDark", "OptExhaustSideChrome", "OptExhaustSideDark", "OptExhaustTurndownChrome", "OptFrontBumperBulletChrome", "OptFrontBumperClassicChrome", "OptFrontBumperShavedBody", "OptFrontBumperShavedChrome", "OptFrontBumperSplitChrome", "OptFrontBumperSplitDark", "OptFrontBumperTubeChrome", "OptGlowOnNeon", "OptGrilleBarsChrome", "OptGrilleBarsDark", "OptGrilleBilletChrome", "OptGrilleBilletDark", "OptGrilleEggcrateChrome", "OptGrilleEggcrateDark", "OptGrilleMeshChrome", "OptGrilleMeshDark", "OptGrilleWaterfallChrome", "OptGrilleWaterfallDark", "OptHoodCowlBody", "OptHoodLouversBody", "OptHoodLouversDark", "OptHoodScoopBody", "OptHoodScoopChrome", "OptHoodScoopDark", "OptHoodSpearChrome", "OptMirrorsBulletChrome", "OptMirrorsDualChrome", "OptMirrorsRectChrome", "OptMirrorsRectGlass", "OptMirrorsStemChrome", "OptOrnamentCometChrome", "OptOrnamentSunChrome", "OptOrnamentWingsChrome", "OptPlaqueChainChrome", "OptPlaqueChainGauge", "OptRearBumperBulletChrome", "OptRearBumperClassicChrome", "OptRearBumperShavedBody", "OptRearBumperShavedChrome", "OptRearBumperTubeChrome", "OptSeatsBucketsSeat", "OptSeatsBucketsSeatTrim", "OptSeatsDiamondSeat", "OptSeatsDiamondSeatTrim", "OptSeatsRollsSeat", "OptSeatsRollsSeatTrim", "OptSeatsSplitBenchSeat", "OptSeatsSplitBenchSeatTrim", "OptShifterChainChrome", "OptShifterChainDark", "OptShifterColumnChrome", "OptShifterCrystalChrome", "OptShifterCrystalDark", "OptShifterCrystalGlass", "OptShifterTHandleChrome", "OptShifterTHandleDark", "OptShifterWoodKnobChrome", "OptShifterWoodKnobDark", "OptShifterWoodKnobWood", "OptSkirtsChromeChrome", "OptSkirtsFenderBody", "OptSkirtsFenderChrome", "OptSkirtsRockerBody", "OptSkirtsRockerChrome", "OptSpoilerDucktailBody", "OptSpoilerFinsBody", "OptSpoilerFinsLight", "OptSpoilerWingBody", "OptSpoilerWingChrome", "OptSteeringBanjoChrome", "OptSteeringBanjoSeat", "OptSteeringChainChrome", "OptSteeringMiniChrome", "OptSteeringSportChrome", "OptSteeringSportDash", "OptSteeringWoodChrome", "OptSteeringWoodWood", "OptTrunkShowChrome", "OptTrunkShowDark", "OptTrunkShowGlass", "OptTrunkShowNeon", "OptTrunkStreetChrome", "OptTrunkStreetDark", "OptVisorBodyBody", "OptVisorChromeChrome", "PanelHood", "PanelRoof", "PanelSideL", "PanelSideR", "Seam", "Taillight", "TrunkFloor", "Tuck", "Under"},
+		Plaque = {
+			Centre = {-0.0, 3.35, 4.68},
+			Size = {2.0, 0.6},
+		},
 		RearBumper = {0, 1.22, 10.8},
 		Seats = {
 			Driver = {-1.55, 1.75, 0.35},
@@ -28,13 +590,21 @@ return {
 			RearR = {1.55, 1.75, 3.3},
 		},
 		Vinyls = {
+			checker = {"hood", "side", "trunk"},
 			flames = {"hood", "side", "trunk"},
 			flames_teal = {"hood", "side", "trunk"},
+			lightning = {"hood", "side"},
 			mural = {"hood", "side", "trunk"},
 			patterns = {"hood", "roof", "side", "trunk"},
 			pinstripe = {"hood", "roof", "side", "trunk"},
 			purple_lace = {"hood", "roof", "side", "trunk"},
+			retro_waves = {"hood", "roof", "side", "trunk"},
+			roses = {"hood", "side", "trunk"},
+			scallops = {"hood", "side", "trunk"},
 			showcar = {"hood", "roof", "side", "trunk"},
+			stripes = {"hood", "roof", "side", "trunk"},
+			sunset_fade = {"hood", "side", "trunk"},
+			tropical = {"hood", "side", "trunk"},
 		},
 		WheelRadius = 1.17,
 		Wheels = {
@@ -87,8 +657,246 @@ return {
 	},
 	Wheel = {
 		Centre = {30.0, 0, 0},
-		ImportMax = {30.559, 1.17, 1.17},
-		ImportMin = {29.66, -1.17, -1.17},
-		Pieces = {"Hub", "Rim", "Spokes", "Tire", "Whitewall"},
+		ImportMax = {30.539, 1.17, 1.17},
+		ImportMin = {29.6, -1.17, -1.17},
+		OptInfo = {
+			BandBalloonDoubleBand = {
+				mat = "Band",
+				slot = "Band",
+				variant = "BalloonDouble",
+			},
+			BandBalloonThinBand = {
+				mat = "Band",
+				slot = "Band",
+				variant = "BalloonThin",
+			},
+			BandBalloonWideBand = {
+				mat = "Band",
+				slot = "Band",
+				variant = "BalloonWide",
+			},
+			BandClassicDoubleBand = {
+				mat = "Band",
+				slot = "Band",
+				variant = "ClassicDouble",
+			},
+			BandClassicThinBand = {
+				mat = "Band",
+				slot = "Band",
+				variant = "ClassicThin",
+			},
+			BandClassicWideBand = {
+				mat = "Band",
+				slot = "Band",
+				variant = "ClassicWide",
+			},
+			BandSkinnyDoubleBand = {
+				mat = "Band",
+				slot = "Band",
+				variant = "SkinnyDouble",
+			},
+			BandSkinnyThinBand = {
+				mat = "Band",
+				slot = "Band",
+				variant = "SkinnyThin",
+			},
+			BandSkinnyWideBand = {
+				mat = "Band",
+				slot = "Band",
+				variant = "SkinnyWide",
+			},
+			KOBar2Hub = {
+				mat = "Hub",
+				slot = "KO",
+				variant = "Bar2",
+			},
+			KOBar3Hub = {
+				mat = "Hub",
+				slot = "KO",
+				variant = "Bar3",
+			},
+			KOCapHub = {
+				mat = "Hub",
+				slot = "KO",
+				variant = "Cap",
+			},
+			RimDiscDark = {
+				mat = "Dark",
+				slot = "Rim",
+				variant = "Disc",
+			},
+			RimDiscRim = {
+				mat = "Rim",
+				slot = "Rim",
+				variant = "Disc",
+			},
+			RimDiscSpokes = {
+				mat = "Spokes",
+				slot = "Rim",
+				variant = "Disc",
+			},
+			RimMeshDark = {
+				mat = "Dark",
+				slot = "Rim",
+				variant = "Mesh",
+			},
+			RimMeshDish = {
+				mat = "Dish",
+				slot = "Rim",
+				variant = "Mesh",
+			},
+			RimMeshRim = {
+				mat = "Rim",
+				slot = "Rim",
+				variant = "Mesh",
+			},
+			RimMeshSpokes = {
+				mat = "Spokes",
+				slot = "Rim",
+				variant = "Mesh",
+			},
+			RimSplitDark = {
+				mat = "Dark",
+				slot = "Rim",
+				variant = "Split",
+			},
+			RimSplitDish = {
+				mat = "Dish",
+				slot = "Rim",
+				variant = "Split",
+			},
+			RimSplitRim = {
+				mat = "Rim",
+				slot = "Rim",
+				variant = "Split",
+			},
+			RimSplitSpokes = {
+				mat = "Spokes",
+				slot = "Rim",
+				variant = "Split",
+			},
+			RimStarDark = {
+				mat = "Dark",
+				slot = "Rim",
+				variant = "Star",
+			},
+			RimStarDish = {
+				mat = "Dish",
+				slot = "Rim",
+				variant = "Star",
+			},
+			RimStarRim = {
+				mat = "Rim",
+				slot = "Rim",
+				variant = "Star",
+			},
+			RimStarSpokes = {
+				mat = "Spokes",
+				slot = "Rim",
+				variant = "Star",
+			},
+			RimSteelieDark = {
+				mat = "Dark",
+				slot = "Rim",
+				variant = "Steelie",
+			},
+			RimSteelieDish = {
+				mat = "Dish",
+				slot = "Rim",
+				variant = "Steelie",
+			},
+			RimSteelieRim = {
+				mat = "Rim",
+				slot = "Rim",
+				variant = "Steelie",
+			},
+			RimSteelieSpokes = {
+				mat = "Spokes",
+				slot = "Rim",
+				variant = "Steelie",
+			},
+			RimTurbineDark = {
+				mat = "Dark",
+				slot = "Rim",
+				variant = "Turbine",
+			},
+			RimTurbineDish = {
+				mat = "Dish",
+				slot = "Rim",
+				variant = "Turbine",
+			},
+			RimTurbineRim = {
+				mat = "Rim",
+				slot = "Rim",
+				variant = "Turbine",
+			},
+			RimTurbineSpokes = {
+				mat = "Spokes",
+				slot = "Rim",
+				variant = "Turbine",
+			},
+			RimWire100Dark = {
+				mat = "Dark",
+				slot = "Rim",
+				variant = "Wire100",
+			},
+			RimWire100Dish = {
+				mat = "Dish",
+				slot = "Rim",
+				variant = "Wire100",
+			},
+			RimWire100Rim = {
+				mat = "Rim",
+				slot = "Rim",
+				variant = "Wire100",
+			},
+			RimWire100Spokes = {
+				mat = "Spokes",
+				slot = "Rim",
+				variant = "Wire100",
+			},
+			RimWire72Dark = {
+				mat = "Dark",
+				slot = "Rim",
+				variant = "Wire72",
+			},
+			RimWire72Dish = {
+				mat = "Dish",
+				slot = "Rim",
+				variant = "Wire72",
+			},
+			RimWire72Rim = {
+				mat = "Rim",
+				slot = "Rim",
+				variant = "Wire72",
+			},
+			RimWire72Spokes = {
+				mat = "Spokes",
+				slot = "Rim",
+				variant = "Wire72",
+			},
+			TireBalloonRubber = {
+				mat = "Rubber",
+				slot = "Tire",
+				variant = "Balloon",
+			},
+			TireClassicRubber = {
+				mat = "Rubber",
+				slot = "Tire",
+				variant = "Classic",
+			},
+			TireSkinnyRubber = {
+				mat = "Rubber",
+				slot = "Tire",
+				variant = "Skinny",
+			},
+		},
+		Options = {
+			Band = {"ClassicThin", "ClassicWide", "ClassicDouble", "BalloonThin", "BalloonWide", "BalloonDouble", "SkinnyThin", "SkinnyWide", "SkinnyDouble"},
+			KO = {"Bar2", "Bar3", "Cap"},
+			Rim = {"Wire100", "Wire72", "Star", "Steelie", "Disc", "Turbine", "Split", "Mesh"},
+			Tire = {"Classic", "Balloon", "Skinny"},
+		},
+		Pieces = {"BandBalloonDoubleBand", "BandBalloonThinBand", "BandBalloonWideBand", "BandClassicDoubleBand", "BandClassicThinBand", "BandClassicWideBand", "BandSkinnyDoubleBand", "BandSkinnyThinBand", "BandSkinnyWideBand", "KOBar2Hub", "KOBar3Hub", "KOCapHub", "RimDiscDark", "RimDiscRim", "RimDiscSpokes", "RimMeshDark", "RimMeshDish", "RimMeshRim", "RimMeshSpokes", "RimSplitDark", "RimSplitDish", "RimSplitRim", "RimSplitSpokes", "RimStarDark", "RimStarDish", "RimStarRim", "RimStarSpokes", "RimSteelieDark", "RimSteelieDish", "RimSteelieRim", "RimSteelieSpokes", "RimTurbineDark", "RimTurbineDish", "RimTurbineRim", "RimTurbineSpokes", "RimWire100Dark", "RimWire100Dish", "RimWire100Rim", "RimWire100Spokes", "RimWire72Dark", "RimWire72Dish", "RimWire72Rim", "RimWire72Spokes", "TireBalloonRubber", "TireClassicRubber", "TireSkinnyRubber"},
 	},
 }

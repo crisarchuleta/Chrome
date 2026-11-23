@@ -453,6 +453,148 @@ local function loose(p)
 	p.CastShadow = true
 end
 
+---------------------------------------------------------------------------------------------------- dash gauge + plaque
+-- The dash's gauge face gets a live 60s-style ribbon speedometer (a SurfaceGui), the club plaque gets its name.
+local GAUGE = Data.Car.Gauge or { Centre = { -1.55, 2.62, -2.3 }, Size = { 1.6, 0.418 }, Tilt = 16.7 }
+local PLAQUE = Data.Car.Plaque or { Centre = { 0, 3.35, 4.68 }, Size = { 2.0, 0.6 } }
+local MAX_MPH = 120
+
+local function facePart(name, size, localCF, chassis, origin)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.Transparency = 1
+	loose(p)
+	p.CastShadow = false
+	p.CFrame = chassis.CFrame * origin.CFrame * localCF
+	weldTo(p, chassis)
+	return p
+end
+
+local function buildSpeedo(car, chassis, origin)
+	local t = math.rad(GAUGE.Tilt)
+	local n = Vector3.new(0, math.sin(t), math.cos(t))
+	local cf = CFrame.new(v3(GAUGE.Centre) + n * 0.02) * CFrame.Angles(-t, 0, 0)
+	local p = facePart("GaugeFace", Vector3.new(GAUGE.Size[1] - 0.1, GAUGE.Size[2] - 0.04, 0.02), cf, chassis, origin)
+	p.Parent = car
+	local g = Instance.new("SurfaceGui")
+	g.Name = "Speedo"
+	g.Face = Enum.NormalId.Back
+	g.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
+	g.CanvasSize = Vector2.new(400, 96)
+	g.LightInfluence = 0.4
+	g.Parent = p
+	local face = Instance.new("Frame")
+	face.Name = "Dial"
+	face.Size = UDim2.fromScale(1, 1)
+	face.BorderSizePixel = 0
+	face.Parent = g
+	Instance.new("UICorner", face).CornerRadius = UDim.new(0, 12)
+	local stroke = Instance.new("UIStroke", face)
+	stroke.Name = "Bezel"
+	stroke.Thickness = 5
+	for k = 0, 12 do
+		local x = 0.06 + 0.88 * k / 12
+		local tick = Instance.new("Frame")
+		tick.Name = "Tick"
+		tick.AnchorPoint = Vector2.new(0.5, 0)
+		tick.Position = UDim2.new(x, 0, 0.12, 0)
+		tick.Size = UDim2.new(0, k % 2 == 0 and 4 or 2, k % 2 == 0 and 0.32 or 0.2, 0)
+		tick.BorderSizePixel = 0
+		tick.Parent = face
+		if k % 2 == 0 then
+			local l = Instance.new("TextLabel")
+			l.Name = "Num"
+			l.AnchorPoint = Vector2.new(0.5, 0)
+			l.Position = UDim2.new(x, 0, 0.48, 0)
+			l.Size = UDim2.new(0, 50, 0.32, 0)
+			l.BackgroundTransparency = 1
+			l.Font = Enum.Font.GothamBold
+			l.TextScaled = true
+			l.Text = tostring(k * MAX_MPH / 12)
+			l.Parent = face
+		end
+	end
+	local needle = Instance.new("Frame")
+	needle.Name = "Needle"
+	needle.AnchorPoint = Vector2.new(0.5, 0)
+	needle.Position = UDim2.new(0.06, 0, 0.06, 0)
+	needle.Size = UDim2.new(0, 6, 0.86, 0)
+	needle.BorderSizePixel = 0
+	needle.ZIndex = 3
+	needle.Parent = face
+	local digits = Instance.new("TextLabel")
+	digits.Name = "Digits"
+	digits.Size = UDim2.fromScale(1, 1)
+	digits.BackgroundTransparency = 1
+	digits.Font = Enum.Font.Code
+	digits.TextScaled = true
+	digits.Text = "0 MPH"
+	digits.ZIndex = 4
+	digits.Parent = face
+end
+
+local function buildPlaque(car, chassis, origin)
+	local p = facePart("PlaqueFace", Vector3.new(PLAQUE.Size[1], PLAQUE.Size[2], 0.02), CFrame.new(v3(PLAQUE.Centre)), chassis, origin)
+	p.Parent = car
+	local g = Instance.new("SurfaceGui")
+	g.Name = "Plaque"
+	g.Face = Enum.NormalId.Back
+	g.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
+	g.CanvasSize = Vector2.new(400, 120)
+	g.LightInfluence = 0.5
+	g.Enabled = false
+	g.Parent = p
+	local l = Instance.new("TextLabel")
+	l.Name = "Label"
+	l.Size = UDim2.fromScale(1, 1)
+	l.BackgroundTransparency = 1
+	l.Font = Enum.Font.Fondamento
+	l.TextScaled = true
+	l.TextColor3 = Color3.fromRGB(235, 236, 240)
+	l.TextStrokeTransparency = 0.4
+	l.Parent = g
+end
+
+local function styleSpeedo(car, look)
+	local p = car:FindFirstChild("GaugeFace")
+	local g = p and p:FindFirstChild("Speedo")
+	if not g then
+		return
+	end
+	local st = Config.Gauges[look.gauge] or Config.Gauges.classic
+	local face = g.Dial
+	face.BackgroundColor3 = st.face
+	face.Bezel.Color = st.bezel and Color3.fromRGB(225, 228, 235) or st.face:Lerp(Color3.new(0, 0, 0), 0.4)
+	g.LightInfluence = st.glow and 0 or 0.4
+	g.Brightness = st.glow and 2 or 1
+	for _, c in face:GetChildren() do
+		if c.Name == "Tick" then
+			c.BackgroundColor3 = st.ink
+			c.Visible = not st.digital
+		elseif c.Name == "Num" then
+			c.TextColor3 = st.ink
+			c.Visible = not st.digital
+		end
+	end
+	face.Needle.BackgroundColor3 = st.needle
+	face.Needle.Visible = not st.digital
+	face.Digits.TextColor3 = st.ink
+	face.Digits.Visible = st.digital == true
+end
+
+-- moves a car's speedometer (call on clients; mph = road speed)
+function Kit.SetSpeed(car, mph)
+	local p = car:FindFirstChild("GaugeFace")
+	local g = p and p:FindFirstChild("Speedo")
+	if not g then
+		return
+	end
+	local f = math.clamp(mph / MAX_MPH, 0, 1)
+	g.Dial.Needle.Position = UDim2.new(0.06 + 0.88 * f, 0, 0.06, 0)
+	g.Dial.Digits.Text = ("%d MPH"):format(math.floor(mph + 0.5))
+end
+
 -- builds a car at cf (the ground point between the axles, facing cf.LookVector); unanchored, ready to drive
 function Kit.BuildCar(cf)
 	local car = Instance.new("Model")
@@ -507,11 +649,16 @@ function Kit.BuildCar(cf)
 	hw.Part1 = hinge
 	hw.C0 = chassis.CFrame:ToObjectSpace(hingeCF)
 	hw.Parent = hinge
+	local optFolder = Instance.new("Folder")
+	optFolder.Name = "Opt"
+	optFolder.Parent = car
 	for _, p in body:GetChildren() do
 		if p:IsA("BasePart") and p.Name ~= "Origin" then
 			loose(p)
 			local role = p:GetAttribute("Role") or p.Name
-			if LID_ROLES[role] then
+			if Data.Car.OptInfo and Data.Car.OptInfo[role] then
+				p:Destroy() -- swappable parts come from ApplyLook
+			elseif LID_ROLES[role] then
 				p.Parent = lidFolder
 				weldTo(p, hinge)
 			else
@@ -533,10 +680,17 @@ function Kit.BuildCar(cf)
 		loose(hub)
 		for _, p in w:GetDescendants() do
 			if p:IsA("BasePart") and p ~= hub then
-				loose(p)
-				weldTo(p, hub)
+				if Data.Wheel.OptInfo and Data.Wheel.OptInfo[p:GetAttribute("Role") or p.Name] then
+					p:Destroy()
+				else
+					loose(p)
+					weldTo(p, hub)
+				end
 			end
 		end
+		local wopt = Instance.new("Folder")
+		wopt.Name = "Opt"
+		wopt.Parent = w
 		local ww = Instance.new("Weld")
 		ww.Name = "WheelWeld"
 		ww.Part0 = chassis
@@ -548,6 +702,9 @@ function Kit.BuildCar(cf)
 		w:SetAttribute("Rest", Vector3.new(pos[1], pos[2], pos[3]))
 		w.Parent = car
 	end
+
+	buildSpeedo(car, chassis, origin)
+	buildPlaque(car, chassis, origin)
 
 	-- seats
 	local function seat(name, pos, driver)
@@ -598,15 +755,131 @@ function Kit.Origin(car)
 	return ch.CFrame * ch.Origin.CFrame
 end
 
----------------------------------------------------------------------------------------------------- painting
-local function finishFor(kind)
-	return Config.WheelFinish[kind] or Config.WheelFinish.chrome
+---------------------------------------------------------------------------------------------------- swappable parts
+-- The imported car / wheel hold every variant of every part (NCLowriderData OptInfo: piece -> slot, variant, mat).
+-- A built car only carries the variants its look picks: ApplyLook clones them from LowriderAssets into the car's
+-- (or wheel's) "Opt" folder and welds them on. Running it again only swaps the slots that changed, so it's cheap
+-- enough for the live preview in the shop (the client does it locally; the server's copy is what everyone sees).
+local OPT = Data.Car.OptInfo or {}
+local WOPT = Data.Wheel.OptInfo or {}
+local LID_SLOTS = { Spoiler = true } -- these ride on the trunk lid
+local templates = {}
+
+local function template(name, info)
+	local f = RS:FindFirstChild("LowriderAssets")
+	local m = f and f:FindFirstChild(name)
+	if not m or not m.PrimaryPart then
+		return nil
+	end
+	local t = templates[name]
+	if t and t.model == m then
+		return t
+	end
+	t = { model = m, bySlot = {} }
+	local root = m.PrimaryPart.CFrame
+	for _, p in m:GetChildren() do
+		if p:IsA("BasePart") then
+			local inf = info[p:GetAttribute("Role") or p.Name]
+			if inf then
+				local bySlot = t.bySlot[inf.slot] or {}
+				t.bySlot[inf.slot] = bySlot
+				bySlot[inf.variant] = bySlot[inf.variant] or {}
+				table.insert(bySlot[inf.variant], { part = p, rel = root:ToObjectSpace(p.CFrame) })
+			end
+		end
+	end
+	templates[name] = t
+	return t
 end
 
--- paints a car with a look table (see Config.StarterLook); safe to call on the client for a live preview
+local function syncParts(folder, t, wantOf, attach)
+	local keep = {}
+	for _, p in folder:GetChildren() do
+		local slot = p:GetAttribute("Slot")
+		if not slot or p:GetAttribute("Variant") ~= wantOf(slot) or keep[p.Name] then
+			p:Destroy()
+		else
+			keep[p.Name] = true
+		end
+	end
+	for slot, variants in t.bySlot do
+		local want = wantOf(slot)
+		for _, it in (want ~= "" and variants[want] or {}) do
+			if not keep[it.part.Name] then
+				local c = it.part:Clone()
+				loose(c)
+				c:SetAttribute("Slot", slot)
+				c:SetAttribute("Variant", want)
+				attach(c, slot, it.rel)
+				c.Parent = folder
+			end
+		end
+	end
+end
+
+local function weldAt(c, part0, c0)
+	c.CFrame = part0.CFrame * c0
+	local w = Instance.new("Weld")
+	w.Part0, w.Part1, w.C0 = part0, c, c0
+	w.Parent = c
+end
+
+local function syncCarParts(car, look)
+	local t = template("Car", OPT)
+	local folder = car:FindFirstChild("Opt")
+	local ch = car.PrimaryPart
+	local origin = ch and ch:FindFirstChild("Origin")
+	if not (t and folder and origin) then
+		return
+	end
+	local lid = car:FindFirstChild("Lid")
+	local hinge = lid and lid:FindFirstChild("LidRoot")
+	local hingeInv = CFrame.new(v3(Data.Car.LidHinge)):Inverse()
+	syncParts(folder, t, function(slot)
+		return look["part_" .. slot] or ""
+	end, function(c, slot, rel)
+		if LID_SLOTS[slot] and hinge then
+			weldAt(c, hinge, hingeInv * rel)
+		else
+			weldAt(c, ch, origin.CFrame * rel)
+		end
+	end)
+end
+
+local function wheelWant(look)
+	return function(slot)
+		if slot == "Band" then
+			return (look.ww or "") ~= "" and (look.part_Tire or "Classic") .. look.ww or ""
+		end
+		return look["part_" .. slot] or ""
+	end
+end
+
+local function syncWheelParts(car, look)
+	local t = template("Wheel", WOPT)
+	if not t then
+		return
+	end
+	for _, w in car:GetChildren() do
+		local folder = w:IsA("Model") and w.Name:match("^W_") and w:FindFirstChild("Opt")
+		if folder and w.PrimaryPart then
+			local hub = w.PrimaryPart
+			syncParts(folder, t, wheelWant(look), function(c, _, rel)
+				weldAt(c, hub, rel)
+			end)
+		end
+	end
+end
+
+---------------------------------------------------------------------------------------------------- painting
 local PANEL_OF = Data.Car.PanelOf or { PanelSideL = "side", PanelSideR = "side", PanelHood = "hood", Lid = "trunk", PanelRoof = "roof" }
 -- the fallback (part-made) car shows a vinyl as a Decal on this face of each panel part
 local DECAL_FACE = { PanelHood = Enum.NormalId.Top, PanelRoof = Enum.NormalId.Top, Lid = Enum.NormalId.Top, PanelSideL = Enum.NormalId.Left, PanelSideR = Enum.NormalId.Right }
+-- which finish key the chrome pieces of each slot follow (everything else: fin_Trim)
+local FIN_GROUP = {
+	FrontBumper = "Bumpers", RearBumper = "Bumpers", Grille = "Grille", Mirrors = "Mirrors", Exhaust = "Exhaust", Trunk = "Trunk",
+	Steering = "Cabin", Dash = "Cabin", Shifter = "Cabin", Plaque = "Cabin", Rim = "Rim", KO = "KO",
+}
 
 -- the uploaded image id for a livery's panel ("" if there's none)
 function Kit.VinylId(livery, panel)
@@ -641,13 +914,102 @@ local function printVinyl(p, role, id)
 	end
 end
 
--- paints a car with a look table (see Config.StarterLook); safe to call on the client for a live preview
+local function colorOf(look, key, fallback)
+	return Config.ColorOf(key, look[key]) or fallback
+end
+
+-- material, colour, reflectance, transparency for one piece
+local function styleFor(role, look, ctx)
+	local inf = OPT[role] or WOPT[role]
+	local mat = inf and inf.mat or role
+	local function trim(key)
+		local f = Config.ById.TrimFinishes[look[key]] or Config.TrimFinishes[1]
+		if f.id == "paint" then
+			return ctx.finish.material, ctx.paint, ctx.finish.reflectance, 0
+		end
+		return f.material, f.color, f.reflectance, 0
+	end
+	if mat == "Chrome" or mat == "ContChrome" or mat == "SteeringWheel" then
+		return trim("fin_" .. (inf and FIN_GROUP[inf.slot] or "Trim"))
+	elseif mat == "Rim" or mat == "Dish" then
+		return trim("fin_Rim")
+	elseif mat == "Spokes" then
+		return trim("fin_Spokes")
+	elseif mat == "Hub" then
+		return trim("fin_KO")
+	elseif mat == "Pump" then
+		return trim("fin_Trunk")
+	elseif mat == "Body" or mat == "ContBody" or mat == "Lid" or PANEL_OF[mat] then
+		local c = (mat == "PanelRoof") and ctx.roof or ctx.paint
+		return ctx.finish.material, c, ctx.finish.reflectance, 0
+	elseif mat == "Seat" or mat == "Interior" then
+		return ctx.seatMat[1], ctx.seat, ctx.seatMat[2], 0
+	elseif mat == "SeatTrim" or mat == "Tuck" then
+		return ctx.seatMat[1], ctx.stitch, ctx.seatMat[2], 0
+	elseif mat == "Carpet" then
+		return Enum.Material.Carpet, ctx.carpet, 0, 0
+	elseif mat == "Dash" then
+		return Enum.Material.SmoothPlastic, ctx.dash, 0.05, 0
+	elseif mat == "Wood" then
+		return Enum.Material.Wood, colorOf(look, "col_Wood", Color3.fromRGB(96, 52, 26)), 0.1, 0
+	elseif mat == "Gauge" then
+		local st = Config.Gauges[look.gauge] or Config.Gauges.classic
+		return st.glow and Enum.Material.Neon or Enum.Material.SmoothPlastic, st.face, 0, 0
+	elseif mat == "Neon" then
+		return Enum.Material.Neon, ctx.neon, 0, 0
+	elseif mat == "Fur" then
+		return Enum.Material.Fabric, colorOf(look, "col_Fur", Color3.new(1, 1, 1)), 0, 0
+	elseif mat == "Dark" then
+		return Enum.Material.SmoothPlastic, Color3.fromRGB(20, 20, 22), 0.05, 0
+	elseif mat == "Rubber" or mat == "Tire" then
+		return Enum.Material.Rubber, Color3.fromRGB(20, 20, 22), 0, 0
+	elseif mat == "Band" then
+		return Enum.Material.Rubber, ctx.band, 0, 0
+	elseif mat == "Whitewall" then -- the part-made wheel
+		return Enum.Material.Rubber, (look.ww or "") ~= "" and ctx.band or Color3.fromRGB(20, 20, 22), 0, 0
+	elseif mat == "Glass" then
+		if inf then -- mirror glass, crystal knob, show-trunk mirror floor
+			return Enum.Material.Glass, Color3.fromRGB(200, 220, 235), 0.4, 0.15
+		end
+		local tint = Config.OptionOf.tint[look.tint] or Config.OptionOf.tint.none
+		local tr = ({ none = 0.45, light = 0.35, dark = 0.22, limo = 0.08, blue = 0.25, purple = 0.25 })[tint.id] or 0.45
+		return Enum.Material.Glass, tint.color, 0.15, tr
+	elseif mat == "Headlight" then
+		return Enum.Material.Neon, colorOf(look, "headlights", Color3.fromRGB(255, 238, 200)), 0, 0
+	elseif mat == "Taillight" or mat == "Light" then
+		return Enum.Material.Neon, colorOf(look, "taillights", Color3.fromRGB(220, 15, 15)), 0, 0
+	elseif mat == "TrunkFloor" then
+		local on = (look.part_Trunk or "") ~= ""
+		return Enum.Material.Metal, on and Color3.fromRGB(205, 210, 220) or Color3.fromRGB(60, 60, 64), on and 0.4 or 0, 0
+	end
+	local d = DEFAULT[mat]
+	if d then
+		return d[1], d[2], 0, d[3] or 0
+	end
+	return nil
+end
+
+-- paints and builds a car to a look (Config.CleanLook makes one); safe to call on the client for a live preview
 function Kit.ApplyLook(car, look)
-	look = look or Config.StarterLook
-	local paint = Config.Paint(look.paint).color
-	local finish = Config.ById.Finishes[look.finish] or Config.Finishes[1]
+	look = Config.CleanLook(look)
+	syncCarParts(car, look)
+	syncWheelParts(car, look)
+	local paint = Config.ColorOf("paint", look.paint) or Config.Paints[1].color
+	local seat = colorOf(look, "col_Seat", Color3.fromRGB(242, 238, 226))
+	local ctx = {
+		paint = paint,
+		roof = look.paint2 == "same" and paint or (Config.ColorOf("paint2", look.paint2) or paint),
+		finish = Config.ById.Finishes[look.finish] or Config.Finishes[1],
+		seat = seat,
+		stitch = look.col_Stitch == "match" and seat:Lerp(Color3.new(0, 0, 0), 0.12) or colorOf(look, "col_Stitch", seat),
+		seatMat = Config.SeatMaterials[look.mat_Seat] or Config.SeatMaterials.vinyl,
+		carpet = look.col_Carpet == "match" and paint:Lerp(Color3.new(0, 0, 0), 0.3) or colorOf(look, "col_Carpet", paint),
+		dash = look.col_Dash == "match" and paint or colorOf(look, "col_Dash", Color3.fromRGB(30, 30, 32)),
+		neon = colorOf(look, "col_Neon", Color3.fromRGB(255, 50, 170)),
+		band = colorOf(look, "col_Band", Color3.fromRGB(244, 244, 240)),
+	}
 	local art = Config.ById.Art[look.art] or Config.Art[1]
-	local wheel = Config.ById.Wheels[look.wheels] or Config.Wheels[1]
+	local trunkOn, contOn = (look.part_Trunk or "") ~= "", (look.part_Continental or "") ~= ""
 	for _, p in car:GetDescendants() do
 		if not p:IsA("BasePart") then
 			continue
@@ -656,48 +1018,39 @@ function Kit.ApplyLook(car, look)
 		if not role then
 			continue
 		end
-		local d = DEFAULT[role]
-		if role == "Body" or role == "ContBody" or PANEL_OF[role] then
-			p.Color = paint
-			p.Material = finish.material
-			p.Reflectance = finish.reflectance
-			if PANEL_OF[role] then
-				printVinyl(p, role, art.id == "none" and "" or Kit.VinylId(art.id, PANEL_OF[role]))
-			end
-		elseif role == "Spokes" then
-			local f = wheel.spokes == "paint" and { Enum.Material.SmoothPlastic, paint, 0.2 } or finishFor(wheel.spokes)
-			p.Material, p.Color, p.Reflectance = f[1], f[2], f[3]
-		elseif role == "Hub" then
-			local f = finishFor(wheel.hub)
-			p.Material, p.Color, p.Reflectance = f[1], f[2], f[3]
-		elseif role == "Rim" or role == "Chrome" or role == "ContChrome" or role == "SteeringWheel" then
-			p.Material, p.Color, p.Reflectance = Enum.Material.Metal, Color3.fromRGB(225, 228, 235), 0.45
-			if role == "ContChrome" then
-				p.Transparency = look.continental and 0 or 1
-			end
-		elseif role == "Whitewall" then
-			p.Color = look.whitewall and DEFAULT.Whitewall[2] or DEFAULT.Tire[2]
-			p.Material = Enum.Material.Rubber
-		elseif role == "Carpet" then
-			p.Color = paint:Lerp(Color3.new(0, 0, 0), 0.25)
-			p.Material = Enum.Material.Carpet
-		elseif role == "Pump" or role == "Battery" or role == "BatteryCap" then
-			p.Transparency = look.trunkSetup and 0 or 1
-			if role == "Pump" then
-				p.Material, p.Color, p.Reflectance = Enum.Material.Metal, Color3.fromRGB(225, 228, 235), 0.45
-			elseif d then
-				p.Material, p.Color = d[1], d[2]
-			end
-		elseif role == "TrunkFloor" then
-			p.Material, p.Color, p.Reflectance = Enum.Material.Metal, look.trunkSetup and Color3.fromRGB(225, 228, 235) or Color3.fromRGB(60, 60, 64), look.trunkSetup and 0.5 or 0
-		elseif d then
-			p.Material, p.Color = d[1], d[2]
-			p.Transparency = d[3] or 0
+		local m, c, r, tr = styleFor(role, look, ctx)
+		if m then
+			p.Material, p.Color, p.Reflectance, p.Transparency = m, c, r, tr
 		end
-		if role == "ContBody" then
-			p.Transparency = look.continental and 0 or 1
+		if PANEL_OF[role] then
+			printVinyl(p, role, art.id == "none" and "" or Kit.VinylId(art.id, PANEL_OF[role]))
+		end
+		-- pieces that only the part-made fallback car has
+		if role == "Pump" or role == "Battery" or role == "BatteryCap" then
+			p.Transparency = trunkOn and 0 or 1
+		elseif role == "ContBody" or role == "ContChrome" then
+			p.Transparency = contOn and 0 or 1
+		end
+		-- underglow throws light on the road
+		local inf = OPT[role]
+		if inf and inf.slot == "Glow" then
+			local l = p:FindFirstChild("Glow") or Instance.new("PointLight")
+			l.Name = "Glow"
+			l.Color = ctx.neon
+			l.Range = 10
+			l.Brightness = 3
+			l.Parent = p
 		end
 	end
+	styleSpeedo(car, look)
+	local pf = car:FindFirstChild("PlaqueFace")
+	local pg = pf and pf:FindFirstChild("Plaque")
+	if pg then
+		pg.Enabled = (look.part_Plaque or "") ~= ""
+		local o = Config.OptionOf.plaque[look.plaque]
+		pg.Label.Text = o and o.name or ""
+	end
+	car:SetAttribute("Engine", look.engine)
 end
 
 ---------------------------------------------------------------------------------------------------- the shop

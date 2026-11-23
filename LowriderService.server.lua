@@ -59,28 +59,7 @@ local function copy(t)
 	return o
 end
 
-local function cleanLook(look)
-	local out = copy(Config.StarterLook)
-	if type(look) ~= "table" then
-		return out
-	end
-	local function pick(key, list)
-		if type(look[key]) == "string" and Config.ById[list][look[key]] then
-			out[key] = look[key]
-		end
-	end
-	pick("paint", "Paints")
-	pick("finish", "Finishes")
-	pick("art", "Art")
-	pick("wheels", "Wheels")
-	pick("susp", "Suspension")
-	for _, k in { "whitewall", "continental", "trunkSetup" } do
-		if type(look[k]) == "boolean" then
-			out[k] = look[k]
-		end
-	end
-	return out
-end
+local cleanLook = Config.CleanLook
 
 local function load(p)
 	local prof = { owned = false, look = copy(Config.StarterLook), unlocked = {}, bestHop = 0 }
@@ -92,7 +71,7 @@ local function load(p)
 			local d = data.lowrider
 			prof.owned = d.owned == true
 			prof.look = cleanLook(d.look)
-			prof.unlocked = type(d.unlocked) == "table" and d.unlocked or {}
+			prof.unlocked = Config.MigrateUnlocked(d.unlocked)
 			prof.bestHop = tonumber(d.bestHop) or 0
 		end
 	end
@@ -310,30 +289,9 @@ local function spawnCar(player)
 end
 
 ---------------------------------------------------------------------------------------------------- shop purchases
-local LIST_FOR = { paint = "Paints", finish = "Finishes", art = "Art", wheels = "Wheels", susp = "Suspension" }
-
--- what a new look costs on top of what the player already has unlocked
+-- what a new look costs on top of what the player already has unlocked (Config.Quote, shared with the client)
 local function quote(prof, look)
-	local total, items = 0, {}
-	for key, list in LIST_FOR do
-		if look[key] ~= prof.look[key] then
-			local it = Config.ById[list][look[key]]
-			local tag = list .. ":" .. look[key]
-			local price = it and it.price or 0
-			if not prof.unlocked[tag] and price > 0 then
-				total += price
-				table.insert(items, tag)
-			end
-		end
-	end
-	local extras = { whitewall = Config.WhitewallPrice, continental = Config.ContinentalPrice, trunkSetup = Config.TrunkSetupPrice }
-	for key, price in extras do
-		if look[key] and not prof.look[key] and not prof.unlocked["Extra:" .. key] then
-			total += price
-			table.insert(items, "Extra:" .. key)
-		end
-	end
-	return total, items
+	return Config.Quote(prof.look, look, prof.unlocked)
 end
 
 local function nearShop(player, radius)
@@ -389,18 +347,12 @@ ShopRF.OnServerInvoke = function(player, action, arg)
 		if total > 0 and not Wallet.Spend(player, total) then
 			return false, ("That build costs $%d. You have $%d."):format(total, Wallet.Balance(player))
 		end
-		for _, tag in items do
+		for tag in items do
 			prof.unlocked[tag] = true
 		end
 		-- whatever you had on before stays unlocked, so you can switch back for free
-		for key, list in LIST_FOR do
-			local tag = list .. ":" .. prof.look[key]
-			prof.unlocked[tag] = true
-		end
-		for _, key in { "whitewall", "continental", "trunkSetup" } do
-			if prof.look[key] then
-				prof.unlocked["Extra:" .. key] = true
-			end
+		for key, v in prof.look do
+			prof.unlocked[key .. "=" .. tostring(v)] = true
 		end
 		prof.look = look
 		player:SetAttribute("LowriderLook", HttpService:JSONEncode(look))

@@ -536,3 +536,9 @@ Full notes and install steps in `LOWRIDER.md`.
   (flames, pinstripes, patterns + lace, sunset mural; images from make_lowrider_vinyls.py, LowriderVinyls.glb),
   wheel finishes, whitewalls, suspension kits, continental kit, trunk pump setup. Saved in `NeonCoast_Garage_v1`.
 - Works right away with a part-made car and shop; `NCLowriderKit.Prepare(import)` switches to the Blender meshes.
+- Full customization (pass 11): GTA-style tuning menu (categories -> mods -> options, camera on each part, hover
+  preview, cart total, custom colour picker). Swappable bumpers, grilles, hoods, ornaments, spoilers, skirts,
+  mirrors, visors, exhausts, underglow, trunk setups, 4 seat styles, 5 steering wheels, 4 dashes with a live
+  speedometer, 5 shifters, dice and a club plaque; 8 rims, 3 knock-offs, 3 tyre profiles, 4 whitewall styles;
+  finishes per chrome group, seat material + colours, tint, light colours, engine tunes; 15 liveries.
+  Parts are in `build_lowrider_parts.py`; options and prices are in `NCLowriderConfig.Mods`.

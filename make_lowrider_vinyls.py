@@ -414,6 +414,245 @@ def mural_trunk(cv):
         pinstripe(cv, scroll(s * (rx + 0.25), cy, 0.22, 1.25, sx=s), GOLD, w=0.035)
 
 
+
+# --------------------------------------------------------------------------------------------- more liveries
+def poly_mask(cv, pts):
+    m = Image.new("L", (cv.w, cv.h), 0)
+    ImageDraw.Draw(m).polygon([cv.px(*p) for p in pts], fill=255)
+    return m
+
+
+def scallop_pts(a0, a1, bc, half_h, sgn=1, n=24):
+    """one long tapered scallop: rounded nose at a0, sharp point at a1, slight upward sweep"""
+    top, bot = [], []
+    for k in range(n + 1):
+        t = k / n
+        a = a0 + (a1 - a0) * t
+        h = half_h * (math.sin(min(1, t * 4) * math.pi / 2)) * (1 - t) ** 0.6
+        lift = 0.12 * t * t * sgn
+        top.append((a, bc + h + lift))
+        bot.append((a, bc - h + lift))
+    return top + bot[::-1]
+
+
+SCALLOP = [(0.0, (255, 255, 255, 255)), (1.0, (200, 205, 215, 255))]
+
+
+def scallops_side(cv, stops=SCALLOP, edge=GOLD):
+    m = Image.new("L", (cv.w, cv.h), 0)
+    for (a0, a1, bc, hh) in ((-10.3, -1.0, 2.28, 0.2), (-10.0, 1.5, 1.82, 0.22), (-9.6, -2.5, 1.38, 0.17)):
+        m = ImageChops.lighter(m, poly_mask(cv, scallop_pts(a0, a1, bc, hh)))
+    cv.over(outline(cv, m, 0.05, edge))
+    cv.over(gradient_fill(cv, m, stops, (-10.5, 2.0), (1.5, 2.0)))
+
+
+def scallops_hood(cv, stops=SCALLOP, edge=GOLD):
+    m = Image.new("L", (cv.w, cv.h), 0)
+    for (xc, y1, hw) in ((0.0, -4.0, 0.42), (1.3, -5.2, 0.36), (-1.3, -5.2, 0.36), (2.5, -6.4, 0.3), (-2.5, -6.4, 0.3)):
+        pts = scallop_pts(-10.3, y1, xc, hw)
+        m = ImageChops.lighter(m, poly_mask(cv, [(b, a) for (a, b) in pts]))
+    cv.over(outline(cv, m, 0.05, edge))
+    cv.over(gradient_fill(cv, m, stops, (0, -10.4), (0, -4.0)))
+
+
+def twin_stripes(cv, color=WHITE, edge=(20, 20, 24, 255), half_gap=0.35, w=0.55):
+    (b0, b1) = cv.p["b"]
+    for s in (-1, 1):
+        a = s * (half_gap + w / 2)
+        m = rect_mask(cv, a - w / 2, b0 - 1, a + w / 2, b1 + 1, 0)
+        cv.over(outline(cv, m, 0.05, edge))
+        out = cv.layer()
+        out.paste(Image.new("RGBA", (cv.w, cv.h), color), (0, 0), m)
+        cv.over(out)
+
+
+def stripe_side(cv, color=WHITE, edge=(20, 20, 24, 255)):
+    m = rect_mask(cv, -10.4, 1.05, 10.4, 1.3, 0)
+    cv.over(outline(cv, m, 0.04, edge))
+    out = cv.layer()
+    out.paste(Image.new("RGBA", (cv.w, cv.h), color), (0, 0), m)
+    cv.over(out)
+
+
+SUNSET = [(0.0, (255, 200, 40, 255)), (0.35, (255, 90, 30, 240)), (0.7, (220, 30, 120, 170)), (1.0, (120, 20, 160, 0))]
+
+
+def sunset_side(cv):
+    m = rect_mask(cv, -10.5, 0.6, 10.5, 3.0, 0)
+    cv.over(gradient_fill(cv, m, SUNSET, (0, 0.7), (0, 2.25)))
+    pinstripe(cv, [(-9.8, 2.42), (9.8, 2.42)], w=0.03)
+
+
+def sunset_top(cv):
+    (a0, a1), (b0, b1) = cv.p["a"], cv.p["b"]
+    m = rect_mask(cv, a0, b0, a1, b1, 0)
+    front = b0 if cv.panel == "hood" else b1
+    cv.over(gradient_fill(cv, m, SUNSET, (0, front), (0, front + (b1 - b0) * 0.75 * (1 if cv.panel == "hood" else -1))))
+
+
+def checker_band(cv, a0, a1, b0, b1, cell, c1=(18, 18, 22, 255), c2=(250, 250, 250, 255)):
+    d = ImageDraw.Draw(cv.img)
+    na, nb = max(1, round((a1 - a0) / cell)), max(1, round((b1 - b0) / cell))
+    ca, cb = (a1 - a0) / na, (b1 - b0) / nb
+    for i in range(na):
+        for j in range(nb):
+            p, q = cv.px(a0 + i * ca, b0 + j * cb), cv.px(a0 + (i + 1) * ca, b0 + (j + 1) * cb)
+            d.rectangle((min(p[0], q[0]), min(p[1], q[1]), max(p[0], q[0]), max(p[1], q[1])), fill=c1 if (i + j) % 2 else c2)
+
+
+def checker_side(cv):
+    checker_band(cv, -10.3, 10.3, 1.3, 1.78, 0.24)
+    pinstripe(cv, [(-10.3, 1.84), (10.3, 1.84)], (230, 30, 40, 255), w=0.05, shadow=False)
+    pinstripe(cv, [(-10.3, 1.24), (10.3, 1.24)], (230, 30, 40, 255), w=0.05, shadow=False)
+
+
+def checker_hood(cv):
+    checker_band(cv, -3.85, 3.85, -10.4, -9.4, 0.25)
+    pinstripe(cv, [(-3.85, -9.32), (3.85, -9.32)], (230, 30, 40, 255), w=0.05, shadow=False)
+    for s in (-1, 1):
+        pinstripe(cv, [(s * 0.5, -9.2), (s * 0.5, -2.9)], (230, 30, 40, 255), w=0.05, shadow=False)
+
+
+def checker_trunk(cv):
+    checker_band(cv, -3.2, 3.2, 9.0, 9.85, 0.21)
+    pinstripe(cv, [(-3.2, 8.93), (3.2, 8.93)], (230, 30, 40, 255), w=0.05, shadow=False)
+
+
+def palm(cv, bx, by, lean, h, color, s=1.0):
+    top = (bx + lean, by + h)
+    trunk = bez((bx, by), (bx + lean * 0.2, by + h * 0.5), top, n=20)
+    for k in range(len(trunk) - 1):
+        stroke(cv, [trunk[k], trunk[k + 1]], (0.13 - 0.06 * k / len(trunk)) * s, color)
+    for k in range(7):
+        ang = math.pi * (-0.05 + k * 0.18)
+        tip = (top[0] + 0.95 * s * math.cos(ang + math.pi), top[1] + (0.5 * math.sin(ang) - 0.32) * s)
+        mid = ((top[0] + tip[0]) / 2, top[1] + 0.3 * s)
+        fr = bez(top, mid, tip, n=16)
+        for j in range(len(fr) - 1):
+            stroke(cv, [fr[j], fr[j + 1]], (0.11 * (1 - j / len(fr)) + 0.02) * s, color)
+
+
+def tropical_side(cv):
+    m = rect_mask(cv, 3.0, 0.7, 10.5, 2.9, 0)
+    cv.over(gradient_fill(cv, m, [(0, (255, 140, 40, 0)), (0.35, (255, 120, 60, 210)), (1.0, (230, 40, 130, 235))], (3.0, 2.0), (10.3, 2.0)))
+    sun = cv.layer()
+    c, r = cv.px(8.0, 2.05), 0.55 * cv.scale()
+    ImageDraw.Draw(sun).ellipse((c[0] - r, c[1] - r, c[0] + r, c[1] + r), fill=(255, 215, 70, 255))
+    cv.over(sun)
+    PALMC = (24, 12, 30, 255)
+    palm(cv, 6.3, 0.75, 0.25, 1.6, PALMC, 0.85)
+    palm(cv, 9.4, 0.75, -0.2, 1.35, PALMC, 0.75)
+    pinstripe(cv, [(-10.0, 2.36), (3.0, 2.36)], (255, 215, 70, 255), w=0.03)
+
+
+def tropical_hood(cv):
+    PALMC = (24, 12, 30, 200)
+    for s in (-1, 1):
+        palm(cv, s * 2.9, -3.2, -s * 0.4, -2.3, PALMC, 1.0)
+
+
+def bolt_pts(a0, b0, a1, b1, zig=5, amp=0.25, wa=0.09, seed=1):
+    rnd = random.Random(seed)
+    pts = [(a0, b0)]
+    for k in range(1, zig):
+        t = k / zig
+        pts.append((a0 + (a1 - a0) * t + rnd.uniform(-0.2, 0.2), b0 + (b1 - b0) * t + (amp if k % 2 else -amp)))
+    pts.append((a1, b1))
+    return pts
+
+
+def bolt(cv, pts, w=0.16, glow=(60, 140, 255, 255), core=(240, 250, 255, 255)):
+    g = cv.layer()
+    stroke(cv, pts, w * 2.6, glow[:3] + (110,), g)
+    cv.over(g.filter(ImageFilter.GaussianBlur(SS * 3)))
+    stroke(cv, pts, w, glow)
+    stroke(cv, pts, w * 0.4, core)
+
+
+def lightning_side(cv):
+    bolt(cv, bolt_pts(-10.2, 2.1, 3.0, 1.85, 7, 0.28, seed=3), w=0.2)
+    bolt(cv, bolt_pts(-4.0, 1.85, 0.5, 1.15, 4, 0.18, seed=5), w=0.11)
+
+
+def lightning_hood(cv):
+    for s in (-1, 1):
+        bolt(cv, [(b, a) for (a, b) in bolt_pts(-10.3, s * 2.4, -3.0, s * 0.9, 6, 0.3, seed=11)], w=0.2)
+
+
+def rose(cv, a, b, r, petal=(240, 60, 90, 255), dark=(150, 0, 40, 255)):
+    d = ImageDraw.Draw(cv.img)
+    s = cv.scale()
+    c = cv.px(a, b)
+    for ring, (n, rr, col) in enumerate(((6, 0.75, dark), (5, 0.52, petal), (4, 0.3, dark))):
+        for k in range(n):
+            ang = 2 * math.pi * k / n + ring * 0.5
+            px, py = c[0] + math.cos(ang) * r * rr * 0.6 * s, c[1] + math.sin(ang) * r * rr * 0.6 * s
+            pr = r * rr * 0.55 * s
+            d.ellipse((px - pr, py - pr, px + pr, py + pr), fill=col, outline=petal if col == dark else dark, width=max(1, int(0.015 * s)))
+    pr = r * 0.12 * s
+    d.ellipse((c[0] - pr, c[1] - pr, c[0] + pr, c[1] + pr), fill=dark)
+
+
+def leaf(cv, a, b, ang, L, color=(40, 140, 60, 255)):
+    tip = (a + math.cos(ang) * L, b + math.sin(ang) * L)
+    n = (-math.sin(ang) * L * 0.3, math.cos(ang) * L * 0.3)
+    m = ((a + tip[0]) / 2, (b + tip[1]) / 2)
+    pts = bez((a, b), (m[0] + n[0], m[1] + n[1]), tip, n=10) + bez(tip, (m[0] - n[0], m[1] - n[1]), (a, b), n=10)
+    ImageDraw.Draw(cv.img).polygon([cv.px(*p) for p in pts], fill=color)
+
+
+def vine(cv, pts, roses, leaves=14, seed=2):
+    rnd = random.Random(seed)
+    stroke(cv, pts, 0.07, (30, 100, 45, 255))
+    for k in range(leaves):
+        i = rnd.randrange(1, len(pts) - 1)
+        leaf(cv, pts[i][0], pts[i][1], rnd.uniform(0, 2 * math.pi), 0.42)
+    for (i, r) in roses:
+        rose(cv, pts[i][0], pts[i][1], r * 1.7)
+
+
+def roses_side(cv):
+    pts = [(-10.2 + k * 0.2, 1.95 + 0.25 * math.sin(k * 0.35)) for k in range(70)]
+    vine(cv, pts, [(5, 0.3), (24, 0.24), (42, 0.28), (63, 0.22)])
+    pinstripe(cv, [(-10.0, 2.4), (10.0, 2.4)], GOLD, w=0.03)
+
+
+def roses_hood(cv):
+    for s in (-1, 1):
+        pts = [(s * (0.4 + 0.25 * math.sin(k * 0.4) + k * 0.06), -10.1 + k * 0.2) for k in range(34)]
+        vine(cv, pts, [(4, 0.32), (20, 0.25), (33, 0.2)], 10, seed=4 + s)
+
+
+def roses_trunk(cv):
+    pts = [(-2.8 + k * 0.2, 7.9 + 0.35 * math.sin(k * 0.5)) for k in range(29)]
+    vine(cv, pts, [(3, 0.24), (14, 0.36), (25, 0.24)], 10, seed=9)
+
+
+WAVES = ((255, 170, 30, 255), (240, 90, 20, 255), (190, 30, 40, 255))
+
+
+def waves_side(cv):
+    for k, col in enumerate(WAVES):
+        top = [(-10.5 + i * 0.1, 2.25 - k * 0.24 + 0.22 * math.sin(i * 0.1 * 0.55)) for i in range(211)]
+        bot = [(a, b - 0.17) for (a, b) in top]
+        cv.over(fill_mask(cv, poly_mask(cv, top + bot[::-1]), col))
+
+
+def waves_top(cv):
+    (a0, a1), (b0, b1) = cv.p["a"], cv.p["b"]
+    for k, col in enumerate(WAVES):
+        for s in (-1, 1):
+            left = [(s * (1.1 + k * 0.3 + 0.18 * math.sin((b - b0) * 0.9)), b) for b in [b0 + i * 0.1 for i in range(int((b1 - b0) / 0.1) + 1)]]
+            right = [(a + s * 0.22, b) for (a, b) in left]
+            cv.over(fill_mask(cv, poly_mask(cv, left + right[::-1]), col))
+
+
+def fill_mask(cv, mask, color):
+    out = cv.layer()
+    out.paste(Image.new("RGBA", (cv.w, cv.h), color), (0, 0), mask)
+    return out
+
+
 # --------------------------------------------------------------------------------------------- liveries
 PATTERNS_GOLD = ((232, 40, 150, 230), (232, 40, 150, 0), (255, 255, 255, 255), TEAL)
 PATTERNS_PURPLE = ((110, 30, 190, 240), (255, 80, 200, 0), (255, 220, 250, 255), (255, 80, 200, 255))
@@ -458,6 +697,39 @@ def make():
     emit("purple_lace", "hood", lambda cv: (patterns_top(cv, PATTERNS_PURPLE, -0.9, -9.8, 0.9, -3.4, 4), pin_hood(cv)))
     emit("purple_lace", "trunk", lambda cv: patterns_top(cv, PATTERNS_PURPLE, -2.6, 6.35, 2.6, 9.5, 2))
     emit("purple_lace", "roof", lambda cv: patterns_top(cv, PATTERNS_PURPLE, -2.7, -0.5, 2.7, 3.05, 3))
+
+    emit("scallops", "side", scallops_side)
+    emit("scallops", "hood", scallops_hood)
+    emit("scallops", "trunk", pin_trunk)
+
+    emit("stripes", "hood", twin_stripes)
+    emit("stripes", "roof", twin_stripes)
+    emit("stripes", "trunk", twin_stripes)
+    emit("stripes", "side", stripe_side)
+
+    emit("sunset_fade", "side", sunset_side)
+    emit("sunset_fade", "hood", sunset_top)
+    emit("sunset_fade", "trunk", sunset_top)
+
+    emit("checker", "side", checker_side)
+    emit("checker", "hood", checker_hood)
+    emit("checker", "trunk", checker_trunk)
+
+    emit("tropical", "side", tropical_side)
+    emit("tropical", "hood", sunset_top)
+    emit("tropical", "trunk", mural_trunk)
+
+    emit("lightning", "side", lightning_side)
+    emit("lightning", "hood", lightning_hood)
+
+    emit("roses", "side", roses_side)
+    emit("roses", "hood", roses_hood)
+    emit("roses", "trunk", roses_trunk)
+
+    emit("retro_waves", "side", waves_side)
+    emit("retro_waves", "hood", waves_top)
+    emit("retro_waves", "trunk", waves_top)
+    emit("retro_waves", "roof", waves_top)
 
     # contact sheet over a candy red, to look them over
     rows = []

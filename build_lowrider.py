@@ -356,22 +356,7 @@ def build_car():
         beam("Chrome", (s * (xs_t + 0.05), yA1, ROOF + 0.02), (s * (xs_t + 0.05), yC0, ROOF + 0.02), 0.07, 0.07)
         beam("Chrome", (s * (gx(zb) + 0.05), yA0 + 0.2, zb + 0.02), (s * (gx(zb) + 0.05), yC1 - 0.3, zb + 0.02), 0.08, 0.06)
 
-    # ---- chrome, lights, grille
-    for y0, y1, sgn in ((-10.75, -10.28, -1), (10.32, 10.8, 1)):          # bumpers + wraparounds
-        box("Chrome", -3.7, y0, 0.92, 3.7, y1, 1.52, bev=0.16)
-        for s in (-1, 1):
-            beam("Chrome", (s * 3.55, (y0 + y1) / 2, 1.22), (s * 3.84, (y0 + y1) / 2 - sgn * 1.25, 1.22), 0.5, 0.56)
-        for s in (-1, 1):                                                   # bumper guards
-            box("Chrome", s * 1.6 - 0.18, y0 - sgn * 0.12, 0.98, s * 1.6 + 0.18, y1, 1.62, bev=0.08)
-    box("Grille", -2.25, -10.42, 1.62, 2.25, -10.2, 2.18)
-    for k in range(5):
-        z = 1.68 + k * 0.115
-        box("Chrome", -2.2, -10.47, z, 2.2, -10.4, z + 0.05)
-    for k in range(-4, 5):
-        x = k * 0.48
-        box("Chrome", x - 0.025, -10.48, 1.66, x + 0.025, -10.4, 2.15)
-    box("Chrome", -2.35, -10.5, 2.15, 2.35, -10.36, 2.25, bev=0.03)   # grille surround
-    box("Chrome", -2.35, -10.5, 1.55, 2.35, -10.36, 1.65, bev=0.03)
+    # ---- lights and side trim (bumpers, grille, mirrors etc. are swappable parts: build_lowrider_parts.py)
     for s in (-1, 1):
         for x in (2.62, 3.18):
             cyl("Headlight", (s * x, -10.2, 1.92), (s * x, -10.47, 1.92), 0.24, seg=20, bev=0.03)
@@ -388,38 +373,15 @@ def build_car():
         for y in (-2.65, 2.35):
             box("Seam", s * W - 0.02, y - 0.015, 0.95, s * W + 0.02, y + 0.015, 2.6)
         box("Chrome", s * (W + 0.03) - 0.04, 1.6, 2.38, s * (W + 0.03) + 0.04, 2.15, 2.46, bev=0.02)
-    cyl("Chrome", (3.55, -2.35, 2.85), (3.55, -2.35, 3.1), 0.04, seg=8)      # driver mirror (car's left = +x)
-    cyl("Chrome", (3.55, -2.45, 3.18), (3.55, -2.15, 3.18), 0.17, seg=16, bev=0.03)
-    # hood centre spear
-    beam("Chrome", (0, -10.1, deck_z(0, -10.1) + 0.03), (0, -6.5, deck_z(0, -6.5) + 0.03), 0.05, 0.05)
-
-    # ---- interior: tuck-and-roll benches, door cards, dash, chain steering wheel
+    # ---- interior shell: carpet, door cards, steering column (seats, dash, wheel, shifter are parts)
     box("Carpet", -3.2, -2.6, 0.95, 3.2, 5.6, 1.05)
-    for yb, depth in ((-0.4, 1.7), (2.6, 1.6)):
-        box("Interior", -3.05, yb, 1.05, 3.05, yb + depth, 1.75, bev=0.12)              # cushion
-        box("Interior", -3.05, yb + depth - 0.35, 1.75, 3.05, yb + depth, 3.3, bev=0.12)  # back
-        for k in range(9):
-            x = -2.7 + k * 0.675
-            box("Tuck", x - 0.05, yb + depth - 0.42, 1.85, x + 0.05, yb + depth - 0.3, 3.2)
-            box("Tuck", x - 0.05, yb + 0.1, 1.74, x + 0.05, yb + depth - 0.4, 1.8)
     for s in (-1, 1):
         box("Interior", s * 3.3 - 0.1, -2.4, 1.05, s * 3.3 + 0.1, 5.0, 2.75)           # door cards
         for k in range(6):
             z = 1.3 + k * 0.22
             box("Tuck", s * 3.18 - 0.03, -2.2, z, s * 3.18 + 0.03, 4.8, z + 0.06)
-    box("Dash", -3.25, -2.9, 2.2, 3.25, -2.25, 2.86, bev=0.1)
-    box("Chrome", -3.0, -2.27, 2.45, 3.0, -2.2, 2.5)
     cyl("Dash", (1.55, -2.3, 2.45), (1.55, -1.75, 2.85), 0.06, seg=10)               # column
-    torus("SteeringWheel", (1.55, -1.7, 2.92), (0, 0.55, 0.83), 0.52, 0.06, seg=24, seg2=6)   # chain wheel: links
-    for k in range(24):
-        a = 2 * math.pi * k / 24
-        n = Vector((0, 0.55, 0.83)).normalized()
-        u = n.cross(Vector((1, 0, 0))).normalized()
-        v = n.cross(u)
-        p = Vector((1.55, -1.7, 2.92)) + (u * math.cos(a) + v * math.sin(a)) * 0.52
-        torus("SteeringWheel", p, u * math.cos(a + math.pi / 2) + v * math.sin(a + math.pi / 2), 0.07, 0.022, seg=8, seg2=4)
-
-    # ---- trunk: lid (hinged at its front edge) + pumps and batteries
+    # ---- trunk lid (hinged at its front edge); the trunk setups are parts
     lid = bmesh.new()
     nx, ny = 12, 10
     top, bot = [], []
@@ -445,28 +407,6 @@ def build_car():
         lid.faces.new((top[j][nx], bot[j][nx], bot[j + 1][nx], top[j + 1][nx]))
     bmesh.ops.recalc_face_normals(lid, faces=lid.faces[:])
     new_obj(lid, "Lid", smooth=30.0)
-    for y in (6.9, 8.2):                                                   # two chrome pumps across the trunk
-        cyl("Pump", (-2.4, y, 1.75), (1.0, y, 1.75), 0.3, seg=20, bev=0.04)
-        cyl("Battery", (1.0, y, 1.75), (2.0, y, 1.75), 0.34, seg=20)        # motors
-        for x in (-2.0, -1.0, 0.0):
-            cyl("Pump", (x, y, 2.05), (x, y, 2.45), 0.12, seg=12)           # dump valves
-        cyl("Pump", (-2.4, y, 1.45), (-2.4, y + 0.6, 1.45), 0.05, seg=8)
-    for k in range(6):                                                     # batteries along the back wall
-        x = -2.75 + k * 1.1
-        box("Battery", x, 9.0, 1.32, x + 0.9, 9.7, 2.0, bev=0.03)
-        cyl("BatteryCap", (x + 0.2, 9.35, 2.0), (x + 0.2, 9.35, 2.1), 0.07, seg=10)
-        cyl("BatteryCap", (x + 0.7, 9.35, 2.0), (x + 0.7, 9.35, 2.1), 0.07, seg=10)
-    for x in (-1.2, 0.5):                                                  # hard lines to the corners
-        beam("Pump", (x, 8.6, 1.4), (x, 8.95, 1.4), 0.07, 0.07)
-
-    # ---- continental kit: bumper extension and an upright spare with a body-colour cover
-    for s in (-1, 1):
-        box("ContChrome", s * 1.2 - 0.12, 10.75, 1.0, s * 1.2 + 0.12, 11.9, 1.25, bev=0.05)
-    box("ContChrome", -1.5, 11.7, 0.95, 1.5, 12.0, 1.35, bev=0.1)
-    cyl("ContBody", (0, 11.25, 2.05), (0, 11.85, 2.05), 1.12, seg=36, bev=0.18)
-    ring("ContChrome", (0, 11.87, 2.05), (0, 1, 0), 0.95, 1.1, 0.08, seg=40)
-    cyl("ContChrome", (0, 11.85, 2.05), (0, 11.98, 2.05), 0.3, seg=20, bev=0.05)
-    box("ContChrome", -0.12, 11.05, 1.25, 0.12, 11.4, 1.9)
 
 
 # ------------------------------------------------------------------ paint panels (UV-mapped for the vinyls)
@@ -762,11 +702,13 @@ def join_style(style, prefix):
         ob = bpy.data.objects.new(name, me)
         bpy.context.scene.collection.objects.link(ob)
         ob["style"] = style
+        ob["pkind"] = kind
         mat = bpy.data.materials.new(name)
-        col = lin(COLORS.get("Body" if kind.startswith("Panel") else kind, (0.8, 0.8, 0.8)))
+        ck = "Body" if kind.startswith("Panel") else mat_color(kind)
+        col = lin(COLORS.get(ck, (0.8, 0.8, 0.8)))
         mat.diffuse_color = (*col, 1)
-        mat.metallic = 0.9 if kind in ("Chrome", "Rim", "Spokes", "Hub", "Pump", "ContChrome", "SteeringWheel") else 0.0
-        paint = kind in ("Body", "Lid", "ContBody") or kind.startswith("Panel")
+        mat.metallic = 0.9 if ck in ("Chrome", "Rim", "Spokes", "Hub", "Dish", "Pump", "ContChrome", "SteeringWheel") else 0.0
+        paint = ck in ("Body", "Lid", "ContBody") or kind.startswith("Panel")
         mat.roughness = 0.15 if mat.metallic > 0.5 else (0.3 if paint else 0.7)
         try:
             mat.use_nodes = True
@@ -780,10 +722,10 @@ def join_style(style, prefix):
                 b.inputs["Roughness"].default_value = mat.roughness
                 if paint:
                     b.inputs["Coat Weight"].default_value = 1.0          # candy clear coat
-                if kind in ("Headlight", "Taillight", "Neon", "Neon2"):
+                if ck in ("Headlight", "Taillight", "Neon", "Neon2", "Light"):
                     b.inputs["Emission Color"].default_value = (*col, 1)
                     b.inputs["Emission Strength"].default_value = 2.0
-                if kind == "Glass":
+                if ck == "Glass":
                     b.inputs["Alpha"].default_value = 0.55
         me.materials.append(mat)
         me.calc_loop_triangles()
@@ -805,7 +747,9 @@ def export(objs, fname):
     bpy.ops.export_scene.gltf(filepath=os.path.join(OUT, fname), export_format="GLB", use_selection=True, export_apply=True, export_yup=True)
 
 
+exec(compile(open(os.path.join(HERE, "build_lowrider_parts.py")).read(), "build_lowrider_parts.py", "exec"), globals())
 build_car()
+build_options()
 split_panels()
 car, car_tris = join_style("Lowrider", "Lowrider")
 # every vinyl image on a copy of its panel: importing this GLB in Studio uploads the images
@@ -828,7 +772,7 @@ if vinyl_objs:
 for ob in vinyl_objs:
     bpy.data.objects.remove(ob)
 WHEEL_X = 30.0
-build_wheel(WHEEL_X)
+build_wheel_options(WHEEL_X)
 wheel, wheel_tris = join_style("LowriderWheel", "LowriderWheel")
 export(car + wheel, "Lowrider.glb")
 H, shop_objs = build_shop()
@@ -889,6 +833,14 @@ def lua(v, ind=""):
     return "nil"
 
 
+def options_of(info, tris, prefix):
+    out = {}
+    for k, v in info.items():
+        if prefix + k in tris and v["variant"] not in out.setdefault(v["slot"], []):
+            out[v["slot"]].append(v["variant"])
+    return out
+
+
 cmn, cmx = imp_ext(car_ext)
 wmn, wmx = imp_ext(wheel_ext)
 smn, smx = imp_ext(shop_ext)
@@ -905,9 +857,17 @@ data = {
         "FrontBumper": car_pt((0, -10.75, 1.22)), "RearBumper": car_pt((0, 10.8, 1.22)),
         # which panel each paint piece prints, and which vinyl images exist per livery
         "PanelOf": PANEL_OF, "Vinyls": {liv: sorted(p) for liv, p in VINYLS.items()},
+        # swappable parts: piece kind -> {slot, variant, mat}; Options = slot -> its variants
+        "OptInfo": {k: v for k, v in OPT_INFO.items() if f"Lowrider_{k}" in car_tris},
+        "Options": options_of(OPT_INFO, car_tris, "Lowrider_"),
+        # the dash gauge face (live speedometer) and the club plaque in the rear window
+        "Gauge": {"Centre": car_pt((1.55, -2.30, 2.62)), "Size": [1.6, 0.418], "Tilt": 16.7},
+        "Plaque": {"Centre": car_pt((0.0, 4.68, 3.35)), "Size": [2.0, 0.6]},
     },
     "Wheel": {"ImportMin": wmn, "ImportMax": wmx, "Centre": imp_pt((WHEEL_X, 0, 0)),
-              "Pieces": sorted(k.split("_", 1)[1] for k in wheel_tris)},
+              "Pieces": sorted(k.split("_", 1)[1] for k in wheel_tris),
+              "OptInfo": {k: v for k, v in WHEEL_INFO.items() if f"LowriderWheel_{k}" in wheel_tris},
+              "Options": options_of(WHEEL_INFO, wheel_tris, "LowriderWheel_")},
     "Shop": {
         "ImportMin": smn, "ImportMax": smx, "Pieces": sorted(k.split("_", 1)[1] for k in shop_tris),
         "Colliders": [car_box(c["min"], c["max"]) for c in H.colliders],
@@ -960,23 +920,44 @@ for (wx, wy) in ((WX, WY_F), (-WX, WY_F), (WX, WY_R), (-WX, WY_R)):      # previ
     for ob in wheel:
         d = ob.copy()
         d["style"] = "Lowrider"
+        d["pkind"] = ob["pkind"]
         scene.collection.objects.link(d)
         d.matrix_world = Matrix.Translation((wx, wy, WR)) @ Matrix.Rotation(0 if wx > 0 else math.pi, 4, "Z") @ Matrix.Translation((-WHEEL_X, 0, 0))
 PAINT = lin(COLORS["Body"])
 plain = {}
+BASE_BUILD = {"FrontBumper": "Classic", "RearBumper": "Classic", "Grille": "Bars", "Hood": "Spear", "Mirrors": "Bullet",
+              "Seats": "Rolls", "Steering": "Chain", "Dash": "Classic", "Shifter": "Column", "Trunk": "Street",
+              "Rim": "Wire100", "KO": "Bar2", "Tire": "Classic", "Band": "ClassicThin"}
 
 
-def show_livery(liv):
-    """print a livery's vinyls over the paint on the preview car"""
+def part_visible(ob, build):
+    k = ob.get("pkind", "")
+    info = OPT_INFO.get(k) or WHEEL_INFO.get(k)
+    return info is None or build.get(info["slot"]) == info["variant"]
+
+
+def show_livery(liv, build=None, paint=None):
+    """print a livery's vinyls over the paint on the preview car, showing only the parts in the build"""
+    b = dict(BASE_BUILD, **(build or {}))
+    pc = lin(paint) if paint else PAINT
     for ob in scene.objects:
         if ob.type != "MESH":
             continue
-        ob.hide_render = ob.get("style") != "Lowrider"
-        kind = ob.name.split("_", 1)[1] if ob.name.startswith("Lowrider_") else ""
-        if kind in PANEL_OF:
+        ob.hide_render = ob.get("style") != "Lowrider" or not part_visible(ob, b)
+        kind = ob.get("pkind", "")
+        if kind in PANEL_OF or (paint and OPT_INFO.get(kind, {}).get("mat") == "Body") or (paint and kind == "Body"):
             plain.setdefault(ob.name, ob.data.materials[0])
-            path = VINYLS.get(liv, {}).get(PANEL_OF[kind])
-            ob.data.materials[0] = image_mat(f"prev_{liv}_{kind}", path, PAINT) if path else plain[ob.name]
+            path = VINYLS.get(liv, {}).get(PANEL_OF.get(kind, ""))
+            if path:
+                ob.data.materials[0] = image_mat(f"prev_{liv}_{kind}_{len(plain)}", path, pc)
+            elif paint:
+                m = plain[ob.name].copy()
+                m.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (*pc, 1)
+                ob.data.materials[0] = m
+            else:
+                ob.data.materials[0] = plain[ob.name]
+        elif ob.name in plain:
+            ob.data.materials[0] = plain[ob.name]
 
 
 def shot(name, loc, tgt):
@@ -989,18 +970,60 @@ def shot(name, loc, tgt):
 show_livery("flames")
 shot("flames_front34", (-17, -24, 7.5), (0, -1.5, 1.8))
 shot("flames_side", (26, 0.5, 3.2), (0, 0.5, 2.0))
-show_livery("showcar")
+show_livery("showcar", {"FrontBumper": "Bullet", "RearBumper": "Bullet", "Grille": "Waterfall", "Ornament": "Wings", "Skirts": "Fender",
+                        "Visor": "Chrome", "Continental": "Kit", "Trunk": "Show", "Rim": "Wire72", "KO": "Bar3", "Band": "ClassicWide"})
 shot("showcar_front34", (-20, -16, 9), (0, 0.5, 1.8))
 shot("showcar_rear34", (15, 25, 8.5), (0, 2.5, 1.8))
-show_livery("purple_lace")
+show_livery("purple_lace", {"Hood": "Louvers", "Spoiler": "Ducktail"}, paint=(0.25, 0.05, 0.4))
 shot("purple_lace_top", (8, -14, 22), (0, 0.5, 1.5))
-show_livery("pinstripe")
-shot("pinstripe_front34", (-17, -24, 7.5), (0, -1.5, 1.8))
+show_livery("lightning", {"FrontBumper": "Tube", "RearBumper": "Tube", "Grille": "Mesh", "Hood": "Scoop", "Spoiler": "Wing", "Skirts": "Rocker",
+                     "Mirrors": "Rect", "Exhaust": "Side", "Glow": "On", "Rim": "Turbine", "KO": "Cap", "Tire": "Balloon", "Band": ""},
+            paint=(0.02, 0.15, 0.55))
+shot("street_front34", (-17, -24, 7.5), (0, -1.5, 1.8))
+show_livery("retro_waves", {"FrontBumper": "Shaved", "RearBumper": "Shaved", "Grille": "Billet", "Hood": "Cowl", "Spoiler": "Fins",
+                     "Mirrors": "Stem", "Ornament": "Sun", "Exhaust": "Turndown", "Rim": "Steelie", "KO": "", "Tire": "Skinny", "Band": "SkinnyDouble"},
+            paint=(0.6, 0.85, 0.75))
+shot("retro_front34", (-17, -24, 7.5), (0, -1.5, 1.8))
+show_livery("tropical", {"Skirts": "Fender", "Continental": "Kit", "RearBumper": "Bullet", "Rim": "Star", "KO": "Cap"}, paint=(0.02, 0.45, 0.5))
+shot("tropical_rear34", (15, 25, 8.5), (0, 2.5, 1.8))
+show_livery("scallops", {"Grille": "Eggcrate", "Hood": "", "Ornament": "Comet", "Visor": "Body", "Rim": "Split"}, paint=(0.05, 0.05, 0.07))
+shot("scallops_front34", (-17, -24, 7.5), (0, -1.5, 1.8))
+show_livery("roses", {"Rim": "Mesh", "KO": "Bar3"}, paint=(0.9, 0.85, 0.75))
+shot("roses_side", (26, 0.5, 3.2), (0, 0.5, 2.0))
 show_livery("none")
 shot("clean_side", (26, 0.5, 3.2), (0, 0.5, 2.0))
+# interiors: roof hidden, looking down into the cabin
+for (nm, b) in (("interior_classic", {"Seats": "Rolls", "Steering": "Chain", "Dash": "Classic", "Shifter": "Chain", "Dice": "On"}),
+                ("interior_show", {"Seats": "Diamond", "Steering": "Wood", "Dash": "Wood", "Shifter": "Crystal", "Plaque": "Chain"}),
+                ("interior_sport", {"Seats": "Buckets", "Steering": "Sport", "Dash": "Digital", "Shifter": "THandle"})):
+    show_livery("none", b)
+    for ob in scene.objects:
+        if ob.get("pkind") in ("PanelRoof", "Glass", "Body"):
+            ob.hide_render = True
+    shot(nm, (6, -9, 13), (0.3, 0.6, 1.8))
+# wheel line-up: every rim design with a different knock-off / tyre / whitewall
 for ob in scene.objects:
     if ob.type == "MESH":
-        ob.hide_render = ob.get("style") != "LowriderWheel"
+        ob.hide_render = True
+lineup = []
+combos = [("Wire100", "Bar2", "Classic", "ClassicThin"), ("Wire72", "Bar3", "Classic", "ClassicWide"), ("Star", "Cap", "Balloon", ""),
+          ("Steelie", "", "Skinny", "SkinnyDouble"), ("Disc", "Cap", "Classic", "ClassicWide"), ("Turbine", "Cap", "Balloon", "BalloonThin"),
+          ("Split", "Bar2", "Classic", ""), ("Mesh", "Bar3", "Classic", "ClassicDouble")]
+for i, (r, ko, t, bd) in enumerate(combos):
+    b = {"Rim": r, "KO": ko, "Tire": t, "Band": bd}
+    for ob in wheel:
+        if part_visible(ob, b):
+            d = ob.copy()
+            scene.collection.objects.link(d)
+            d.hide_render = False
+            d.matrix_world = Matrix.Translation((0, (i % 4) * 2.8, -(i // 4) * 2.8)) @ ob.matrix_world
+            lineup.append(d)
+shot("wheels_lineup", (WHEEL_X + 14, 4.2, -1.4), (WHEEL_X, 4.2, -1.4))
+for d in lineup:
+    bpy.data.objects.remove(d)
+for ob in scene.objects:
+    if ob.type == "MESH":
+        ob.hide_render = ob.get("style") != "LowriderWheel" or not part_visible(ob, BASE_BUILD)
 shot("wheel", (WHEEL_X + 4.2, -1.2, 0.6), (WHEEL_X, 0, 0))
 for ob in shop:
     ob.location.x -= 200
