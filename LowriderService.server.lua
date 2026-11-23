@@ -316,31 +316,64 @@ local function spawnCar(player, vid)
 		end
 		setSim(car, driver or (player.Parent and player) or nil)
 	end)
-	-- trunk: show off the pump setup
-	local lid = car.Lid.LidRoot
-	local tp = Instance.new("ProximityPrompt")
-	tp.Name = "Trunk"
-	tp.ActionText = "Pop the trunk"
-	tp.ObjectText = "Pump setup"
-	tp.HoldDuration = 0.2
-	tp.MaxActivationDistance = 8
-	tp.RequiresLineOfSight = false
-	tp.Parent = lid
-	local open = false
-	local base = lid.LidHinge.C0
-	tp.Triggered:Connect(function(who)
-		if who ~= player then
-			return
+	-- opening panels: a prompt on the trunk, hood and gas door (and each door, to show the car off). Doors also
+	-- swing open by themselves for a moment when someone gets in or out on that side.
+	local PROMPT = {
+		trunk = { "Pop the trunk", "Close the trunk" },
+		hood = { "Pop the hood", "Close the hood" },
+		fuel = { "Open the gas door", "Close the gas door" },
+		door = { "Open the door", "Close the door" },
+	}
+	local panels = Kit.Panels(car)
+	for name, root in panels do
+		local kind = root:GetAttribute("Kind") or "trunk"
+		local text = PROMPT[kind] or PROMPT.trunk
+		local at = Instance.new("Attachment") -- the prompt sits in the middle of the panel, not on its hinge
+		at.Name = "PromptAt"
+		at.Parent = root
+		local bcf = root.Parent:GetBoundingBox()
+		at.WorldPosition = bcf.Position
+		local tp = Instance.new("ProximityPrompt")
+		tp.Name = "Open" .. name
+		tp.ActionText = text[1]
+		tp.ObjectText = Vehicles.Get(vid).name
+		tp.HoldDuration = 0.15
+		tp.MaxActivationDistance = kind == "fuel" and 5 or 7
+		tp.RequiresLineOfSight = false
+		tp.Parent = at
+		root:GetAttributeChangedSignal("Amount"):Connect(function()
+			tp.ActionText = text[(root:GetAttribute("Amount") or 0) > 0.5 and 2 or 1]
+		end)
+		tp.Triggered:Connect(function(who)
+			if who == player then
+				Kit.SetOpen(car, name, not Kit.IsOpen(car, name))
+			end
+		end)
+	end
+	for _, sp in car:GetChildren() do
+		if sp:IsA("Seat") or sp:IsA("VehicleSeat") then
+			local door, best
+			for name, root in panels do
+				local d = (root.Position - sp.Position).Magnitude
+				if root:GetAttribute("Kind") == "door" and (not best or d < best) then
+					door, best = name, d
+				end
+			end
+			if door then
+				sp:GetPropertyChangedSignal("Occupant"):Connect(function()
+					if Kit.IsOpen(car, door) then
+						return -- already open (left open with the prompt)
+					end
+					Kit.SetOpen(car, door, true, 0.3)
+					task.delay(1.1, function()
+						if car.Parent then
+							Kit.SetOpen(car, door, false, 0.35)
+						end
+					end)
+				end)
+			end
 		end
-		open = not open
-		tp.ActionText = open and "Close the trunk" or "Pop the trunk"
-		local steps = 12
-		for k = 1, steps do
-			local a = (open and k / steps or 1 - k / steps) * math.rad(62)
-			lid.LidHinge.C0 = base * CFrame.Angles(-a, 0, 0)
-			task.wait(0.03)
-		end
-	end)
+	end
 	return true
 end
 

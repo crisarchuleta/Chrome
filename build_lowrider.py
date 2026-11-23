@@ -274,6 +274,7 @@ def loft_body():
 def build_car():
     body = loft_body()
     body["loft"] = True
+    door_src = body.data.copy()                           # the uncut skin: the doors are cut from it
     # wheel tubs: short cylinders from each side (not through the car, so the wells are closed boxes)
     cutters = bpy.data.collections.new("Cutters")
     bpy.context.scene.collection.children.link(cutters)
@@ -305,6 +306,10 @@ def build_car():
         for s in (-1, 1):
             cutter_cyl((s * (WX - 0.75), wy, WR), (s * (W + 0.8), wy, WR), ARCH)
     cutter_box(-3.2, 6.0, 1.25, 3.2, 9.85, 3.5)           # trunk opening (the lid is its own piece)
+    cutter_box(-3.3, -2.58, 1.02, 3.3, 5.3, 3.6)          # open cabin (seats, dash, carpet show through the glass)
+    for s in (-1, 1):                                     # door openings (the doors are their own hinged pieces)
+        xa, xb = sorted((s * 3.25, s * (W + 0.6)))
+        cutter_box(xa, DOOR_Y0 - 0.03, DOOR_Z0 - 0.03, xb, DOOR_Y1 + 0.03, 3.6)
     cutters.hide_render = True
     m = body.modifiers.new("arch", "BOOLEAN")
     m.operation, m.operand_type, m.collection, m.solver = "DIFFERENCE", "COLLECTION", cutters, "EXACT"
@@ -360,8 +365,8 @@ def build_car():
     for s in (-1, 1):
         box("Chrome", s * 0.9, 10.44, 1.62, s * 3.4, 10.5, 1.66)            # rear cove trim
         # door seams + handle (lights, side trim, door panels are swappable parts)
-        for y in (-2.65, 2.35):
-            box("Seam", s * W - 0.02, y - 0.015, 0.95, s * W + 0.02, y + 0.015, 2.6)
+        for y in (DOOR_Y0 - 0.015, DOOR_Y1 + 0.015):      # dark shut lines in the door gaps
+            box("Seam", s * (W - 0.25), y - 0.012, DOOR_Z0 - 0.03, s * (W - 0.01), y + 0.012, 2.8)
         box("Chrome", s * (W + 0.03) - 0.04, 1.6, 2.38, s * (W + 0.03) + 0.04, 2.15, 2.46, bev=0.02)
     # ---- interior shell: carpet, door cards, steering column (seats, dash, wheel, shifter are parts)
     box("Carpet", -3.2, -2.6, 0.95, 3.2, 5.6, 1.05)
@@ -392,6 +397,163 @@ def build_car():
         lid.faces.new((top[j][nx], bot[j][nx], bot[j + 1][nx], top[j + 1][nx]))
     bmesh.ops.recalc_face_normals(lid, faces=lid.faces[:])
     new_obj(lid, "Lid", smooth=30.0)
+    build_doors(door_src)
+    bpy.data.meshes.remove(door_src)
+    build_engine_bay()
+    build_fuel_door()
+
+
+# ------------------------------------------------------------------ hinged panels: doors, hood, trunk lid, gas door
+# Every opening panel is its own piece on a hinge so the game can swing it (Car.Hinges in the data). Pivots and axes
+# are in this Blender frame here and in the car frame in the data; Open is the angle (degrees) it swings to.
+DOOR_Y0, DOOR_Y1, DOOR_Z0 = -2.59, 2.32, 1.25             # door front / rear edge, bottom edge
+FUEL = (7.4, 8.0, 1.45, 1.95)                            # gas door y0, y1, z0, z1 (car's left rear quarter)
+HINGES = {
+    "DoorL": {"pivot": (W - 0.02, DOOR_Y0, 2.0), "axis": (0, 0, 1), "open": -64, "kind": "door"},
+    "DoorR": {"pivot": (-(W - 0.02), DOOR_Y0, 2.0), "axis": (0, 0, 1), "open": 64, "kind": "door"},
+    "Hood": {"pivot": (0.0, -2.62, deck_z(0, -2.62)), "axis": (1, 0, 0), "open": -52, "kind": "hood"},
+    "Lid": {"pivot": (0.0, 6.03, deck_z(0, 6.03)), "axis": (1, 0, 0), "open": 62, "kind": "trunk"},
+    "Fuel": {"pivot": (3.845, FUEL[0], 1.7), "axis": (0, 0, 1), "open": -80, "kind": "fuel"},
+}
+HINGE_OF = {"Lid": "Lid", "PanelHood": "Hood", "HoodInner": "Hood", "PanelFuel": "Fuel"}
+HINGE_SLOTS = {"Hood": "Hood", "Ornament": "Hood", "Spoiler": "Lid"}    # swappable parts that ride a panel
+
+
+def shell(bm, t):
+    """the inside skin + edges of a one-sided panel: offset every vertex t inward, flip, and close the rim"""
+    bm.normal_update()
+    out = bmesh.new()
+    vo, vi = {}, {}
+    for v in bm.verts:
+        vo[v] = out.verts.new(v.co)
+        vi[v] = out.verts.new(v.co - v.normal * t)
+    for f in bm.faces:
+        out.faces.new([vi[v] for v in reversed(f.verts)])
+    for f in bm.faces:
+        for lp in f.loops:
+            if lp.edge.is_boundary:
+                a, b = lp.vert, lp.link_loop_next.vert
+                out.faces.new((vo[b], vo[a], vi[a], vi[b]))
+    return out
+
+
+def build_doors(src):
+    for s in (1, -1):
+        side = "L" if s > 0 else "R"
+        bm = bmesh.new()
+        bm.from_mesh(src)
+        for co, no in (((0, DOOR_Y0, 0), (0, 1, 0)), ((0, DOOR_Y1, 0), (0, 1, 0)), ((0, 0, DOOR_Z0), (0, 0, 1)), ((s * 3.3, 0, 0), (1, 0, 0))):
+            bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=co, plane_no=no)
+        drop = []
+        for f in bm.faces:
+            c = f.calc_center_median()
+            if not (DOOR_Y0 < c.y < DOOR_Y1 and c.z > DOOR_Z0 and s * c.x > 3.3):
+                drop.append(f)
+        bmesh.ops.delete(bm, geom=drop, context="FACES")
+        jamb = shell(bm, 0.12)
+        new_obj(jamb, "DoorJamb" + side, smooth=35.0)
+        new_obj(bm, "PanelDoor" + side, smooth=35.0)
+        HINGE_OF["PanelDoor" + side] = HINGE_OF["DoorJamb" + side] = "Door" + side
+
+
+def build_engine_bay():
+    """inner fenders, firewall, radiator and a chrome-dressed V8 under the hood"""
+    box("Under", -2.4, -10.05, 1.18, 2.4, -2.7, 1.24)                         # bay floor
+    for s in (-1, 1):
+        box("Under", s * 2.3, -9.9, 1.2, s * 2.38, -2.7, 2.6)                # inner fender aprons (hide the wheel tubs)
+        box("Under", s * 2.3, -9.4, 2.54, s * 3.45, -2.7, 2.58)              # inner fender tops
+    box("Under", -2.4, -2.76, 1.2, 2.4, -2.68, 2.7)                           # firewall
+    box("Dark", -2.4, -9.95, 1.3, 2.4, -9.75, 2.55)                           # radiator
+    for i in range(12):
+        x = -2.2 + i * 0.4
+        box("Chrome", x - 0.02, -9.74, 1.4, x + 0.02, -9.72, 2.45)
+    box("Dark", -0.9, -8.2, 1.25, 0.9, -4.6, 1.95, bev=0.06)                 # block
+    for s in (-1, 1):
+        box("Chrome", s * 0.55, -8.0, 1.95, s * 1.15, -4.8, 2.2, bev=0.06)  # valve covers on the two banks
+        for k in range(4):                                                    # headers down the sides
+            y = -7.6 + k * 0.85
+            beam("Chrome", (s * 0.9, y, 1.7), (s * 1.5, y + 0.25, 1.45), 0.11, 0.11)
+            beam("Chrome", (s * 1.5, y + 0.25, 1.45), (s * 1.55, y + 0.3, 1.25), 0.11, 0.11)
+    cyl("Chrome", (0, -6.4, 2.2), (0, -6.4, 2.28), 0.18, seg=12)              # carb neck
+    cyl("Chrome", (0, -6.4, 2.28), (0, -6.4, 2.5), 0.62, seg=28, bev=0.04)    # air cleaner
+    cyl("Dark", (0, -6.4, 2.5), (0, -6.4, 2.53), 0.08, seg=10)
+    box("Dark", 1.6, -4.4, 1.25, 2.2, -3.4, 1.9, bev=0.04)                   # battery
+    cyl("Chrome", (-1.8, -3.5, 1.3), (-1.8, -3.5, 2.1), 0.3, seg=18)          # brake booster
+
+
+def build_fuel_door():
+    y0, y1, z0, z1 = FUEL
+    box("Under", 3.80, y0 + 0.06, z0 + 0.06, 3.818, y1 - 0.06, z1 - 0.06)       # recess
+    cyl("Chrome", (3.818, (y0 + y1) / 2, (z0 + z1) / 2), (3.83, (y0 + y1) / 2, (z0 + z1) / 2), 0.15, seg=16)   # cap
+    box("PanelFuel", 3.834, y0, z0, 3.852, y1, z1, bev=0.03)
+
+
+def door_rule(kind):
+    """which pieces of a kind ride a door: (min |x|, min z, max z), or None"""
+    info = OPT_INFO.get(kind)
+    if info:
+        if info["slot"] == "Doors":
+            return 2.95, 1.0, 3.2
+        if info["slot"] in ("SideTrim", "Mirrors"):
+            return 3.3, DOOR_Z0, 3.8
+        return None
+    if kind == "RoofGlass":
+        return 2.8, 2.8, 4.7
+    if kind == "Chrome":
+        return 3.3, DOOR_Z0, 3.0
+    return None
+
+
+def split_onto_doors():
+    """move the bits of trim, glass, mirrors and door cards that sit on a door onto that door"""
+    for ob in list(OBJS):
+        if ob.get("style") != "Lowrider" or "__" in ob["kind"]:
+            continue
+        rule = door_rule(ob["kind"])
+        if not rule:
+            continue
+        xmin, zmin, zmax = rule
+        bake(ob)
+        me = ob.data
+        me.transform(ob.matrix_world)
+        ob.matrix_world = Matrix.Identity(4)
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        if not any(DOOR_Y0 < v.co.y < DOOR_Y1 and abs(v.co.x) > xmin for v in bm.verts):
+            bm.free()
+            continue
+        for y in (DOOR_Y0, DOOR_Y1):
+            bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=(0, y, 0), plane_no=(0, 1, 0))
+        bm.faces.index_update()
+        bm.to_mesh(me)                                    # mesh polygon i == bm face i from here on
+        moved = set()
+        for s in (1, -1):
+            sel = set()
+            for f in bm.faces:
+                c = f.calc_center_median()
+                if DOOR_Y0 < c.y < DOOR_Y1 and s * c.x > xmin and zmin < c.z < zmax:
+                    sel.add(f.index)
+            if not sel:
+                continue
+            part = bmesh.new()
+            part.from_mesh(me)
+            part.faces.ensure_lookup_table()
+            bmesh.ops.delete(part, geom=[f for f in part.faces if f.index not in sel], context="FACES")
+            hinge = "Door" + ("L" if s > 0 else "R")
+            kind = ob["kind"] + "__" + hinge
+            if kind in OPT_INFO or ob["kind"] in OPT_INFO:
+                OPT_INFO[kind] = dict(OPT_INFO[ob["kind"]], hinge=hinge)
+            else:
+                HINGE_OF[kind] = hinge
+            new_obj(part, kind, style="Lowrider", smooth=ob.get("smooth", 0.0))
+            moved |= sel
+        bm.faces.ensure_lookup_table()
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.index in moved], context="FACES")
+        bm.to_mesh(me)
+        bm.free()
+    for k, v in OPT_INFO.items():
+        if v["slot"] in HINGE_SLOTS and "hinge" not in v:
+            v["hinge"] = HINGE_SLOTS[v["slot"]]
 
 
 # ------------------------------------------------------------------ paint panels (UV-mapped for the vinyls)
@@ -401,7 +563,8 @@ PANELS = {  # Blender stud bounds of each vinyl image; must match PANELS in make
     "trunk": ((-3.2, 3.2), (6.0, 9.85)),
     "roof": ((-3.1, 3.1), (-0.85, 3.4)),
 }
-PANEL_OF = {"PanelSideL": "side", "PanelSideR": "side", "PanelHood": "hood", "Lid": "trunk", "PanelRoof": "roof"}
+PANEL_OF = {"PanelSideL": "side", "PanelSideR": "side", "PanelHood": "hood", "Lid": "trunk", "PanelRoof": "roof",
+            "PanelDoorL": "side", "PanelDoorR": "side", "PanelFuel": "side"}
 SOURCE_OF = {"side": "PanelSideL", "hood": "PanelHood", "trunk": "Lid", "roof": "PanelRoof"}
 
 
@@ -456,8 +619,14 @@ def split_panels():
     bm.to_mesh(body.data)
     bm.free()
     for o in list(OBJS):
-        if o["kind"] in ("Lid", "PanelRoof"):
+        if o["kind"] in ("Lid", "PanelRoof", "PanelDoorL", "PanelDoorR", "PanelFuel"):
             set_uv(o, PANEL_OF[o["kind"]])
+        if o["kind"] == "PanelHood":                      # the hood's underside, so it looks solid when it's up
+            bm = bmesh.new()
+            bm.from_mesh(o.data)
+            bm.transform(o.matrix_world)
+            new_obj(shell(bm, 0.08), "HoodInner", smooth=35.0)
+            bm.free()
 
 
 def vinyl_dir():
@@ -737,6 +906,7 @@ def export(objs, fname):
 exec(compile(open(os.path.join(HERE, "build_lowrider_parts.py")).read(), "build_lowrider_parts.py", "exec"), globals())
 build_car()
 build_options()
+split_onto_doors()
 split_panels()
 car, car_tris = join_style("Lowrider", "Lowrider")
 # every vinyl image on a copy of its panel: importing this GLB in Studio uploads the images
@@ -837,6 +1007,9 @@ data = {
         "ImportMin": cmn, "ImportMax": cmx, "Pieces": sorted(k.split("_", 1)[1] for k in car_tris),
         "Wheels": {k: car_pt(v) for k, v in meta["Lowrider"]["wheels"].items()}, "WheelRadius": WR,
         "LidHinge": car_pt(meta["Lowrider"]["lidHinge"]),
+        # opening panels: Pivot / Axis in the car frame, Open = degrees it swings to; HingeOf = piece -> its hinge
+        "Hinges": {k: {"Pivot": car_pt(h["pivot"]), "Axis": car_pt(h["axis"]), "Open": h["open"], "Kind": h["kind"]} for k, h in HINGES.items()},
+        "HingeOf": {k: v for k, v in HINGE_OF.items() if f"Lowrider_{k}" in car_tris},
         # collision hull boxes in the car frame: lower body, greenhouse
         "Hull": [car_box((-W, -10.8, ZB), (W, 10.85, TOP)), car_box((-3.1, -2.6, TOP), (3.1, 5.2, 4.75))],
         "Seats": {"Driver": car_pt((1.55, 0.35, 1.75)), "Passenger": car_pt((-1.55, 0.35, 1.75)),
@@ -935,7 +1108,7 @@ def show_livery(liv, build=None, paint=None):
         if b.get("Top") == "Down" and ob.get("pkind") in ("RoofGlass", "RoofBody", "RoofChrome", "PanelRoof"):
             ob.hide_render = True
         kind = ob.get("pkind", "")
-        if kind in PANEL_OF or (paint and OPT_INFO.get(kind, {}).get("mat") == "Body") or (paint and kind in ("Body", "RoofBody")):
+        if kind in PANEL_OF or (paint and OPT_INFO.get(kind, {}).get("mat") == "Body") or (paint and kind in ("Body", "RoofBody", "HoodInner", "DoorJambL", "DoorJambR")):
             plain.setdefault(ob.name, ob.data.materials[0])
             path = VINYLS.get(liv, {}).get(PANEL_OF.get(kind, ""))
             if path:
@@ -988,7 +1161,27 @@ show_livery("pinstripe", {"Taillights": "Oval", "Top": "Landau", "Ornament": "Wi
 shot("landau_rear34", (15, 25, 8.5), (0, 2.5, 1.8))
 show_livery("none")
 shot("clean_side", (26, 0.5, 3.2), (0, 0.5, 2.0))
-# interiors: roof hidden, looking down into the cabin
+
+
+def pose_hinges(frac, only=None):
+    """swing every opening panel (and the parts riding on it) frac of the way open, like the game does"""
+    for ob in scene.objects:
+        k = ob.get("pkind")
+        h = HINGE_OF.get(k) or (OPT_INFO.get(k) or {}).get("hinge")
+        if not h or (only and h not in only):
+            continue
+        hg = HINGES[h]
+        p = Vector(hg["pivot"])
+        ob.matrix_world = Matrix.Translation(p) @ Matrix.Rotation(math.radians(hg["open"] * frac), 4, Vector(hg["axis"])) @ Matrix.Translation(-p)
+
+
+show_livery("flames", {"Trunk": "Show", "Doors": "Diamond", "Seats": "Diamond"})
+pose_hinges(1.0)
+shot("open_front34", (-19, -22, 9), (0, -2.0, 1.8))
+shot("open_rear34", (17, 24, 9), (0, 2.5, 1.8))
+shot("open_top", (12, -16, 24), (0, -1.0, 1.5))
+pose_hinges(0.0)
+# interiors: looking down into the cabin
 for (nm, b) in (("interior_classic", {"Seats": "Rolls", "Steering": "Chain", "Dash": "Classic", "Shifter": "Chain", "Dice": "On", "Headliner": ""}),
                 ("interior_show", {"Seats": "Diamond", "Doors": "Diamond", "Steering": "Wood", "Dash": "Wood", "Shifter": "Crystal", "Plaque": "Chain", "Audio": "Speakers", "Headliner": ""}),
                 ("interior_sport", {"Seats": "Buckets", "Doors": "Smooth", "Steering": "Sport", "Dash": "Digital", "Shifter": "THandle", "Audio": "Neon", "Headliner": ""}),

@@ -138,3 +138,19 @@ options).
 - The part-made fallback car only shows vinyls on the hood, roof and trunk (as Decals), and has fixed parts: the
   swappable parts need the Blender meshes (`Prepare`).
 - Speedometer and plaque SurfaceGuis: check they face the right way (`Data.Car.Gauge.Tilt`, `NCLowriderKit` buildSpeedo).
+
+## Opening doors, hood, trunk and gas door
+
+Every opening panel is its own piece on a hinge: both doors, the hood (hinged at the windshield, over a chrome V8
+in a real engine bay), the trunk lid and a gas door on the left rear quarter. The cabin is open now, so the seats,
+dash and door cards show through the glass and with the top down. Door glass, mirrors, side trim, the belt
+moulding, the handle and the door cards ride on the doors; the hood ornament and hood parts ride on the hood; the
+spoiler rides on the trunk lid.
+
+- Data: `Car.Hinges` (Pivot, Axis in the car frame, Open = degrees, Kind) and `Car.HingeOf` (piece -> hinge).
+  Swappable parts carry `hinge` in `Car.OptInfo`. Pieces split onto a door are named `<kind>__DoorL` / `__DoorR`.
+- Kit: a Model per hinge (`DoorL`, `DoorR`, `Hood`, `Lid`, `Fuel`) with `<Name>Root` welded by `<Name>Hinge`.
+  `Kit.SetOpen(car, name, open, time)` swings it (server or client), `Kit.IsOpen`, `Kit.Panels`.
+- Server: prompts to open and close each panel (owner only); a door also swings open for a moment when someone
+  gets in or out on its side.
+- Every new vehicle is built the same way (2 or 4 doors, hood, trunk / tailgate / hatch, gas door).

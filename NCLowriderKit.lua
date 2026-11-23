@@ -15,7 +15,9 @@
 --                   front = -Z. Holds the CoM attachment, the VectorForce "Drive" and the Torque "Turn".
 --     Cabin         invisible hull for the greenhouse (welded)
 --     Visual        every body piece, welded, massless, no collision; each has attribute Role (Body, Chrome, ...)
---     Lid           the trunk lid (a paint panel too), welded by "LidHinge" (server opens it)
+--     Lid, Hood, DoorL, DoorR, Fuel   opening panels (Car.Hinges): a Model each, with an invisible "<name>Root"
+--                   welded to the chassis by "<name>Hinge"; Kit.SetOpen swings it. Pieces and swappable parts that
+--                   sit on a panel (door glass, mirrors, door cards, hood ornament, spoiler) ride on its root.
 --     W_FL/W_FR/W_RL/W_RR   wheel models; their weld (Hub.WheelWeld) is posed every frame by each client
 --     DriveSeat (VehicleSeat), Seat_Passenger, Seat_RearL, Seat_RearR
 local RS = game:GetService("ReplicatedStorage")
@@ -466,6 +468,30 @@ end
 
 local LID_ROLES = { Lid = true }
 
+-- opening panels of a vehicle (older data only has the trunk lid)
+local function hingesOf(vd)
+	return vd.Car.Hinges or { Lid = { Pivot = vd.Car.LidHinge, Axis = { -1, 0, 0 }, Open = 62, Kind = "trunk" } }
+end
+
+-- which panel a piece rides on, or nil (base pieces: Car.HingeOf; swappable parts: OptInfo.hinge)
+local function hingeFor(vd, role)
+	local hf = vd.Car.HingeOf
+	if hf then
+		if hf[role] then
+			return hf[role]
+		end
+	elseif LID_ROLES[role] then
+		return "Lid"
+	end
+	local inf = vd.Car.OptInfo and vd.Car.OptInfo[role]
+	return inf and inf.hinge or nil
+end
+
+-- the material a piece is coloured as: pieces split onto a door are named <kind>__Door<L/R>
+local function baseRole(role)
+	return (role:gsub("__%w+$", ""))
+end
+
 local function weldTo(part, base, name)
 	local w = Instance.new("Weld")
 	w.Name = name or "Weld"
@@ -668,25 +694,33 @@ function Kit.BuildCar(cf, vid)
 	local visual = Instance.new("Folder")
 	visual.Name = "Visual"
 	visual.Parent = car
-	local lidFolder = Instance.new("Model")
-	lidFolder.Name = "Lid"
-	lidFolder.Parent = car
 	body:PivotTo(cf)
-	local hingeCF = cf * CFrame.new(v3(vd.Car.LidHinge))
-	local hinge = Instance.new("Part")
-	hinge.Name = "LidRoot"
-	hinge.Size = Vector3.new(6, 0.1, 0.1)
-	hinge.Transparency = 1
-	hinge.CFrame = hingeCF
-	loose(hinge)
-	hinge.Parent = lidFolder
-	lidFolder.PrimaryPart = hinge
-	local hw = Instance.new("Weld")
-	hw.Name = "LidHinge"
-	hw.Part0 = chassis
-	hw.Part1 = hinge
-	hw.C0 = chassis.CFrame:ToObjectSpace(hingeCF)
-	hw.Parent = hinge
+	local roots = {}
+	for hname, h in hingesOf(vd) do
+		local m = Instance.new("Model")
+		m.Name = hname
+		m.Parent = car
+		local hingeCF = cf * CFrame.new(v3(h.Pivot))
+		local root = Instance.new("Part")
+		root.Name = hname .. "Root"
+		root.Size = Vector3.new(0.2, 0.2, 0.2)
+		root.Transparency = 1
+		root.CFrame = hingeCF
+		loose(root)
+		root.Parent = m
+		m.PrimaryPart = root
+		local hw = Instance.new("Weld")
+		hw.Name = hname .. "Hinge"
+		hw.Part0 = chassis
+		hw.Part1 = root
+		hw.C0 = chassis.CFrame:ToObjectSpace(hingeCF)
+		hw.Parent = root
+		root:SetAttribute("ClosedC0", hw.C0)
+		root:SetAttribute("Axis", v3(h.Axis))
+		root:SetAttribute("Open", h.Open)
+		root:SetAttribute("Kind", h.Kind or hname)
+		roots[hname] = root
+	end
 	local optFolder = Instance.new("Folder")
 	optFolder.Name = "Opt"
 	optFolder.Parent = car
@@ -696,9 +730,10 @@ function Kit.BuildCar(cf, vid)
 			local role = p:GetAttribute("Role") or p.Name
 			if vd.Car.OptInfo and vd.Car.OptInfo[role] then
 				p:Destroy() -- swappable parts come from ApplyLook
-			elseif LID_ROLES[role] then
-				p.Parent = lidFolder
-				weldTo(p, hinge)
+			elseif roots[hingeFor(vd, role) or ""] then
+				local root = roots[hingeFor(vd, role)]
+				p.Parent = root.Parent
+				weldTo(p, root)
 			else
 				p.Parent = visual
 				weldTo(p, chassis)
@@ -789,6 +824,57 @@ function Kit.BuildCar(cf, vid)
 	return car
 end
 
+---------------------------------------------------------------------------------------------------- opening panels
+-- Kit.SetOpen(car, "DoorL", true) swings a panel open (false closes it) over `time` seconds (0 = snap). Works on the
+-- server (everyone sees it) or the client. Kit.Panels(car) lists { name = root } for the car's opening panels.
+local swing = setmetatable({}, { __mode = "k" }) -- [root] = token, so a newer call wins
+function Kit.Panels(car)
+	local out = {}
+	for _, m in car:GetChildren() do
+		local root = m:IsA("Model") and m:FindFirstChild(m.Name .. "Root")
+		if root and root:GetAttribute("ClosedC0") then
+			out[m.Name] = root
+		end
+	end
+	return out
+end
+
+function Kit.IsOpen(car, name)
+	local root = Kit.Panels(car)[name]
+	return root ~= nil and (root:GetAttribute("Amount") or 0) > 0.5
+end
+
+function Kit.SetOpen(car, name, open, time)
+	local root = Kit.Panels(car)[name]
+	local weld = root and root:FindFirstChild(name .. "Hinge")
+	if not weld then
+		return false
+	end
+	local closed, axis, angle = root:GetAttribute("ClosedC0"), root:GetAttribute("Axis"), math.rad(root:GetAttribute("Open") or 60)
+	local from, to = root:GetAttribute("Amount") or 0, open and 1 or 0
+	local token = {}
+	swing[root] = token
+	root:SetAttribute("Amount", to)
+	time = time or 0.45
+	task.spawn(function()
+		local t0 = os.clock()
+		while true do
+			local k = time > 0 and math.clamp((os.clock() - t0) / time, 0, 1) or 1
+			local e = k * k * (3 - 2 * k) -- ease in and out
+			if swing[root] ~= token or not weld.Parent then
+				return
+			end
+			weld.C0 = closed * CFrame.fromAxisAngle(axis, angle * (from + (to - from) * e))
+			if k >= 1 then
+				break
+			end
+			task.wait()
+		end
+		swing[root] = nil
+	end)
+	return true
+end
+
 -- the car's ground origin (between the axles) in world space
 function Kit.Origin(car)
 	local ch = car.PrimaryPart
@@ -870,17 +956,18 @@ local function syncCarParts(car, look, vid, vd)
 	if not (t and folder and origin) then
 		return
 	end
-	local lid = car:FindFirstChild("Lid")
-	local hinge = lid and lid:FindFirstChild("LidRoot")
-	local hingeInv = CFrame.new(v3(vd.Car.LidHinge)):Inverse()
+	local hinges = hingesOf(vd)
 	syncParts(folder, t, function(slot)
 		if (slot == "Visor" or slot == "Headliner") and look.part_Top == "Down" then
 			return "" -- nothing to hang a visor on with the top down
 		end
 		return look["part_" .. slot] or ""
 	end, function(c, slot, rel)
-		if LID_SLOTS[slot] and hinge then
-			weldAt(c, hinge, hingeInv * rel)
+		local hname = hingeFor(vd, c:GetAttribute("Role") or c.Name) or (LID_SLOTS[slot] and "Lid")
+		local m = hname and hinges[hname] and car:FindFirstChild(hname)
+		local root = m and m:FindFirstChild(hname .. "Root")
+		if root then
+			weldAt(c, root, CFrame.new(v3(hinges[hname].Pivot)):Inverse() * rel)
 		else
 			weldAt(c, ch, origin.CFrame * rel)
 		end
@@ -970,7 +1057,7 @@ local styleFor
 function styleFor(role, look, ctx)
 	local inf = ctx.opt[role] or ctx.wopt[role]
 	local PANEL_OF = ctx.panelOf
-	local mat = inf and inf.mat or role
+	local mat = inf and inf.mat or baseRole(role)
 	local function trim(key)
 		local f = Config.ById.TrimFinishes[look[key]] or Config.TrimFinishes[1]
 		if f.id == "paint" then
@@ -988,7 +1075,7 @@ function styleFor(role, look, ctx)
 		return trim("fin_KO")
 	elseif mat == "Pump" then
 		return trim("fin_Trunk")
-	elseif mat == "Body" or mat == "ContBody" or mat == "Lid" or PANEL_OF[mat] then
+	elseif mat == "Body" or mat == "ContBody" or mat == "Lid" or mat == "HoodInner" or mat:match("^DoorJamb") or PANEL_OF[mat] then
 		local c = (mat == "PanelRoof") and ctx.roof or ctx.paint
 		return ctx.finish.material, c, ctx.finish.reflectance, 0
 	elseif mat == "Seat" or mat == "Interior" then
@@ -1092,7 +1179,7 @@ function Kit.ApplyLook(car, look)
 			printVinyl(p, role, art.id == "none" and "" or Kit.VinylId(art.id, PANEL_OF[role], vid))
 		end
 		-- convertible: the hardtop roof, rear glass and side glass go away
-		if ROOF_ROLES[role] then
+		if ROOF_ROLES[baseRole(role)] then
 			p.Transparency = topDown and 1 or p.Transparency
 			local d = p:FindFirstChild("Vinyl")
 			if d then

@@ -35,7 +35,10 @@ def mat_color(kind):
     if info:
         m = info["mat"]
         return {"Chrome": "Chrome", "Body": "Body", "Dash": "Dash", "Hub": "Chrome", "Rim": "Chrome"}.get(m, m)
-    return {"RoofGlass": "Glass", "RoofBody": "Body", "RoofChrome": "Chrome"}.get(kind, kind)
+    base = kind.split("__")[0]                            # pieces moved onto a door keep their material
+    if base in ("HoodInner", "DoorJambL", "DoorJambR"):
+        return "Body"
+    return {"RoofGlass": "Glass", "RoofBody": "Body", "RoofChrome": "Chrome"}.get(base, base)
 
 
 # ================================================================================================ exterior
@@ -205,16 +208,16 @@ def mirrors():
         for s in sides:
             x = s * 3.55
             if v in ("Bullet", "Dual"):
-                cyl(k, (x, -2.35, 2.85), (x, -2.35, 3.1), 0.04, seg=8)
-                cyl(k, (x, -2.45, 3.18), (x, -2.15, 3.18), 0.17, seg=16, bev=0.03)
-                cyl(k, (x, -2.6, 3.18), (x, -2.45, 3.18), 0.17, seg=16, r2=0.05)
+                cyl(k, (x, -2.25, 2.85), (x, -2.25, 3.1), 0.04, seg=8)
+                cyl(k, (x, -2.35, 3.18), (x, -2.05, 3.18), 0.17, seg=16, bev=0.03)
+                cyl(k, (x, -2.5, 3.18), (x, -2.35, 3.18), 0.17, seg=16, r2=0.05)
             elif v == "Rect":
-                cyl(k, (x, -2.35, 2.85), (x, -2.35, 3.05), 0.04, seg=8)
-                box(k, x - 0.06, -2.4, 3.0, x + 0.06, -2.2, 3.35, bev=0.03)
-                box(opt(S, v, "Glass"), x - 0.07, -2.23, 3.04, x + 0.07, -2.19, 3.31)
+                cyl(k, (x, -2.25, 2.85), (x, -2.25, 3.05), 0.04, seg=8)
+                box(k, x - 0.06, -2.3, 3.0, x + 0.06, -2.1, 3.35, bev=0.03)
+                box(opt(S, v, "Glass"), x - 0.07, -2.13, 3.04, x + 0.07, -2.09, 3.31)
             else:
-                beam(k, (x, -2.35, 2.85), (x + s * 0.25, -2.35, 3.45), 0.04, 0.04)
-                cyl(k, (x + s * 0.25, -2.42, 3.55), (x + s * 0.25, -2.28, 3.55), 0.2, seg=20, bev=0.03)
+                beam(k, (x, -2.25, 2.85), (x + s * 0.25, -2.25, 3.45), 0.04, 0.04)
+                cyl(k, (x + s * 0.25, -2.32, 3.55), (x + s * 0.25, -2.18, 3.55), 0.2, seg=20, bev=0.03)
 
 
 def ornaments():
