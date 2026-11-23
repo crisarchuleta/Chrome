@@ -39,7 +39,9 @@ Roblox banned this account before, so this is enforced in code, not left to the 
 - Top, Bottoms and Shoes are required slots. The server refills them from the default look if a client tries to
   send a look without them.
 
-So even a blank or broken body model can't spawn without clothes once this is installed. The preview mannequin in the
+Only the head, arms, hands, lower legs and feet can ever show skin. Under skirts and dresses the base layer reads as
+bike shorts, and every dress and crop top has sleeves. So even a blank or broken body model can't spawn without
+clothes once this is installed, and no combination of items looks revealing. The preview mannequin in the
 studio goes through the same code.
 
 ## What players get
@@ -106,7 +108,7 @@ What players asked for, and what the web shows is popular right now:
   [men's TikTok guide](https://www.hairstyletryon.ai/blog/mens-hair-trends-tiktok-guide))
 - **Beards:** faded beards, the short boxed comeback, and sharp Mediterranean shaping.
   ([Beardbrand](https://www.beardbrand.com/blogs/urbanbeardsman/beard-styles), [Goldie](https://heygoldie.com/blog/best-beard-styles))
-- **TikTok and 2026 fashion:** coquette (bows, lace, pink), gorpcore (shells, cargo), office siren (pencil skirts and
+- **TikTok and 2026 fashion:** bows and pearls, gorpcore (shells, cargo), office chic (pencil skirts and
   thin specs), coastal cowgirl, fisherman core, the countryside-prep waxed field jacket, the funnel-neck jacket,
   brass-button officer jackets, wedge heels, barrel pants, quarter-zips, butter yellow, matcha green and the fur
   statement coat.

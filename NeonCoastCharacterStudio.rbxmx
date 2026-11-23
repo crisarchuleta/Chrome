@@ -233,8 +233,8 @@ I("top_jersey_hoop2", "Top", "Hoops Jersey (Away)", 180, "jersey", { num = "0" }
 I("top_jersey_soccer", "Top", "Football Kit Jersey", 180, "jersey", { num = "10", sleeve = "tee" }, F, "#F6E27A", F, "#2E4A7A", { "sport", "street" }, T)
 I("top_jersey_hockey", "Top", "Hockey Sweater", 220, "jersey", { num = "91", sleeve = "long" }, F, "#7A1022", F, "#F5F5F2", { "sport", "tiktok" }, TN)
 I("top_crop", "Top", "Baby Tee Crop", 120, "croptop", { sleeve = true }, F, "#F5F5F2", F, "#F4A6C8", { "retro", "cute" })
-I("top_bow_crop", "Top", "Bow Cami", 140, "croptop", { bow = true }, F, "#F4A6C8", F, "#F5F5F2", { "cute", "tiktok" }, T)
-I("top_corset", "Top", "Lace-Up Corset Top", 220, "corset", {}, F, "#F5F5F2", F, "#F4A6C8", { "cute", "tiktok" }, T)
+I("top_bow_crop", "Top", "Bow Baby Tee", 140, "croptop", { bow = true, sleeve = true }, F, "#F4A6C8", F, "#F5F5F2", { "cute", "tiktok" }, T)
+I("top_corset", "Top", "Laced Bodice Top", 220, "corset", {}, F, "#F5F5F2", F, "#F4A6C8", { "cute", "tiktok" }, T)
 I("top_office_siren", "Top", "Fitted Button-Down", 160, "shirt", {}, F, "#F5F5F2", F, "#F5F5F2", { "business", "tiktok" }, T)
 I("top_coveralls", "Top", "Mechanic Coveralls", 200, "jumpsuit", { zip = "c2", patches = true }, F, "#1B2A41", F, "#E8A33D", { "work" })
 I("top_jumpsuit_orange", "Top", "County Orange Jumpsuit", 120, "jumpsuit", { text = "INMATE" }, F, "#E8A33D", F, "#111111", { "work", "heist" })
@@ -250,8 +250,8 @@ I("top_vampire", "Top", "Noble's Long Coat", 400, "robe", { len = 2.2 }, F, "#11
 I("top_bronze_armor", "Top", "Bronze Warrior Cuirass", 600, "armor", { skirt = true }, "metal", "#E2B240", F, "#7A1022", { "fantasy" }, TN)
 I("top_knight_armor", "Top", "Knight's Plate", 650, "armor", {}, "metal", "#D4D6DC", F, "#2E4A7A", { "fantasy" })
 I("top_trooper_armor", "Top", "Orbital Trooper Armor", 700, "armor", { scifi = true }, F, "#F5F5F2", F, "#2B2B2B", { "scifi" })
-I("top_sequin_dress", "Top", "Red Sequin Mini Dress", 450, "dress", { len = 0.8, sequin = true }, F, "#B3122E", F, "#B3122E", { "retro", "business" })
-I("top_slip_dress", "Top", "Satin Slip Dress", 300, "dress", { len = 1.4 }, F, "#E8DCC0", F, "#E8DCC0", { "tiktok", "cute" })
+I("top_sequin_dress", "Top", "Red Sequin Party Dress", 450, "dress", { len = 1.2, sequin = true, sleeve = true }, F, "#B3122E", F, "#B3122E", { "retro", "business" })
+I("top_slip_dress", "Top", "Satin Midi Dress", 300, "dress", { len = 1.6, sleeve = true }, F, "#E8DCC0", F, "#E8DCC0", { "tiktok", "cute" })
 I("top_animal_top", "Top", "Red & Black Animal Stripe Top", 220, "tee", { sleeve = "long", stripe = true }, F, "#B3122E", F, "#111111", { "tiktok", "spooky" }, TN)
 
 ------------------------------------------------------------------ outerwear
@@ -321,8 +321,8 @@ I("bot_chino_shorts", "Bottom", "Chino Shorts", 80, "shorts", {}, F, "#C8B88A", 
 I("bot_swim", "Bottom", "Swim Trunks", 60, "shorts", {}, "bright", "#00A2FF", nil, nil, { "coast" })
 I("bot_board", "Bottom", "Board Shorts", 80, "shorts", { long = true, stripe = true }, "bright", "#FF8A00", "bright", "#F5F5F2", { "coast" })
 I("bot_gym_shorts", "Bottom", "Gym Shorts", 60, "shorts", { stripe = true }, F, "#111111", F, "#F5F5F2", { "sport" })
-I("bot_pleated_skirt", "Bottom", "Pleated Tennis Skirt", 160, "skirt", { len = 0.7, pleats = true }, F, "#F5F5F2", nil, nil, { "cute", "sport", "tiktok" }, T)
-I("bot_mini_skirt", "Bottom", "Mini Skirt", 140, "skirt", { len = 0.6 }, F, "#111111", nil, nil, { "retro", "cute" })
+I("bot_pleated_skirt", "Bottom", "Pleated Tennis Skirt", 160, "skirt", { len = 0.85, pleats = true }, F, "#F5F5F2", nil, nil, { "cute", "sport", "tiktok" }, T)
+I("bot_mini_skirt", "Bottom", "A-Line Skirt", 140, "skirt", { len = 0.9 }, F, "#111111", nil, nil, { "retro", "cute" })
 I("bot_pencil_skirt", "Bottom", "Pencil Skirt", 180, "skirt", { len = 1.1, flare = 0, tights = true }, F, "#2B2B2B", F, "#111111", { "business", "tiktok" }, T)
 I("bot_maxi_skirt", "Bottom", "Flowing Maxi Skirt", 180, "skirt", { len = 1.9, flare = 6 }, F, "#5C3A21", nil, nil, { "tiktok", "fantasy" })
 I("bot_leggings", "Bottom", "Sculpt Leggings", 100, "leggings", {}, F, "#111111", nil, nil, { "sport", "tiktok" })
@@ -579,11 +579,11 @@ C.LOOKS = {
 		Neck = e("chain_pearls"), Ears = e("ear_one_stud") }, TN),
 	look("tiktok_quiet_lux", "Quiet Luxury", "business", { Hair = e("hair_slick_back"), Top = e("top_quarter_zip"), Bottom = e("bot_chinos"),
 		Shoes = e("shoe_loafer"), Wrist = e("watch_steel") }, T),
-	look("tiktok_office_siren", "Office Siren", "tiktok", { Hair = e("hair_claw_clip"), Top = e("top_office_siren"), Bottom = e("bot_pencil_skirt"),
+	look("tiktok_office_siren", "Office Chic", "tiktok", { Hair = e("hair_claw_clip"), Top = e("top_office_siren"), Bottom = e("bot_pencil_skirt"),
 		Shoes = e("shoe_heels"), Face = e("eye_specs"), Ears = e("ear_pearls") }, T),
 	look("tiktok_mob_wife", "Fur Coat Era", "tiktok", { Hair = e("hair_long_sleek"), Top = e("top_slip_dress", "#111111"), Outer = e("out_fur"),
 		Shoes = e("shoe_heels"), Face = e("eye_cateye"), Neck = e("chain_cuban_gold"), Ears = e("ear_big_hoops") }, T),
-	look("tiktok_coquette", "Coquette", "cute", { Hair = e("hair_long_bangs"), Top = e("top_bow_crop"), Bottom = e("bot_pleated_skirt", "#F4A6C8"),
+	look("tiktok_coquette", "Bows & Pearls", "cute", { Hair = e("hair_long_bangs"), Top = e("top_bow_crop"), Bottom = e("bot_pleated_skirt", "#F4A6C8"),
 		Shoes = e("shoe_platform"), Neck = e("chain_pearls"), Ears = e("ear_pearls") }, T),
 	look("tiktok_gorp", "Trail Ready", "tiktok", { Hair = e("hair_wolf_cut"), Top = e("top_tee"), Outer = e("out_gorp_shell"), Bottom = e("bot_cargo"),
 		Shoes = e("shoe_clogs"), Head = e("hat_fisherman"), Back = e("back_sling") }, T),
@@ -613,7 +613,7 @@ C.LOOKS = {
 		Bottom = e("bot_trousers"), Shoes = e("shoe_oxford"), Wrist = e("watch_gold"), FacialHair = e("beard_short_boxed") }),
 	look("biz_power", "Power Suit", "business", { Hair = e("hair_italian_bob"), Top = e("top_office_siren"), Outer = e("out_double"),
 		Bottom = e("bot_wide_trouser", "#F5F5F2"), Shoes = e("shoe_heels"), Ears = e("ear_pearls") }, T),
-	look("biz_made_man", "Made Man", "business", { Hair = e("hair_slick_back"), Head = e("hat_fedora"), Top = e("top_dress_shirt", "#111111"),
+	look("biz_made_man", "Old-School Boss", "business", { Hair = e("hair_slick_back"), Head = e("hat_fedora"), Top = e("top_dress_shirt", "#111111"),
 		Neck = e("neck_tie", "#F5F5F2"), Outer = e("out_blazer_charcoal"), Bottom = e("bot_trousers", "#2B2B2B"), Shoes = e("shoe_oxford"),
 		Rings = e("rings_gold"), Waist = e("belt_leather") }),
 	look("biz_black_tie", "Black Tie", "business", { Hair = e("hair_pomp"), Top = e("top_dress_shirt"), Neck = e("neck_bowtie"), Outer = e("out_tux"),
@@ -871,7 +871,8 @@ local FIXED = {
 	tooth = Color3.fromRGB(246, 244, 236),
 }
 
--- the always-on modesty base layer: undershirt on the torso, shorts on the hips and thighs (see Apply)
+-- the always-on modesty base layer: undershirt on the torso, shorts on the hips and thighs (see Apply).
+-- Only the head, arms, hands, lower legs and feet can ever show skin.
 B.BASE_LAYER = {
 	Torso = Color3.fromRGB(58, 60, 66),
 	Hips = Color3.fromRGB(38, 40, 46),
@@ -2205,8 +2206,8 @@ F.shirt = function(pp)
 	for i = 0, 3 do
 		table.insert(t, p("Ball", "chest", V3(0.04, 0.04, 0.02), V3(0, 0.55 - i * 0.35, -0.055), nil, "white", { m = SMO }))
 	end
-	if pp.open then -- open collar showing the chest
-		table.insert(t, p("Wedge", "chest", V3(0.24, 0.3, 0.02), V3(0, 0.62, -0.05), V3(180, 0, 0), "skin", {}))
+	if pp.open then -- open collar over a white undershirt
+		table.insert(t, p("Wedge", "chest", V3(0.24, 0.3, 0.02), V3(0, 0.62, -0.05), V3(180, 0, 0), "white", { m = FAB }))
 	end
 	if pp.print then -- a few blooms on a resort / Hawaiian shirt
 		for i = 1, 6 do
@@ -2246,7 +2247,7 @@ F.corset = function()
 		table.insert(t, p("Block", "chest", V3(0.24, 0.02, 0.02), V3(0, 0.2 - i * 0.16, -0.045), V3(0, 0, (i % 2 == 0) and 25 or -25), "c2", { m = FAB }))
 	end
 	add(t, mirror({ p("Block", "chest", V3(0.05, 0.4, 0.04), V3(0.32, 0.88, 0.0), nil, "c1", { m = FAB }) }))
-	return t, { Torso = { c = "c1", m = FAB }, UArm = "skin", LArm = "skin" }
+	return t, { Torso = { c = "c1", m = FAB }, UArm = { c = "c1", m = FAB }, LArm = "skin" }
 end
 F.vest = function(pp)
 	-- a tactical vest / plate carrier over whatever top is worn (keeps the top's sleeves)
@@ -2884,8 +2885,8 @@ function B.Apply(char, look, Catalog, opts)
 				if type(v) == "table" then
 					key, m = v.c, v.m
 				end
-				if key == "skin" and B.BASE_LAYER[region] and region ~= "ULeg" then
-					continue -- never bare: the base layer stays
+				if key == "skin" and B.BASE_LAYER[region] then
+					continue -- never bare: the base layer stays (under skirts and dresses it reads as bike shorts)
 				end
 				regions[region] = { colour = colourFor(key, ctx), material = m or (key == "skin" and Enum.Material.SmoothPlastic or FAB) }
 			end

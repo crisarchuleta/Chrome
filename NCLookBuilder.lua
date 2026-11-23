@@ -62,7 +62,8 @@ local FIXED = {
 	tooth = Color3.fromRGB(246, 244, 236),
 }
 
--- the always-on modesty base layer: undershirt on the torso, shorts on the hips and thighs (see Apply)
+-- the always-on modesty base layer: undershirt on the torso, shorts on the hips and thighs (see Apply).
+-- Only the head, arms, hands, lower legs and feet can ever show skin.
 B.BASE_LAYER = {
 	Torso = Color3.fromRGB(58, 60, 66),
 	Hips = Color3.fromRGB(38, 40, 46),
@@ -1396,8 +1397,8 @@ F.shirt = function(pp)
 	for i = 0, 3 do
 		table.insert(t, p("Ball", "chest", V3(0.04, 0.04, 0.02), V3(0, 0.55 - i * 0.35, -0.055), nil, "white", { m = SMO }))
 	end
-	if pp.open then -- open collar showing the chest
-		table.insert(t, p("Wedge", "chest", V3(0.24, 0.3, 0.02), V3(0, 0.62, -0.05), V3(180, 0, 0), "skin", {}))
+	if pp.open then -- open collar over a white undershirt
+		table.insert(t, p("Wedge", "chest", V3(0.24, 0.3, 0.02), V3(0, 0.62, -0.05), V3(180, 0, 0), "white", { m = FAB }))
 	end
 	if pp.print then -- a few blooms on a resort / Hawaiian shirt
 		for i = 1, 6 do
@@ -1437,7 +1438,7 @@ F.corset = function()
 		table.insert(t, p("Block", "chest", V3(0.24, 0.02, 0.02), V3(0, 0.2 - i * 0.16, -0.045), V3(0, 0, (i % 2 == 0) and 25 or -25), "c2", { m = FAB }))
 	end
 	add(t, mirror({ p("Block", "chest", V3(0.05, 0.4, 0.04), V3(0.32, 0.88, 0.0), nil, "c1", { m = FAB }) }))
-	return t, { Torso = { c = "c1", m = FAB }, UArm = "skin", LArm = "skin" }
+	return t, { Torso = { c = "c1", m = FAB }, UArm = { c = "c1", m = FAB }, LArm = "skin" }
 end
 F.vest = function(pp)
 	-- a tactical vest / plate carrier over whatever top is worn (keeps the top's sleeves)
@@ -2075,8 +2076,8 @@ function B.Apply(char, look, Catalog, opts)
 				if type(v) == "table" then
 					key, m = v.c, v.m
 				end
-				if key == "skin" and B.BASE_LAYER[region] and region ~= "ULeg" then
-					continue -- never bare: the base layer stays
+				if key == "skin" and B.BASE_LAYER[region] then
+					continue -- never bare: the base layer stays (under skirts and dresses it reads as bike shorts)
 				end
 				regions[region] = { colour = colourFor(key, ctx), material = m or (key == "skin" and Enum.Material.SmoothPlastic or FAB) }
 			end
