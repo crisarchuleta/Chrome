@@ -56,6 +56,109 @@ def mesh_object(name, verts, faces):
     return link(bpy.data.objects.new(name, me))
 
 
+# ------------------------------------------------------------------------------------------------ UVs + textures
+# Roblox: each hair / brow / stubble piece gets a SurfaceAppearance (AlphaMode Transparency, tinted by its Color)
+# from one shared greyscale texture. U runs across the edge (0 = the very edge, 1 = full coverage), so the
+# hairline is made of single strands that thin out onto the skin instead of a hard rim; V runs along the edge.
+UVS = {}                      # object name -> (u, v) per vertex
+EDGE_TILES = 9                # texture repeats round the head (whole number, so the seam at the back is invisible)
+
+
+def set_uv(ob, u, v, period=None):
+    me = ob.data
+    uvl = me.uv_layers.new(name="UVMap")
+    loops = np.array([l.vertex_index for l in me.loops])
+    uu = np.clip(np.asarray(u, float)[loops], 0.004, 0.996)
+    vv = np.asarray(v, float)[loops].copy()
+    if period:
+        for poly in me.polygons:
+            idx = np.arange(poly.loop_start, poly.loop_start + poly.loop_total)
+            if vv[idx].max() - vv[idx].min() > period / 2:
+                lo = vv[idx] < vv[idx].mean()
+                vv[idx[lo]] += period
+    uvl.data.foreach_set("uv", np.stack([uu, vv], 1).ravel())
+
+
+def edge_v(H, V):
+    """V along the hairline: round the head (whole tiles) plus a little height, so a vertical edge still varies"""
+    a = np.arctan2(V[:, 0] - H.centre[0], V[:, 1] - H.centre[1])
+    return a / (2 * np.pi) * EDGE_TILES + (V[:, 2] - H.anchor[2]) * 2.2
+
+
+def _save_png(name, rgba):
+    n_y, n_x = rgba.shape[:2]
+    im = bpy.data.images.get(name) or bpy.data.images.new(name, n_x, n_y, alpha=True)
+    im.pixels.foreach_set(np.clip(rgba, 0, 1).astype(np.float32).ravel())
+    d = os.path.join(OUT, "textures_heads")
+    os.makedirs(d, exist_ok=True)
+    im.filepath_raw = os.path.join(d, name + ".png")
+    im.file_format = "PNG"
+    im.save()
+    return im
+
+
+def make_textures():
+    """the shared greyscale maps (rows = V, columns = U)"""
+    rng = np.random.default_rng(7)
+    T = {}
+    # hair edge: 512 strands round one tile; each strand starts at its own point across the edge, so the hairline
+    # is a ragged row of single hairs; colour varies strand to strand
+    n = 512
+    u = (np.arange(n) + 0.5) / n
+    strands = 170
+    sid = (np.arange(n) * strands // n) % strands
+    start = rng.uniform(0.05, 0.8, strands) ** 1.4
+    start = 0.5 * start + 0.5 * np.convolve(np.r_[start[-3:], start, start[:3]], np.ones(7) / 7, "same")[3:-3]
+    shade = rng.uniform(0.72, 1.0, strands)
+    pos = (np.arange(n) * strands / n) % 1.0                             # across one strand
+    core = 1 - np.abs(pos - 0.5) * 2                                      # 1 in the middle of a strand
+    st = start[sid][:, None]
+    a = np.clip((u[None, :] - st) / 0.16, 0, 1)                           # each strand grows in over a short run
+    thin = np.clip(core[:, None] * 1.6 + u[None, :] * 1.4, 0, 1)          # near the edge strands are separate
+    alpha = np.clip(a * thin + smoothstep(0.75, 0.95, u)[None, :], 0, 1)
+    col = (shade[sid][:, None] * (0.86 + 0.14 * core[:, None])) * np.ones((1, n))
+    col = col * (0.92 + 0.08 * np.sin(u[None, :] * 40 + sid[:, None]))
+    T["NC_HairEdge"] = np.dstack([col, col, col, alpha])
+    # (stubble maps are made per piece by stubble_texture, from its own coverage)
+    # brows: short hairs slanting up towards the tail; U along the brow (inner end 0), V across (0 bottom, 1 top)
+    bw, bh = 512, 128
+    bu = (np.arange(bw) + 0.5) / bw
+    bv = (np.arange(bh) + 0.5) / bh
+    UU, VV = np.meshgrid(bu, bv)
+    hairs = np.zeros((bh, bw))
+    for _ in range(900):
+        x0, y0 = rng.uniform(0, 1), rng.uniform(0.05, 0.95)
+        ang = math.radians(rng.uniform(12, 35) + 35 * (1 - x0) ** 2)     # inner hairs stand up more
+        ln = rng.uniform(0.05, 0.11)
+        dx, dy = math.cos(ang) * ln, math.sin(ang) * ln * 4                # (the map is 4x wider than tall)
+        t = np.clip(((UU - x0) * dx + (VV - y0) * dy) / (dx * dx + dy * dy), 0, 1)
+        dist = np.hypot((UU - x0 - t * dx) * bw, (VV - y0 - t * dy) * bh)
+        hairs = np.maximum(hairs, np.clip(1.3 - dist / 1.1, 0, 1) * (0.7 + 0.3 * rng.random()))
+    edge = smoothstep(0.0, 0.3, VV) * smoothstep(1.0, 0.65, VV) * smoothstep(0.0, 0.12, UU)
+    alpha = np.clip(hairs * edge * 1.2 + 0.35 * edge * smoothstep(0.1, 0.5, VV), 0, 1)
+    c = 0.85 + 0.15 * hairs
+    T["NC_Brow"] = np.dstack([c, c, c, alpha])
+    return {k: _save_png(k, v) for k, v in T.items()}
+
+
+def tex_material(name, image):
+    """a material whose only texture is this greyscale map (FBX exports it; Roblox tints it)"""
+    if name in MATS:
+        return MATS[name]
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    nt = m.node_tree
+    b = nt.nodes.get("Principled BSDF")
+    tx = nt.nodes.new("ShaderNodeTexImage")
+    tx.image = image
+    nt.links.new(tx.outputs["Color"], b.inputs["Base Color"])
+    nt.links.new(tx.outputs["Alpha"], b.inputs["Alpha"])
+    b.inputs["Roughness"].default_value = 0.55
+    m["nc_tinted"] = True
+    MATS[name] = m
+    return m
+
+
 # ------------------------------------------------------------------------------------------------ the head surface
 class Head:
     def __init__(self, gender):
@@ -230,15 +333,22 @@ def clip(V, F, f, *fields):
     return (Vn, [[rm[v] for v in f2] for f2 in out]) + tuple(np.array([fl[v] for v in used]) for fl in flds)
 
 
-def shell(name, V, F, N, T, field=None, lift=0.004):
+def shell(name, V, F, N, T, field=None, lift=0.004, uv=None):
     """hair as a single outer surface: head + normal * T. Its edge (field = 0, default the T = 0 line) is cut
     smooth and sits right on the skin, so the hair comes out of the head instead of ending in a step. No inner
-    wall: nothing ever looks at it from inside the head."""
+    wall: nothing ever looks at it from inside the head. uv = (u, v) per vertex for the edge texture."""
     if field is None:
         field = T - 1e-4
-    Vc, Fc, Nc, Tc = clip(V, F, field, N, T)
+    if uv is None:
+        Vc, Fc, Nc, Tc = clip(V, F, field, N, T)
+    else:
+        Vc, Fc, Nc, Tc, Uc, Wc = clip(V, F, field, N, T, uv[0], uv[1])
     Nc = Nc / np.maximum(np.linalg.norm(Nc, axis=1), 1e-9)[:, None]
-    return mesh_object(name, Vc + Nc * (np.maximum(Tc, 0)[:, None] + lift), Fc)
+    ob = mesh_object(name, Vc + Nc * (np.maximum(Tc, 0)[:, None] + lift), Fc)
+    if uv is not None:
+        UVS[ob.name] = (Uc, Wc)
+        set_uv(ob, Uc, Wc, EDGE_TILES)
+    return ob
 
 
 def tube(points, radii, sides=8, twist=0.0, bumps=0.0, bump_freq=6.0):
@@ -276,20 +386,28 @@ def tube(points, radii, sides=8, twist=0.0, bumps=0.0, bump_freq=6.0):
 class Builder:
     """collects verts/faces of several pieces into one mesh"""
     def __init__(self):
-        self.v, self.f = [], []
+        self.v, self.f, self.u, self.w = [], [], [], []
 
-    def add(self, verts, faces):
+    def add(self, verts, faces, u=None, w=None):
         o = len(self.v)
         self.v += [tuple(x) for x in verts]
         self.f += [[i + o for i in f] for f in faces]
+        k = len(verts)
+        self.u += list(u) if u is not None else [0.996] * k      # (strands, locs, sheets: full coverage)
+        self.w += list(w) if w is not None else [0.5] * k
 
     def add_obj(self, ob):
         me = ob.data
-        self.add([v.co[:] for v in me.vertices], [list(p.vertices) for p in me.polygons])
+        u, w = UVS.pop(ob.name, (None, None))
+        self.add([v.co[:] for v in me.vertices], [list(p.vertices) for p in me.polygons], u, w)
         bpy.data.objects.remove(ob, do_unlink=True)
 
-    def make(self, name):
-        return mesh_object(name, self.v, self.f)
+    def make(self, name, uv=True):
+        ob = mesh_object(name, self.v, self.f)
+        if uv:
+            UVS[ob.name] = (np.array(self.u), np.array(self.w))
+            set_uv(ob, self.u, self.w, EDGE_TILES)
+        return ob
 
 
 def push_out(H, p, clear, extra=None):
@@ -306,6 +424,60 @@ def push_out(H, p, clear, extra=None):
     return np.array(q)
 
 
+def drape(H, root, length, clear, body, step=0.035, seed=0, sway=0.0):
+    """a loc that hangs the way real hair does: it lies on the head, falls straight down from the widest point
+    above it, and slides off the shoulders to the back or the front instead of piling up on them"""
+    r = random.Random(seed)
+    clear *= r.uniform(1.0, 1.9)                             # locs stack on each other: some sit higher
+    cy = H.centre[1]
+    neck_z = H.J["neck"][2]
+
+    def outline(a, z):
+        d = np.array([math.sin(a), math.cos(a)])
+        best = 0.0
+        zh = max(z, neck_z)
+        hit = H.bvh.ray_cast(Vector((d[0] * 3, cy + d[1] * 3, zh)), Vector((-d[0], -d[1], 0)), 3.0)
+        if hit[0] is not None:
+            best = 3.0 - hit[3]
+        if z < neck_z + 0.1:
+            hit = body.ray_cast(Vector((d[0] * 3, cy + d[1] * 3, z)), Vector((-d[0], -d[1], 0)), 3.0)
+            if hit[0] is not None:
+                best = max(best, 3.0 - hit[3])
+        return best
+
+    a = math.atan2(root[0], root[1] - cy)
+    rad = math.hypot(root[0], root[1] - cy)
+    z = root[2]
+    pts = [np.array(root, float)]
+    drift = r.uniform(-1, 1) * sway
+    travelled = 0.0
+    while travelled < length:
+        z_new = z - step * 0.97
+        a_new = a + drift * step
+        side = math.radians(40) < abs(a_new) < math.radians(140)
+        # just off the shoulder, behind it or in front of it (never all gathered at the spine)
+        target = math.copysign(math.radians(38) if abs(a_new) < math.pi / 2 else math.radians(142), a_new)
+        if z_new < neck_z + 0.2 and side:
+            a_new += (target - a_new) * 0.1
+        want = outline(a_new, z_new) + clear
+        tries = 0
+        while side and want > rad + step * 0.8 and z_new < neck_z + 0.1 and tries < 6:
+            a_new += (target - a_new) * 0.35                 # blocked by the shoulder: go round it, don't jump out
+            want = outline(a_new, z_new) + clear
+            tries += 1
+        rad_new = max(want, rad - step * 0.35)               # falls straight; only leans in a little
+        p = np.array([math.sin(a_new) * rad_new, cy + math.cos(a_new) * rad_new, z_new])
+        travelled += np.linalg.norm(p - pts[-1])
+        pts.append(p)
+        a, rad, z = a_new, rad_new, z_new
+    # smooth out any kinks (the root stays put), then keep it outside the head and body
+    P = np.array(pts)
+    for _ in range(4):
+        P[1:-1] = 0.25 * P[:-2] + 0.5 * P[1:-1] + 0.25 * P[2:]
+        P[-1] = 0.5 * P[-1] + 0.5 * P[-2] + (P[-2] - P[-3]) * 0.5
+    return [push_out(H, p, clear * 0.9, body) for p in P]
+
+
 def strand(H, root, direction, length, step=0.04, gravity=0.18, clear=0.03, stiff=0.85, extra=None, wobble=0.0, seed=0):
     """a hanging strand from root: starts along direction, falls under gravity, slides over the head"""
     pts = [np.array(root)]
@@ -320,10 +492,27 @@ def strand(H, root, direction, length, step=0.04, gravity=0.18, clear=0.03, stif
         d /= np.linalg.norm(d)
         p = pts[-1] + d * step
         p = push_out(H, p, clear, extra)
+        if extra is not None:
+            # on top of a shoulder: hair slides off to the front or the back (whichever side it is already on)
+            # instead of piling up sideways along the shoulder
+            loc, nrm, fi, dist = extra.find_nearest(Vector(p))
+            if loc is not None and dist < clear * 1.6 and nrm.z > 0.35 and p[2] < H.J["neck"][2] - 0.05:
+                side = 1.0 if p[1] > loc.y - 0.02 else -1.0
+                p = p + np.array([0.0, side * step * 0.9, -step * 0.3])
+                p = push_out(H, p, clear, extra)
         d = p - pts[-1]
         if np.linalg.norm(d) > 1e-6:
             d = d / np.linalg.norm(d)
         pts.append(p)
+    # once a strand is falling it never turns back up (no hooks where it meets the chest or a shoulder)
+    low = None
+    for i in range(1, len(pts)):
+        if low is None and i > len(pts) * 0.3 and pts[i][2] < pts[i - 1][2]:
+            low = pts[i][2]
+        if low is not None:
+            if pts[i][2] > low:
+                pts[i] = np.array([pts[i][0], pts[i][1], low - 0.002])
+            low = pts[i][2]
     return pts
 
 
@@ -360,7 +549,7 @@ def style_short(H, V, F, S, N, d, p):
     front = smoothstep(0.15 * H.R, 0.7 * H.R, -(V[:, 1] - H.centre[1])) * smoothstep(-0.2 * H.R, 0.3 * H.R, V[:, 2] - H.anchor[2])
     hl = d + p.get("hairline", 0.0) - FRONT_RAISE * front   # forehead hairline up where a real one sits
     feather = p.get("feather", 0.06)
-    cover = smoothstep(0.0, feather * (1 + 1.2 * front), hl)
+    cover = smoothstep(0.0, feather * (1 + 0.6 * front), hl)
     top_w = smoothstep(p.get("top_from", 0.15) * R, 0.6 * R, up)   # 0 below the temples, 1 on top
     T = p["side"] + (p["top"] - p["side"]) * top_w
     if p.get("puff"):                                    # a round cloud of curls around the head
@@ -406,7 +595,7 @@ def fade_band(name, V, F, N, hl, T, p, width=0.06):
     return shell(name, V, F, N, np.zeros(len(V)), field=field, lift=0.002)
 
 
-FRONT_RAISE = 0.11
+FRONT_RAISE = 0.06
 
 
 def cap_version(H, V, T, p):
@@ -426,34 +615,44 @@ def build_styles(H):
     out = {}
     male = H.gender == "Male"
 
+    ev = edge_v(H, V)
+
     def add_short(key, label, p, extras=None):
         T, hl = style_short(H, V, F, S, N, d, p)
-        edge = np.minimum(hl / p.get("feather", 0.06), (T - 0.003) / 0.01)
-        hair = shell(f"Hair_{key}", V, F, N, T, field=edge)
+        # coverage across the hairline (0 at the very edge -> 1 where the hair is full) and, for skin fades,
+        # down the faded sides: the texture turns it into single hairs thinning out onto the skin
+        feather = p.get("feather", 0.06)
+        cov = np.clip(hl / (feather * 1.1), 0, 1)
+        field = hl + 0.004                                   # the surface runs just past the edge, flush on the skin
+        if "fade_z" in p:
+            fz = H.ear_z + p["fade_z"]
+            fc = smoothstep(fz - 0.13, fz + 0.06, V[:, 2] + 0.03 * noise(V, 9))
+            cov = np.minimum(cov, fc)
+            field = np.minimum(field, fc - 0.02)
+        hair = shell(f"Hair_{key}", V, F, N, T, field=field, lift=0.002, uv=(cov, ev))
         if extras:
             b = Builder()
             b.add_obj(hair)
             extras(b, T)
             hair = b.make(f"Hair_{key}")
         Tc = cap_version(H, V, T, p)
-        cap = shell(f"Hair_{key}_Cap", V, F, N, Tc, field=np.minimum(hl / p.get("feather", 0.06), (Tc - 0.003) / 0.01))
+        cap = shell(f"Hair_{key}_Cap", V, F, N, Tc, field=field, lift=0.002, uv=(cov, ev))
         if extras and p.get("cap_extras", True):
             b = Builder()
             b.add_obj(cap)
             extras(b, T, capped=True)
             cap = b.make(f"Hair_{key}_Cap")
-        fade = fade_band(f"Hair_{key}_Fade", V, F, N, hl, T, p)
-        out[key] = {"label": label, "hair": hair, "cap": cap, "fade": fade}
+        out[key] = {"label": label, "hair": hair, "cap": cap, "fade": None}
 
     if male:
-        add_short("Buzz", "Buzz Cut", dict(top=0.016, side=0.012, feather=0.05, groove=0.15, freq=40))
-        add_short("Crop", "Short Crop", dict(top=0.06, side=0.02, front_lift=0.025, feather=0.08, groove=0.2, freq=44))
-        add_short("TaperFade", "Low Taper Fade", dict(top=0.09, side=0.02, fade_z=0.02, feather=0.06, groove=0.3, freq=26))
-        add_short("HighFade", "High Skin Fade", dict(top=0.10, side=0.02, fade_z=0.22, feather=0.06, groove=0.3, freq=24))
-        add_short("SidePart", "Side Part", dict(top=0.10, side=0.025, part=0.32, sweep=0.03, feather=0.07, groove=0.28))
-        add_short("CurlyTop", "Curly Top", dict(top=0.12, side=0.018, fade_z=0.05, curls=70, curl_r=0.055, feather=0.06))
+        add_short("Buzz", "Buzz Cut", dict(top=0.016, side=0.012, feather=0.05, groove=0.06, freq=40))
+        add_short("Crop", "Short Crop", dict(top=0.06, side=0.02, front_lift=0.025, feather=0.08, groove=0.08, freq=44))
+        add_short("TaperFade", "Low Taper Fade", dict(top=0.09, side=0.02, fade_z=0.02, feather=0.06, groove=0.1, freq=26))
+        add_short("HighFade", "High Skin Fade", dict(top=0.10, side=0.02, fade_z=0.22, feather=0.06, groove=0.1, freq=24))
+        add_short("SidePart", "Side Part", dict(top=0.10, side=0.025, part=0.32, sweep=0.03, feather=0.07, groove=0.12))
+        add_short("CurlyTop", "Curly Top", dict(top=0.12, side=0.018, fade_z=0.05, curls=260, curl_r=0.028, curl_amp=0.25, feather=0.06))
     else:
-        add_short("Pixie", "Pixie Cut", dict(top=0.07, side=0.03, part=0.25, sweep=0.03, feather=0.06, groove=0.28))
+        add_short("Pixie", "Pixie Cut", dict(top=0.07, side=0.03, part=0.25, sweep=0.03, feather=0.06, groove=0.12))
 
     # --- locs / twists: a short base, then real strands that hang (the front ones fall over the eyes)
     def locs_extras(length, n_front, n_all, radius, front_len):
@@ -478,10 +677,11 @@ def build_styles(H):
                 crown = np.array([0.0, H.centre[1] + 0.15 * H.R, H.top])
                 flow = V[i] - crown
                 flow -= N[i] * np.dot(flow, N[i])
+                if np.linalg.norm(flow) < 0.05:                # right at the crown: fall towards the back
+                    flow = np.array([0.0, 1.0, -0.3])
                 flow /= max(np.linalg.norm(flow), 1e-9)
-                dir0 = flow * 0.85 + N[i] * 0.2
-                pts = strand(H, root, dir0, L, step=0.035, gravity=0.06, clear=radius * 1.25, stiff=0.88,
-                             wobble=0.05, seed=k, extra=SHOULDERS[H.gender])
+                dir0 = flow * 0.9 + N[i] * 0.1
+                pts = drape(H, root, L, radius * 1.3, SHOULDERS[H.gender], seed=k, sway=0.25)
                 rad = [radius * (1.0 - 0.35 * (j / len(pts)) ** 2) for j in range(len(pts))]
                 vv, ff = tube(pts, rad, sides=7, twist=0.6, bumps=0.08, bump_freq=5.0)
                 b.add(vv, ff)
@@ -489,10 +689,10 @@ def build_styles(H):
 
     base = dict(top=0.03, side=0.02, feather=0.05, groove=0.2, freq=34)
     if male:
-        add_short("Locs", "Shoulder Locs", base, locs_extras(1.1, 12, 70, 0.034, 0.75))
-        add_short("Twists", "Short Twists Over Eyes", dict(base, fade_z=0.05), locs_extras(0.45, 14, 85, 0.03, 0.5))
+        add_short("Locs", "Shoulder Locs", base, locs_extras(1.1, 12, 70, 0.034, 0.5))
+        add_short("Twists", "Short Twists Over Eyes", dict(base, fade_z=0.05), locs_extras(0.45, 14, 85, 0.03, 0.4))
     else:
-        add_short("Locs", "Long Locs", base, locs_extras(1.8, 10, 80, 0.032, 0.8))
+        add_short("Locs", "Long Locs", base, locs_extras(1.8, 10, 80, 0.032, 0.55))
 
     # --- women: slick centre part with a low bun (the reference), ponytail, long straight, bob
     if not male:
@@ -519,9 +719,32 @@ def build_styles(H):
             root = np.array([0.0, H.centre[1] + 0.85 * H.R, H.anchor[2] + 0.12])
             pts = strand(H, root, [0, 1.0, 0.2], 1.3, step=0.04, gravity=0.25, clear=0.07, stiff=0.75,
                          extra=SHOULDERS[H.gender])
-            rad = [0.075 * (1 - 0.6 * (j / len(pts)) ** 1.5) + 0.01 for j in range(len(pts))]
-            vv, ff = tube(pts, rad, sides=14, twist=0.15, bumps=0.04)
+            # a bundle of clumps, gathered at the tie and loosening towards the ends, instead of one smooth tube
+            P = np.array(pts)
+            n = len(P)
+            tang = np.gradient(P, axis=0)
+            tang /= np.maximum(np.linalg.norm(tang, axis=1), 1e-9)[:, None]
+            ref = np.array([1.0, 0.0, 0.0])
+            e1 = np.cross(tang, ref)
+            e1 /= np.maximum(np.linalg.norm(e1, axis=1), 1e-9)[:, None]
+            e2 = np.cross(tang, e1)
+            r3 = random.Random(5)
+            core = [0.06 * (1 - 0.55 * (j / n) ** 1.3) for j in range(n)]
+            vv, ff = tube(pts, [c * 0.8 for c in core], sides=10, twist=0.1)
             b.add(vv, ff)
+            for k in range(14):
+                a0 = 2 * math.pi * k / 14 + r3.uniform(-0.2, 0.2)
+                spin = r3.uniform(1.5, 3.0)
+                ln = int(n * r3.uniform(0.82, 1.0))
+                q, rr = [], []
+                for j in range(ln):
+                    t = j / n
+                    a = a0 + spin * t
+                    spread = core[j] * (0.75 + 0.35 * smoothstep(0.1, 1.0, t))
+                    q.append(P[j] + (e1[j] * math.cos(a) + e2[j] * math.sin(a)) * spread)
+                    rr.append(0.026 * (1 - 0.75 * (j / ln) ** 1.6) + 0.003)
+                vv, ff = tube(q, rr, sides=6, twist=0.4, bumps=0.06)
+                b.add(vv, ff)
             vv, ff = tube([root - np.array([0, 0.02, 0]), root + np.array([0, 0.05, 0])], [0.06, 0.06], sides=14)
             b.add(vv, ff)                                              # the hair tie
         add_short("Ponytail", "High Ponytail", dict(slick, part=None), ponytail)
@@ -611,7 +834,12 @@ def build_styles(H):
                 for c2 in range(cols - 1):
                     q = [idx(c2, rows), idx(c2, rows) + nv, idx(c2 + 1, rows) + nv, idx(c2 + 1, rows)]
                     faces.append(q[::-1])
-                b.add(verts, faces)
+                # the ends break up into single strands (the edge texture), not a cut slab
+                cc, rr = np.meshgrid(np.arange(cols), np.arange(rows + 1), indexing="ij")
+                tip = np.clip((rows - rr) / max(rows * 0.2, 1), 0, 1) ** 0.8
+                uu = tip.ravel()                                  # (front edges stay solid: hair runs along them)
+                ww = (cc / (cols - 1) * 16 + 0.15 * np.sin(rr * 0.3)).ravel()
+                b.add(verts, faces, np.r_[uu, uu], np.r_[ww, ww])
             return ex
         add_short("LongStraight", "Long Straight", dict(slick, top=0.05, side=0.04, groove=0.3),
                   curtain(1.9, 0.25, False))
@@ -629,6 +857,20 @@ def onto_face(H, p, lift):
         loc, nrm = np.array(hit[0]), np.array(hit[1])
     else:
         loc, nrm, fi, d = H.nearest(q)
+    return loc + nrm * lift
+
+
+def onto_radial(H, p, lift):
+    """the skin under p, looking in towards the middle of the head (works on the brow ridge and the temple)"""
+    q = np.array(p, float)
+    c = np.array([H.anchor[0], H.centre[1], q[2] - 0.05])
+    d = q - c
+    d /= max(np.linalg.norm(d), 1e-9)
+    hit = H.bvh.ray_cast(Vector(c + d * 1.5), Vector(-d), 1.5)
+    if hit[0] is not None:
+        loc, nrm = np.array(hit[0]), np.array(hit[1])
+    else:
+        loc, nrm, fi, dd = H.nearest(q)
     return loc + nrm * lift
 
 
@@ -655,6 +897,53 @@ def strip(H, centre_pts, widths, lift, depth=0.004):
     return verts + under, faces + faces2 + rim
 
 
+def raster(uv, val, tris, res):
+    """paint a per-vertex value into a res x res map through the mesh's UVs (rows = V)"""
+    img = np.zeros((res, res))
+    P = uv * (res - 1)
+    for a, b, c in tris:
+        pa, pb, pc = P[a], P[b], P[c]
+        x0, y0 = np.floor(np.minimum.reduce([pa, pb, pc])).astype(int)
+        x1, y1 = np.ceil(np.maximum.reduce([pa, pb, pc])).astype(int) + 1
+        xs, ys = np.meshgrid(np.arange(max(x0, 0), min(x1, res)), np.arange(max(y0, 0), min(y1, res)))
+        if xs.size == 0:
+            continue
+        m = np.array([[pb[0] - pa[0], pc[0] - pa[0]], [pb[1] - pa[1], pc[1] - pa[1]]])
+        if abs(np.linalg.det(m)) < 1e-12:
+            continue
+        l12 = np.linalg.solve(m, np.stack([xs.ravel() - pa[0], ys.ravel() - pa[1]]))
+        l0 = 1 - l12.sum(0)
+        ok = (l0 > -0.02) & (l12[0] > -0.02) & (l12[1] > -0.02)
+        v = l0 * val[a] + l12[0] * val[b] + l12[1] * val[c]
+        img[ys.ravel()[ok], xs.ravel()[ok]] = np.maximum(img[ys.ravel()[ok], xs.ravel()[ok]], v[ok])
+    return img
+
+
+def stubble_texture(H, ob, cov, name, dens, res=1024):
+    """stubble UVs wrap round the jaw (no stretching), and its own map holds fine speckles whose density follows
+    the coverage, so the stubble thins out at every edge instead of stopping at a line"""
+    me = ob.data
+    co = np.array([v.co[:] for v in me.vertices])
+    a = np.arctan2(co[:, 0] - H.anchor[0], -(co[:, 1] - H.centre[1]))         # 0 at the chin, +-pi/2 at the ears
+    u = a * H.R
+    v = co[:, 2]
+    span = max(u.max() - u.min(), v.max() - v.min()) * 1.02
+    uu = (u - u.min()) / span + 0.005
+    vv = (v - v.min()) / span + 0.005
+    loops = np.array([l.vertex_index for l in me.loops])
+    uvl = me.uv_layers.get("UVMap") or me.uv_layers.new(name="UVMap")
+    uvl.data.foreach_set("uv", np.stack([uu[loops], vv[loops]], 1).ravel())
+    me.calc_loop_triangles()
+    tris = [tuple(t.vertices) for t in me.loop_triangles]
+    c = raster(np.stack([uu, vv], 1), np.clip(cov, 0, 1), tris, res)
+    rng = np.random.default_rng(len(name))
+    r = rng.random((res, res))
+    dots = (r < dens * smoothstep(0.0, 1.0, c) ** 1.3).astype(float)
+    dots = np.clip(0.75 * dots + 0.12 * (np.roll(dots, 1, 0) + np.roll(dots, 1, 1)), 0, 1)
+    shade = 0.75 + 0.25 * rng.random((res, res))
+    TEX["NC_" + name] = _save_png("NC_" + name, np.dstack([shade, shade, shade, dots]))
+
+
 def face_pieces(H):
     """brows (5 styles), lash lines, lips, stubble (2): thin layers that follow the face"""
     c = H.co
@@ -671,18 +960,31 @@ def face_pieces(H):
         b = Builder()
         for s, sx in (("L", 1), ("R", -1)):
             e = eyes[s]
-            n = 16
-            pts, ws = [], []
+            # the tail stops just past the outer corner of the eye, never out on the temple
+            length = min(length, abs(e[0] - H.anchor[0]) + 0.085 - gap)
+            n, rows = 18, 4
+            verts, us, vs = [], [], []
             for i in range(n):
                 t = i / (n - 1)
-                x = sx * (gap + length * t)
+                x = H.anchor[0] + sx * (gap + length * t)
                 rise = arch * math.sin(math.pi * min(1.0, t / 0.7) * 0.5) if t < 0.7 else arch * (1 - 1.6 * (t - 0.7))
                 z = e[2] + 0.1 + lift + rise
-                pts.append(onto_face(H, np.array([x, e[1] - 0.3, z]), 0.0))
                 w = w_in + (w_pk - w_in) * min(1, t / 0.6) if t < 0.6 else w_pk + (w_tail - w_pk) * (t - 0.6) / 0.4
-                ws.append((1.15 if H.gender == "Male" else 0.85) * w * (0.55 + 0.45 * min(1.0, t * 6)))           # soft inner start
-            vv, ff = strip(H, pts, ws, 0.005)
-            b.add(vv, ff)
+                # the card is wider than the brow: the texture fades its top and bottom edges to nothing
+                w *= (1.15 if H.gender == "Male" else 0.85) * 1.7
+                for r in range(rows):
+                    v = r / (rows - 1)
+                    zz = z + (v - 0.45) * w - 0.004 * t * (1 - v)         # the tail tips down a little
+                    verts.append(onto_radial(H, np.array([x, e[1], zz]), 0.0035))
+                    us.append(t)
+                    vs.append(v)
+            faces = []
+            for i in range(n - 1):
+                for r in range(rows - 1):
+                    a = i * rows + r
+                    q = [a, a + rows, a + rows + 1, a + 1]
+                    faces.append(q if sx > 0 else q[::-1])
+            b.add(verts, faces, us, vs)
         out["Brows_" + name] = b.make("Brows_" + name)
     # lash lines: a fine dark line along each upper lid
     b = Builder()
@@ -714,6 +1016,12 @@ def face_pieces(H):
         kd.insert(p, i)
     kd.balance()
     lipd = np.array([kd.find(v)[2] for v in V])
+    ears = H.co[H.mask["ears"]]
+    kd2 = KDTree(len(ears))
+    for i, p in enumerate(ears):
+        kd2.insert(p, i)
+    kd2.balance()
+    eard = np.array([kd2.find(v)[2] for v in V])
     for name, up, down in (("Stubble", 0.0, 0.0), ("StubbleHeavy", 0.035, 0.06)):
         # the beard line: under the nose in the middle (the moustache), down to just above the mouth corners, then
         # up the cheek to the sideburns; never over the nose or the upper cheeks
@@ -725,10 +1033,14 @@ def face_pieces(H):
         cheek = (np.maximum(centre, side) + up) - V[:, 2]                                   # below the beard line
         neck = V[:, 2] - (H.chin[2] - 0.11 - down) + 0.008 * noise(V, 24)                    # above the neckline
         front = 0.3 * H.R - rel[:, 1]                                                        # in front of the ears
-        lips = lipd - 0.012
+        lips = lipd - 0.02
         sideburn = np.where(rel[:, 1] > -0.1 * H.R, (H.ear_z + 0.05 + up) - V[:, 2], 1.0)
         field = np.minimum.reduce([cheek + 0.01 * noise(V, 30), neck, front, lips, sideburn])
-        out[name] = shell(name, V, F, Nf, np.zeros(len(V)), field=field, lift=0.0025)
+        field = np.minimum(field, eard - 0.035)                                              # never on the ears
+        cov = np.clip(field / (0.05 if name == "Stubble" else 0.04), 0, 1)       # stubble thins out at its edges
+        ob = shell(name, V, F, Nf, np.zeros(len(V)), field=field, lift=0.0025, uv=(cov, np.zeros(len(V))))
+        stubble_texture(H, ob, UVS.pop(ob.name)[0], name, 0.4 if name == "Stubble" else 0.72)
+        out[name] = ob
     return out
 
 
@@ -765,6 +1077,7 @@ def rbx(p):
 
 SHOULDERS = {}
 DATA = {}
+TEX = make_textures()
 for gender in ("Male", "Female"):
     H = Head(gender)
     # shoulders and back for long hair to rest on: the rigged body in its rest pose (arms hanging), which has
@@ -781,18 +1094,18 @@ for gender in ("Male", "Female"):
     marks = face_landmarks(H)
     A = H.anchor
     pieces = {}
-    hair_col = material("Hair", (0.09, 0.06, 0.04, 1))
-    fade_col = material("HairFade", (0.09, 0.06, 0.04, 1))
+    hair_col = tex_material("NC_Hair", TEX["NC_HairEdge"])
     for key, st in styles.items():
-        for kind in ("hair", "cap", "fade"):
+        for kind in ("hair", "cap"):
             ob = st[kind]
-            ob.data.materials.append(fade_col if kind == "fade" else hair_col)
-            pieces[ob.name] = (ob, {"hair": "Hair", "cap": "HairCap", "fade": "HairFade"}[kind], key, st["label"])
+            ob.data.materials.append(hair_col)
+            pieces[ob.name] = (ob, {"hair": "Hair", "cap": "HairCap"}[kind], key, st["label"])
     for name, ob in face.items():
         kind = name.split("_")[0]
-        col = {"Brows": hair_col, "LashLine": material("Lash", (0.03, 0.025, 0.02, 1)),
-               "Lips": material("Lip", (0.62, 0.36, 0.33, 1)), "Stubble": material("Stub", (0.09, 0.07, 0.05, 1)),
-               "StubbleHeavy": material("Stub", (0.09, 0.07, 0.05, 1))}[kind]
+        col = {"Brows": tex_material("NC_Brows", TEX["NC_Brow"]), "LashLine": material("Lash", (0.03, 0.025, 0.02, 1)),
+               "Lips": material("Lip", (0.62, 0.36, 0.33, 1)),
+               "Stubble": tex_material("NC_Stubble", TEX["NC_Stubble"]),
+               "StubbleHeavy": tex_material("NC_StubbleHeavy", TEX["NC_StubbleHeavy"])}[kind]
         ob.data.materials.append(col)
         LABELS = {"Brows_Natural": "Natural", "Brows_Thick": "Thick", "Brows_Arched": "Arched",
                   "Brows_Straight": "Straight", "Brows_Thin": "Thin", "LashLine": "Lash Line", "Lips": "Lips",
@@ -834,7 +1147,7 @@ for gender in ("Male", "Female"):
         ob.name = name
     bpy.context.view_layer.objects.active = next(iter(pieces.values()))[0]
     bpy.ops.export_scene.fbx(filepath=os.path.join(OUT, f"NC_Head_{gender}.fbx"), use_selection=True, object_types={"MESH"},
-                             apply_scale_options="FBX_SCALE_UNITS", mesh_smooth_type="FACE", path_mode="COPY")
+                             apply_scale_options="FBX_SCALE_UNITS", mesh_smooth_type="FACE", path_mode="COPY", embed_textures=True)
     for ob, n in olds.items():
         ob.name = n
     print("NC_HEAD", gender, len(pieces), "pieces", sum(i["tris"] for i in info), "tris")
@@ -896,9 +1209,20 @@ for _, model in ipairs(Selection:Get()) do
 \t\t\tpart.CanCollide, part.CanTouch, part.CanQuery, part.Massless = false, false, false, true
 \t\t\tpart.CastShadow = false
 \t\t\tpart.DoubleSided = false
+\t\t\t-- hair, brows and stubble keep their greyscale texture as a SurfaceAppearance with soft alpha
+\t\t\tlocal sa = part:FindFirstChildOfClass("SurfaceAppearance")
+\t\t\tif not sa and part.TextureID ~= "" then
+\t\t\t\tsa = Instance.new("SurfaceAppearance")
+\t\t\t\tsa.ColorMap = part.TextureID
+\t\t\t\tsa.Parent = part
+\t\t\tend
 \t\t\tpart.TextureID = ""
+\t\t\tif sa then
+\t\t\t\tsa.AlphaMode = Enum.AlphaMode.Transparency
+\t\t\t\tsa.NormalMap, sa.RoughnessMap, sa.MetalnessMap = "", "", ""
+\t\t\tend
 \t\t\tfor _, ch in ipairs(part:GetChildren()) do
-\t\t\t\tif not ch:IsA("Attachment") then
+\t\t\t\tif not (ch:IsA("Attachment") or ch == sa) then
 \t\t\t\t\tch:Destroy()
 \t\t\t\tend
 \t\t\tend

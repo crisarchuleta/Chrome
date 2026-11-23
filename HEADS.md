@@ -4,24 +4,26 @@ The faces are made for the ten MakeHuman bodies (see MAKEHUMAN_BODIES.md). Hair,
 stubble are real meshes built on each head's own scalp and face. Eye colour and twelve face shape sliders are in
 Character Studio.
 
-**Status: built and checked in Blender. Not yet tested in Studio.** No Luau syntax check has been run on the Lua.
+**Status: built and checked close up in Blender (every style, hat version, brow and stubble, front, 3/4, side and back). The hairline rework is not yet tested in Studio.** No Luau syntax check has been run on the Lua.
 Renders are in the project files under `character-studio/heads/`.
 
 ## What's there
 
-- **Hair that grows out of the head, not a helmet.** Each style is a shell that follows the scalp. It thins to
-  nothing at a raised, natural hairline, so its edge is a soft line and not a step. A see-through band
-  (`Hair_<Style>_Fade`) sits along the hairline, so the hair fades into the skin. Fine strands are combed in the
-  direction the hair grows (from the crown, or from the part).
+- **Hair that grows out of the head, not a helmet or a wig.** Each style is a shell that follows the scalp and
+  sits right on the skin. Its edge is not a line: a greyscale texture turns the last few centimetres into single
+  hairs that start at different points and thin out onto the skin, so the hairline is ragged and soft the way a
+  real one is. Skin fades thin out the same way down the sides. There is no raised rim and no see-through band.
+  In Studio each hair piece has a SurfaceAppearance (AlphaMode Transparency) whose Color is set to the chosen hair
+  colour, and the part sits at Transparency 0.02 so the soft alpha shows.
   - Men: Buzz, Crop, TaperFade, HighFade, SidePart, CurlyTop, Locs, Twists
   - Women: Pixie, Locs, LowBun, Ponytail, LongStraight, Bob
   - Long hair drapes over the back and falls behind the shoulders of the rest-pose body, so it never goes through
     them. Locs collide with the head and body.
   - Every style has a `_Cap` version pressed flat under a hat, which is worn automatically when a hat is on.
-- **Brows:** Natural, Thick, Arched, Straight, Thin. They're in a new required Brows slot, coloured from the hair palette.
+- **Brows:** Natural, Thick, Arched, Straight, Thin. Each is a flat card on the brow ridge with a texture of short hairs that slant toward the tail and fade out at the top, bottom and inner end. The tail stops just past the outer corner of the eye. They're in a new required Brows slot, coloured from the hair palette.
 - **Eyes:** a new required Eyes slot with 18 eye colours (browns, hazel, amber, greens, greys, blues).
 - **Lips and lash line:** on every face. The lips are tinted from the skin colour.
-- **Stubble:** Five O'Clock Shadow and Heavy Stubble use a real stubble layer on the male bodies. It follows the
+- **Stubble:** Five O'Clock Shadow and Heavy Stubble use a real stubble layer on the male bodies. It's a speckled texture that thins out at its edges, and it follows the
   beard line (under the nose, above the mouth corners, up to the sideburns). Female bodies get none.
 - **Face shape:** 12 sliders on the Body tab under "🙂 Face shape": eye spacing, eye height, brow height, nose
   length, nose width, nose bridge, cheekbones, mouth width, lip fullness, jaw width, chin length and ears. They're
@@ -40,8 +42,9 @@ item with no mesh style for that body, and stock avatars, keep the older procedu
 - `build_makehuman_rig.py` reads `heads.json` and gives every body **19 face bones** (`NC_Face*`, children of
   `Head`). They take a smooth share of the Head's weight only, so no other bone, part or attachment changes, and
   the animations play as before.
-- `NCHead.lua` (ReplicatedStorage) puts the pieces on: each one is placed from the eyes' attachments and scaled
-  by the distance between the eyes, so the same pieces fit all five builds. The sliders set `Bone.Position` (it
+- `NCHead.lua` (ReplicatedStorage) puts the pieces on: each one is placed from the face's two eye bones
+  (`NC_FaceEyeL/R`, the exact points the pieces were built around; older bodies fall back to the eye attachments)
+  and scaled by the distance between the eyes, so the same pieces fit all five builds. The sliders set `Bone.Position` (it
   replicates), and the brows, lips, lash line, stubble and eyeballs follow their bones.
 - `NCLookBuilder` calls NCHead for the `meshhair` and `meshface` families and for the Eyes slot. The slider list is
   `NCLookCatalog.FACE_SLIDERS`, and the server cleans what clients send with `NCLookCatalog.CleanFaceShape`.
@@ -52,11 +55,15 @@ After the bodies (MAKEHUMAN_BODIES.md):
 1. Drag the new `NeonCoastCharacterStudio.rbxmx` into ServerScriptService, replacing the old one. It now includes
    `NCHead` and `NCHeadData`.
 2. Import `NC_Head_Male.fbx` and `NC_Head_Female.fbx` with the 3D Importer. Keep the default scale and the names.
+   The FBX files carry four greyscale textures (hair edge, brows, two stubble maps). If the hair, brows or
+   stubble come in without them, upload the PNGs in `textures_heads/` and set each piece's
+   SurfaceAppearance.ColorMap (NC_HairEdge for every Hair_ piece, NC_Brow for Brows_, NC_Stubble /
+   NC_StubbleHeavy for the stubble).
 3. Select both imported models. Paste `AssembleHeads.lua` into the command bar and press Enter. The pieces go to
    `ReplicatedStorage.NC_HeadAssets.Male` and `.Female`.
 4. Re-import the ten `NC_Body_*.fbx` files and run `AssembleMakeHumanBodies.lua` again, because they now have the face bones.
 5. Press Play. Open Character Studio, go to Body, then Face shape, and move a slider. Try a few hairstyles with and
    without a hat.
 
-If a piece sits a little off, set `NCHead.FADE_T`, `LIP_TINT` or `STUBBLE_T`, or change a slider's numbers in
+If a piece sits a little off, set `NCHead.LIP_TINT` or `NCHead.SOFT_T`, or change a slider's numbers in
 `NCLookCatalog.FACE_SLIDERS`.

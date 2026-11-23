@@ -892,6 +892,12 @@ for src in SOURCES:
     wm.object = rig
     whole.hide_render = True
     whole.hide_set(True)
+    if FB:
+        # the eye attachments go where the face's eye bones are (the eye openings the heads were built around),
+        # so hair, brows and eyeballs placed from them line up with the head mesh
+        for m, b in (("l", "NC_FaceEyeL"), ("r", "NC_FaceEyeR")):
+            if m in eyes and b in FB:
+                eyes[m] = (FB[b][0].copy(), eyes[m][1])
     pieces = split(body, rig, name + "_")
     textured = texture_pieces(pieces, name)
     data = roblox_data(Q, pieces, eyes)

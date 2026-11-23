@@ -25,9 +25,20 @@ for _, model in ipairs(Selection:Get()) do
 			part.CanCollide, part.CanTouch, part.CanQuery, part.Massless = false, false, false, true
 			part.CastShadow = false
 			part.DoubleSided = false
+			-- hair, brows and stubble keep their greyscale texture as a SurfaceAppearance with soft alpha
+			local sa = part:FindFirstChildOfClass("SurfaceAppearance")
+			if not sa and part.TextureID ~= "" then
+				sa = Instance.new("SurfaceAppearance")
+				sa.ColorMap = part.TextureID
+				sa.Parent = part
+			end
 			part.TextureID = ""
+			if sa then
+				sa.AlphaMode = Enum.AlphaMode.Transparency
+				sa.NormalMap, sa.RoughnessMap, sa.MetalnessMap = "", "", ""
+			end
 			for _, ch in ipairs(part:GetChildren()) do
-				if not ch:IsA("Attachment") then
+				if not (ch:IsA("Attachment") or ch == sa) then
 					ch:Destroy()
 				end
 			end

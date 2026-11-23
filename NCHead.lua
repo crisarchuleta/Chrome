@@ -6,21 +6,22 @@
 --   Hair_<Style>        the hair (Male: Buzz, Crop, TaperFade, HighFade, SidePart, CurlyTop, Locs, Twists;
 --                       Female: Pixie, Locs, LowBun, Ponytail, LongStraight, Bob)
 --   Hair_<Style>_Cap    the same style pressed flat and trimmed, worn under a hat
---   Hair_<Style>_Fade   a see-through band along the hairline, so the hair fades into the skin
 --   Brows_<Shape>       Natural, Thick, Arched, Straight, Thin
 --   LashLine, Lips      on every face (the lips are tinted from the skin colour)
 --   Stubble, StubbleHeavy   (Male)
 -- Studio setup: import NC_Head_Male.fbx and NC_Head_Female.fbx and run AssembleHeads.lua, which files them in
 -- ReplicatedStorage.NC_HeadAssets.<Gender>. NCHeadData holds where each piece sits.
 --
--- Every piece is placed from the point between the eyes (the two NC_<Side>EyeAttachment on the head) and scaled by
+-- Hair, brows and stubble carry a greyscale SurfaceAppearance (AlphaMode Transparency): its edges are single hairs
+-- that thin out onto the skin, so there is no rim at the hairline. SurfaceAppearance.Color tints it to the chosen
+-- colour, and the part needs a Transparency of at least 0.02 for the soft alpha to show.
+-- Every piece is placed from the point between the eyes (the NC_FaceEyeL/R bones in the head) and scaled by
 -- the distance between the eyes, so the same pieces fit all five builds of each body.
 local RS = game:GetService("ReplicatedStorage")
 
 local H = {}
 H.FOLDER = "NC_Face"
-H.FADE_T = 0.45 -- how see-through the hairline band is
-H.STUBBLE_T = { Stubble = 0.35, StubbleHeavy = 0.15 }
+H.SOFT_T = 0.02 -- the smallest Transparency that turns on the soft alpha of a SurfaceAppearance
 H.LIP_TINT = Color3.fromRGB(150, 62, 70)
 H.LASH = Color3.fromRGB(22, 16, 14)
 
@@ -139,12 +140,13 @@ function H.frame(char)
 	if not (head and head:IsA("BasePart")) then
 		return nil
 	end
-	local L = head:FindFirstChild("NC_LeftEyeAttachment")
-	local R = head:FindFirstChild("NC_RightEyeAttachment")
-	if not (L and R) then
+	-- the face's eye bones are the exact points the pieces were built around (older bodies: the eye attachments)
+	local L = head:FindFirstChild("NC_FaceEyeL", true) or head:FindFirstChild("NC_LeftEyeAttachment")
+	local R = head:FindFirstChild("NC_FaceEyeR", true) or head:FindFirstChild("NC_RightEyeAttachment")
+	if not (L and R) or L.Parent ~= R.Parent then
 		return nil
 	end
-	local l, r = rest(L), rest(R) -- (the eyes may have been moved by a face shape slider; the hair goes by the skull)
+	local l, r = rest(L), rest(R) -- (part space: both sit directly in the Head; the eyes may have been moved by a face shape slider; the hair goes by the skull)
 	local mid = (l + r) / 2
 	local scale = (l - r).Magnitude / D[g].eyeSpan
 	return { char = char, head = head, cf = head.CFrame * CFrame.new(mid), scale = scale, g = g, D = D[g], assets = assets[g] }
@@ -172,6 +174,14 @@ function H.put(fr, name, parent, props)
 	part.Color = props.Color or part.Color
 	part.Material = props.Material or Enum.Material.SmoothPlastic
 	part.Transparency = props.Transparency or 0
+	local sa = part:FindFirstChildOfClass("SurfaceAppearance")
+	if sa then
+		-- the greyscale texture takes the colour; the part colour only shows where the texture is see-through
+		pcall(function()
+			sa.Color = props.Color or part.Color
+		end)
+		part.Transparency = math.max(part.Transparency, H.SOFT_T)
+	end
 	part.CastShadow = props.CastShadow or false
 	local w = Instance.new("WeldConstraint")
 	w.Part0, w.Part1 = fr.head, part
@@ -190,7 +200,7 @@ local function mix(a, b, t)
 end
 H.mix = mix
 
--- the hair for item params pp: the style (or its under-cap version when a hat is on) and its hairline fade.
+-- the hair for item params pp: the style (or its under-cap version when a hat is on).
 -- Returns true when it wore mesh hair (so the procedural fallback is skipped).
 function H.WearHair(fr, pp, parent, hair, skin, hatOn)
 	local style = H.pieceFor(fr, pp)
@@ -204,7 +214,6 @@ function H.WearHair(fr, pp, parent, hair, skin, hatOn)
 	if not H.put(fr, name, parent, { Color = hair, Material = Enum.Material.SmoothPlastic, CastShadow = true }) then
 		return false
 	end
-	H.put(fr, "Hair_" .. style .. "_Fade", parent, { Color = mix(hair, skin, 0.25), Transparency = H.FADE_T })
 	return true
 end
 
@@ -216,8 +225,7 @@ function H.WearPiece(fr, pp, parent, colour)
 	if not name then
 		return "none"
 	end
-	local t = pp.t or H.STUBBLE_T[name] or 0
-	return H.put(fr, name, parent, { Color = colour, Transparency = t }) ~= nil
+	return H.put(fr, name, parent, { Color = colour, Transparency = pp.t }) ~= nil
 end
 
 -- lips and the lash line, on every MakeHuman face. Kept in their own folder, rebuilt when the skin changes.
