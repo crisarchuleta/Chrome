@@ -18,6 +18,8 @@ C.SLOTS = {
 	{ id = "Skin", name = "Skin", icon = "✋", required = true },
 	{ id = "Hair", name = "Hair", icon = "💇" },
 	{ id = "FacialHair", name = "Beard", icon = "🧔" },
+	{ id = "Tattoo", name = "Arm Ink", icon = "🖋️" },
+	{ id = "Tattoo2", name = "Face & Neck Ink", icon = "✒️" },
 	{ id = "Bottom", name = "Bottoms", icon = "👖", required = true },
 	{ id = "Top", name = "Tops", icon = "👕", required = true },
 	{ id = "Outer", name = "Jackets", icon = "🧥" },
@@ -39,7 +41,7 @@ C.SLOTS = {
 
 -- the studio's category tabs group the slots
 C.TABS = {
-	{ name = "Body", slots = { "Skin", "Hair", "FacialHair" } },
+	{ name = "Body", slots = { "Skin", "Hair", "FacialHair", "Tattoo", "Tattoo2" } },
 	{ name = "Clothes", slots = { "Top", "Outer", "Bottom", "Shoes" } },
 	{ name = "Headwear", slots = { "Head", "Face", "Mask" } },
 	{ name = "Bling", slots = { "Neck", "Neck2", "Grillz", "Ears", "Wrist", "Wrist2", "Rings" } },
@@ -49,6 +51,7 @@ C.TABS = {
 -- collections: the "worlds" filter in the studio (Ready Player One style: a bit of everything, all original)
 C.COLLECTIONS = {
 	{ id = "hood", name = "Realistic Hood", blurb = "Locs over the shades, black hoodies, iced chains, ski masks." },
+	{ id = "lowrider", name = "Lowrider", blurb = "Chicano lowrider style: creased khakis, white tees, flannels, zoot suits, fine-line ink." },
 	{ id = "rap", name = "Rap Royalty", blurb = "Gold and iced-out chains, grillz, watches, fits that shine." },
 	{ id = "street", name = "Streetwear", blurb = "Baggy denim, jerseys, chunky sneakers, 2026 street staples." },
 	{ id = "tiktok", name = "For You Page", blurb = "Looks that blew up on short video in the last six months." },
@@ -91,6 +94,7 @@ C.PALETTES = {
 		"#B3122E", "#2B2B2B", "#4A2B6B", "#1B2A41" },
 	lens = { "#111111", "#2A2F38", "#3B2A1F", "#7A1022", "#2E4A7A", "#E8A33D", "#F4A6C8", "#9CC3E6", "#F5F5F2" },
 	sole = { "#F5F5F2", "#111111", "#C8963E", "#8C8C8C", "#B3122E", "#2E4A7A" },
+	ink = { "#1A1A1A", "#26303C", "#2B3A4A", "#3B2A1F", "#1F4F3A", "#7A1022" },
 	camo = { "#4B5320", "#6B7B3A", "#C8B88A", "#8C8C8C", "#2B2B2B", "#F4A6C8", "#4F7CC2", "#B3122E" },
 }
 
@@ -195,11 +199,31 @@ I("beard_handlebar", "FacialHair", "Handlebar Mustache", 140, "mustache", { hand
 I("beard_sideburns", "FacialHair", "Mutton Sideburns", 100, "sideburns", { len = 0.7 }, H, "#3B2A1F", nil, nil, { "retro", "western" })
 I("beard_soul_patch", "FacialHair", "Soul Patch", 60, "soulpatch", {}, H, "#1C1512", nil, nil, { "retro" })
 
+------------------------------------------------------------------ tattoos (only show on bare skin: sleeves cover arm ink)
+local K = "ink"
+I("ink_sleeve_r", "Tattoo", "Full Sleeve (Right Arm)", 300, "tattoo", { kind = "sleeve" }, K, "#26303C", nil, nil, { "lowrider", "hood", "rap" }, T)
+I("ink_sleeves", "Tattoo", "Full Sleeves (Both Arms)", 550, "tattoo", { kind = "sleeve", both = true }, K, "#26303C", nil, nil, { "lowrider", "hood", "rap" }, T)
+I("ink_half", "Tattoo", "Forearm Half Sleeves", 300, "tattoo", { kind = "half", both = true }, K, "#1A1A1A", nil, nil, { "lowrider", "street" })
+I("ink_script_familia", "Tattoo", "Forearm Script: FAMILIA / LOYALTY", 250, "tattoo", { kind = "forearm", both = true, text = "FAMILIA", text2 = "LOYALTY" }, K, "#1A1A1A", nil, nil, { "lowrider" }, T)
+I("ink_script_blessed", "Tattoo", "Forearm Script: BLESSED", 150, "tattoo", { kind = "forearm", text = "BLESSED" }, K, "#1A1A1A", nil, nil, { "street", "rap" })
+I("ink_script_mama", "Tattoo", "Forearm Script: MAMA / PAPA", 200, "tattoo", { kind = "forearm", both = true, text = "MAMA", text2 = "PAPA" }, K, "#26303C", nil, nil, { "lowrider" })
+I("ink_rose", "Tattoo", "Rose Forearms", 220, "tattoo", { kind = "rose", both = true }, K, "#7A1022", nil, nil, { "lowrider", "retro" })
+I("ink_calves", "Tattoo", "Calf Ink", 250, "tattoo", { kind = "calf", both = true }, K, "#26303C", nil, nil, { "lowrider", "coast" })
+I("ink_neck_familia", "Tattoo2", "Neck Script: FAMILIA", 200, "tattoo", { kind = "neck", text = "FAMILIA" }, K, "#1A1A1A", nil, nil, { "lowrider", "hood" }, T)
+I("ink_neck_blessed", "Tattoo2", "Neck Script: BLESSED", 200, "tattoo", { kind = "neck", text = "BLESSED" }, K, "#1A1A1A", nil, nil, { "rap", "hood" })
+I("ink_face_star", "Tattoo2", "Small Star Under Eye", 150, "tattoo", { kind = "face", mark = "star" }, K, "#1A1A1A", nil, nil, { "hood", "rap" }, T)
+I("ink_face_cross", "Tattoo2", "Small Cross Under Eye", 150, "tattoo", { kind = "face", mark = "cross" }, K, "#1A1A1A", nil, nil, { "lowrider", "hood" })
+I("ink_face_script", "Tattoo2", "Eyebrow Script: BLESSED", 180, "tattoo", { kind = "face", mark = "script", text = "BLESSED" }, K, "#1A1A1A", nil, nil, { "rap", "hood" })
+I("ink_hands", "Tattoo2", "Hand Script: LOVE / LIFE", 180, "tattoo", { kind = "hands", both = true, text = "LOVE", text2 = "LIFE" }, K, "#1A1A1A", nil, nil, { "lowrider", "street" })
+
 ------------------------------------------------------------------ tops
 local F = "fabric"
 I("top_tee", "Top", "Plain Tee", 0, "tee", {}, F, "#F5F5F2", F, "#111111", { "street" })
 I("top_tee_black", "Top", "Heavyweight Black Tee", 0, "tee", {}, F, "#111111", F, "#F5F5F2", { "street", "hood" })
-I("top_tank", "Top", "Ribbed Tank", 0, "tee", { sleeve = "tank" }, F, "#F5F5F2", F, "#111111", { "coast", "sport" })
+I("top_tank", "Top", "Ribbed Tank", 0, "tee", { sleeve = "tank" }, F, "#F5F5F2", F, "#111111", { "coast", "sport", "lowrider" })
+I("top_long_white", "Top", "Long Oversized White Tee", 60, "tee", {}, F, "#F5F5F2", F, "#F5F5F2", { "lowrider", "street" }, T)
+I("top_button_flannel", "Top", "Top-Button Flannel", 160, "shirt", { placket = "dark" }, F, "#111111", F, "#2E4A7A", { "lowrider" }, T)
+I("top_short_flannel", "Top", "Short-Sleeve Plaid Shirt", 140, "shirt", { sleeve = "tee", placket = "dark", print = true }, F, "#1B2A41", F, "#F5F5F2", { "lowrider", "coast" })
 I("top_longsleeve", "Top", "Long Sleeve Tee", 60, "tee", { sleeve = "long" }, F, "#2B2B2B", F, "#F5F5F2", { "street" })
 I("top_pocket_tee", "Top", "Pocket Tee", 60, "tee", { pocket = true }, F, "#C8B88A", F, "#5C3A21", { "street", "work" })
 I("top_stripe_tee", "Top", "Chest Stripe Tee", 80, "tee", { stripe = true }, F, "#F5F5F2", F, "#1B2A41", { "retro", "coast" })
@@ -295,6 +319,8 @@ I("out_chef", "Outer", "Chef Jacket", 200, "jacket", { open = false, collar = "s
 I("out_lifeguard", "Outer", "Lifeguard Hoodie", 200, "jacket", { open = false, collar = "hood", back = "GUARD" }, F, "#B3122E", F, "#F5F5F2", { "coast", "work" })
 I("out_cyber", "Outer", "Neon Runner Jacket", 520, "jacket", { zip = "diag", open = false, collar = "stand", neon = true, m = "leather" }, "leather", "#111111", "neon", "#00FFDC", { "scifi" }, T)
 I("out_pirate", "Outer", "Captain's Frock Coat", 450, "jacket", { collar = "lapel", long = 1.4, cuffs = true, cuffC = "gold" }, F, "#7A1022", "metal", "#E2B240", { "fantasy" })
+I("out_zoot", "Outer", "Zoot Suit Drape Coat", 520, "jacket", { collar = "lapel", long = 1.7, collarC = "c1" }, F, "#C8963E", F, "#111111", { "lowrider", "retro", "business" }, TN)
+I("out_suspenders", "Outer", "Suspenders", 80, "suspenders", {}, F, "#111111", "metal", "#D4D6DC", { "lowrider", "retro", "work" })
 I("out_cowboy_vest", "Outer", "Cattleman Vest", 220, "vest", { suit = true }, "leather", "#6B3E22", "metal", "#C8963E", { "western" })
 
 ------------------------------------------------------------------ bottoms
@@ -313,7 +339,10 @@ I("bot_joggers", "Bottom", "Fleece Joggers", 100, "pants", { cuff = true }, F, "
 I("bot_track", "Bottom", "Track Pants", 140, "pants", { stripe = true }, F, "#111111", F, "#F5F5F2", { "street", "retro", "sport" })
 I("bot_trousers", "Bottom", "Pressed Suit Trousers", 200, "pants", { crease = true }, F, "#1B2A41", nil, nil, { "business" })
 I("bot_chinos", "Bottom", "Chinos", 120, "pants", {}, F, "#C8B88A", nil, nil, { "business", "coast" })
-I("bot_khakis", "Bottom", "Creased Khakis", 120, "pants", { crease = true }, F, "#C8B88A", nil, nil, { "street", "retro" })
+I("bot_khakis", "Bottom", "Creased Khakis", 120, "pants", { crease = true }, F, "#C8B88A", nil, nil, { "street", "retro", "lowrider" }, T)
+I("bot_work_creased", "Bottom", "Pressed Work Pants", 120, "pants", { crease = true, wide = true }, F, "#1B2A41", nil, nil, { "lowrider", "work" }, T)
+I("bot_zoot", "Bottom", "High-Waist Zoot Trousers", 260, "pants", { crease = true, wide = true }, F, "#C8963E", nil, nil, { "lowrider", "retro" })
+I("bot_shorts_socks", "Bottom", "Long Shorts & Knee Socks", 120, "shorts", { long = true, socks = true }, F, "#C8B88A", F, "#F5F5F2", { "lowrider" }, T)
 I("bot_leather", "Bottom", "Leather Pants", 280, "pants", { m = "leather" }, "leather", "#111111", nil, nil, { "retro", "rap" })
 I("bot_shorts_hoop", "Bottom", "Long Mesh Hoop Shorts", 100, "shorts", { long = true, stripe = true }, F, "#B3122E", F, "#F5F5F2", { "sport", "street" })
 I("bot_jorts", "Bottom", "Baggy Jorts", 140, "shorts", { long = true }, D, "#4C6F9E", nil, nil, { "street", "tiktok" }, T)
@@ -336,6 +365,8 @@ I("shoe_chunky", "Shoes", "Chunky Retro Runners", 260, "shoes", { sole = 0.32, p
 I("shoe_slim_runner", "Shoes", "Slim Retro Runners", 220, "shoes", { sole = 0.18, panel = true, gum = true }, F, "#2E4A7A", F, "#F5F5F2", { "tiktok", "street" }, TN)
 I("shoe_hightop", "Shoes", "Hoops High-Tops", 280, "shoes", { high = true, panel = true, laces = true }, F, "#B3122E", S, "#F5F5F2", { "sport", "street", "hood" }, T)
 I("shoe_hightop_bw", "Shoes", "Black & White High-Tops", 280, "shoes", { high = true, panel = true }, F, "#111111", S, "#F5F5F2", { "street", "hood" })
+I("shoe_classic", "Shoes", "Classic Leather Runners", 160, "shoes", { sole = 0.16, panel = true, laces = true, soleC = "sole" }, F, "#F5F5F2", "bright", "#FF3B30", { "lowrider", "street", "retro" }, T)
+I("shoe_two_tone", "Shoes", "Two-Tone Dress Shoes", 260, "shoes", { m = "leather", sole = 0.1, panel = true }, "leather", "#F5F5F2", "leather", "#111111", { "lowrider", "retro" })
 I("shoe_skate", "Shoes", "Suede Skate Shoes", 160, "shoes", { sole = 0.2, panel = true, gum = true }, F, "#111111", F, "#F5F5F2", { "street", "retro" })
 I("shoe_runner", "Shoes", "Mesh Running Shoes", 180, "shoes", { sole = 0.24, panel = true }, "bright", "#00A2FF", S, "#F5F5F2", { "sport" })
 I("shoe_slides", "Shoes", "Slides & Socks", 80, "shoes", { slides = true }, F, "#111111", F, "#F5F5F2", { "street", "coast", "hood" }, T)
@@ -366,6 +397,8 @@ I("hat_bucket", "Head", "Bucket Hat", 120, "bucket", {}, F, "#111111", F, "#1111
 I("hat_durag", "Head", "Silky Durag", 120, "durag", { hideHairTop = true }, F, "#111111", F, "#111111", { "hood", "rap" }, T)
 I("hat_durag_velvet", "Head", "Velvet Durag", 150, "durag", { velvet = true }, F, "#7A1022", F, "#7A1022", { "hood", "rap" }, T)
 I("hat_head_bandana", "Head", "Bandana Head Wrap", 80, "headwrap", {}, F, "#B3122E", F, "#F5F5F2", { "hood", "western", "street" })
+I("hat_folded_bandana", "Head", "Folded Bandana Headband", 80, "foldedband", {}, F, "#111111", nil, nil, { "lowrider", "hood" }, T)
+I("hat_hairnet", "Head", "Hairnet", 30, "hairnet", { noFlatten = true }, F, "#111111", nil, nil, { "lowrider", "work" })
 I("hat_headband", "Head", "Sweatband", 40, "headband", { noFlatten = true }, F, "#F5F5F2", nil, nil, { "sport", "retro" })
 I("hat_fedora", "Head", "Classic Fedora", 220, "fedora", {}, F, "#2B2B2B", F, "#111111", { "business", "retro", "heist" })
 I("hat_wide_fedora", "Head", "Wide-Brim Felt Hat", 240, "fedora", { wide = true }, F, "#5C3A21", F, "#111111", { "western", "tiktok" })
@@ -457,6 +490,8 @@ chain("chain_bolt", "Lightning Bolt Pendant", 600, { style = "cuban", drop = 0.7
 chain("chain_palm", "Palm Tree Pendant", 500, { style = "rope", drop = 0.8, w = 0.035, pendant = "palm" }, "#E2B240", "#7CFF9B", { "coast" })
 chain("chain_diamond", "Solitaire Diamond Pendant", 900, { style = "box", drop = 0.5, w = 0.025, pendant = "diamond" }, "#D4D6DC", "#ECF6FF", { "business", "cute" })
 chain("chain_layered", "Layered Gold Chains", 800, { style = "rope", drop = 0.85, w = 0.04, layer = "cuban" }, "#E2B240", "#ECF6FF", { "rap", "street" }, T)
+chain("chain_rosary", "Rosary Beads", 300, { style = "bead", drop = 0.9, w = 0.05, pendant = "cross" }, "#2A2A2A", "#ECF6FF", { "lowrider" }, T)
+chain("chain_rosary_gold", "Gold Rosary", 650, { style = "bead", drop = 0.9, w = 0.05, pendant = "cross" }, "#E2B240", "#ECF6FF", { "lowrider", "rap" })
 chain("chain_dogtags", "Dog Tags", 120, { style = "bead", drop = 0.75, w = 0.025, pendant = "dogtags" }, "#D4D6DC", "#ECF6FF", { "military" })
 chain("chain_pearls", "Pearl Strand", 600, { style = "pearl", drop = 0.4, w = 0.07 }, "#F0EAE0", "#ECF6FF", { "tiktok", "rap", "business" }, T)
 chain("chain_puka", "Puka Shell Necklace", 120, { style = "puka", drop = 0.35, w = 0.06 }, "#F5F5F2", "#B98A5E", { "coast", "retro" })
@@ -557,6 +592,22 @@ C.LOOKS = {
 		Bottom = e("bot_baggy"), Shoes = e("shoe_hightop"), Neck = e("chain_rope_gold"), Waist = e("belt_pocket_bandana") }, T),
 	look("hood_durag", "Durag & Puffer", "hood", { Head = e("hat_durag"), Top = e("top_hoodie"), Outer = e("out_puffer_shine"), Bottom = e("bot_baggy_black"),
 		Shoes = e("shoe_slides"), Neck = e("chain_cuban_iced"), Ears = e("ear_big_studs"), Grillz = e("grill_gold_top") }, T),
+
+	-- Lowrider (Chicano lowrider culture: fashion only, no gang names, colours or numbers)
+	look("low_classic", "Lowrider Classic", "lowrider", { Hair = e("hair_bald"), Top = e("top_long_white"), Bottom = e("bot_khakis"), Shoes = e("shoe_classic"),
+		Face = e("eye_shades_black"), FacialHair = e("beard_goatee"), Neck = e("chain_rosary"), Tattoo = e("ink_script_familia"),
+		Tattoo2 = e("ink_neck_familia"), Waist = e("belt_leather") }, TN),
+	look("low_flannel", "Top-Button Flannel", "lowrider", { Hair = e("hair_slick_back"), Head = e("hat_hairnet"), Top = e("top_button_flannel"),
+		Bottom = e("bot_work_creased"), Shoes = e("shoe_classic"), Face = e("eye_shades_black"), FacialHair = e("beard_pencil"),
+		Tattoo2 = e("ink_face_cross") }, TN),
+	look("low_zoot", "Zoot Suit Sharp", "lowrider", { Hair = e("hair_pomp"), Head = e("hat_fedora", "#111111"), Top = e("top_dress_shirt"), Neck = e("neck_tie_black"),
+		Outer = e("out_zoot"), Bottom = e("bot_zoot"), Shoes = e("shoe_two_tone"), Waist = e("belt_wallet_chain"), FacialHair = e("beard_pencil") }, TN),
+	look("low_cruiser", "Sunday Cruiser", "lowrider", { Hair = e("hair_buzz_fade"), Head = e("hat_folded_bandana"), Top = e("top_tank"), Outer = e("out_suspenders"),
+		Bottom = e("bot_shorts_socks"), Shoes = e("shoe_classic"), Tattoo = e("ink_sleeves"), Neck = e("chain_rosary_gold"),
+		Face = e("eye_shades_black") }, TN),
+	look("low_barrio", "Barrio Sleeves", "lowrider", { Hair = e("hair_buzz"), Top = e("top_tank"), Bottom = e("bot_work_creased", "#111111"), Shoes = e("shoe_classic", "#111111"),
+		Tattoo = e("ink_sleeves"), Tattoo2 = e("ink_neck_blessed"), FacialHair = e("beard_goatee"), Neck = e("chain_cross_gold"),
+		Face = e("eye_shades_black"), Wrist = e("watch_gold") }, T),
 
 	-- Rap Royalty
 	look("rap_iced_out", "Iced Out Rapper", "rap", { Hair = e("hair_locs_gold"), Top = e("top_tee_black"), Outer = e("out_fur"), Bottom = e("bot_leather"),
@@ -2509,6 +2560,9 @@ F.shorts = function(pp)
 	if pp.stripe then
 		add(t, mirror({ p("Block", "RUpperLeg", V3(0.06, 1.0, 0.16), V3(0.51, 0, 0), nil, "c2", { m = FAB, fit = true }) }))
 	end
+	if pp.socks then -- long shorts with tall white socks pulled up to the knee
+		return t, { Hips = { c = "c1", m = FAB }, ULeg = { c = "c1", m = FAB }, LLeg = { c = "c2", m = FAB } }
+	end
 	return t, { Hips = { c = "c1", m = FAB }, ULeg = { c = "c1", m = FAB }, LLeg = "skin" }
 end
 F.skirt = function(pp)
@@ -2534,7 +2588,7 @@ F.shoes = function(pp)
 	local h = pp.sole or 0.16
 	local m = pp.m == "leather" and LEA or (pp.m == "rubber" and RUB or FAB)
 	local t = {
-		p("Block", "RFoot", V3(1.08, h, 1.06), V3(0, -0.5 - h / 2 + 0.06, 0), nil, pp.gum and "gum" or "c2", { m = RUB, fit = true }),
+		p("Block", "RFoot", V3(1.0, h, 1.02), V3(0, -0.5 - h / 2 + 0.06, 0), nil, pp.gum and "gum" or pp.soleC or "c2", { m = RUB, fit = true }),
 	}
 	if pp.panel then
 		table.insert(t, p("Block", "RFoot", V3(0.06, 0.35, 0.6), V3(0.52, -0.1, 0.05), nil, "c2", { m = m, fit = true }))
@@ -2570,6 +2624,106 @@ F.shoes = function(pp)
 		foot = "skin"
 	end
 	return mirror(t), { Foot = foot }
+end
+
+------------------------------------------------------------------ tattoos (ink that only shows on bare skin)
+-- q.skin = the body region the ink sits on; Apply drops the piece if that region is covered by clothes
+local function ink(f, region, s, o, r, x)
+	local t = x or {}
+	t.skin, t.fit, t.m = region, true, SMO
+	t.t = t.t or 0.15
+	return p("Ball", f, s, o, r, "c1", t)
+end
+local function inkText(f, region, text, o, size, rot, face, fit)
+	return p("Block", f, size, o, rot, "c1", { fit = fit ~= false, t = 1, skin = region,
+		txt = { text = text, color = "c1", face = face or "Right", font = "Fantasy" } })
+end
+local function armSleeve(side, limbs, n, seed)
+	-- black-and-grey sleeve: a soft grey wash that fades out at the ends, then flowing linework and a few
+	-- solid motifs laid flat on the skin (each piece faces out from the limb)
+	local t = {}
+	for li, pr in ipairs(limbs) do
+		local f, region = side .. pr[1], pr[2]
+		table.insert(t, ink(f, region, V3(1.06, 0.94, 1.06), V3(0, 0, 0), nil, { t = 0.68 }))
+		for i = 1, n do
+			local k = (i * 7919 + seed * 131 + li * 17) % 211
+			local ang = (k % 16) / 16 * math.pi * 2 + li
+			local y = ((k % 11) - 5) * 0.075
+			local solid = (i % 4 == 0)
+			local s = solid and V3(0.05, 0.16 + (k % 3) * 0.04, 0.2 + (k % 2) * 0.08) or V3(0.04, 0.24 + (k % 4) * 0.05, 0.05)
+			local lcf = CFrame.new(math.cos(ang) * 0.52, y, math.sin(ang) * 0.52) * CFrame.Angles(0, -ang, 0)
+				* CFrame.Angles(math.rad((k % 70) - 35), 0, 0)
+			table.insert(t, ink(f, region, s, nil, nil, { lcf = lcf, t = solid and 0.12 or 0.05 }))
+		end
+	end
+	return t
+end
+F.tattoo = function(pp)
+	local t = {}
+	local kind = pp.kind
+	local sides = pp.both and { "R", "L" } or { "R" }
+	for si, side in ipairs(sides) do
+		local sx = side == "R" and 1 or -1
+		local face = side == "R" and "Right" or "Left"
+		if kind == "sleeve" then
+			add(t, armSleeve(side, { { "UpperArm", "UArm" }, { "LowerArm", "LArm" } }, 22, si))
+		elseif kind == "half" then
+			add(t, armSleeve(side, { { "LowerArm", "LArm" } }, 18, si + 2))
+		elseif kind == "forearm" then
+			table.insert(t, inkText(side .. "LowerArm", "LArm", (si == 2 and pp.text2) or pp.text or "FAMILIA", V3(0, -0.08, -0.37), V3(1.14, 0.24, 0.02), V3(0, 0, 90), "Front"))
+		elseif kind == "rose" then -- a rose with leaves on the forearm
+			table.insert(t, ink(side .. "LowerArm", "LArm", V3(0.1, 0.22, 0.4), V3(sx * 0.47, 0.1, 0), V3(0, 0, 0), { t = 0.05 }))
+			table.insert(t, ink(side .. "LowerArm", "LArm", V3(0.1, 0.3, 0.12), V3(sx * 0.48, -0.12, 0.08), V3(30, 0, 0), { t = 0.2 }))
+			table.insert(t, ink(side .. "LowerArm", "LArm", V3(0.1, 0.3, 0.12), V3(sx * 0.48, -0.12, -0.08), V3(-30, 0, 0), { t = 0.2 }))
+		elseif kind == "calf" then
+			add(t, armSleeve(side, { { "LowerLeg", "LLeg" } }, 16, si + 5))
+		elseif kind == "hands" then
+			table.insert(t, inkText(side .. "Hand", "Hand", (si == 2 and pp.text2) or pp.text or "LOVE", V3(0, 0.05, 0.51), V3(0.8, 0.35, 0.02), V3(0, 0, 0), "Back"))
+		end
+	end
+	if kind == "neck" then
+		table.insert(t, inkText("neck", "Head", pp.text or "FAMILIA", V3(0, 0.1, -0.31), V3(0.6, 0.2, 0.02), V3(-6, 0, 0), "Front", false))
+	elseif kind == "face" then
+		local ex = FACE.eyeX + 0.06
+		local mark = pp.mark or "star"
+		if mark == "star" then
+			table.insert(t, p("Block", "head", V3(0.1, 0.1, 0.02), V3(ex, FACE.eyeY - 0.3, -0.93), V3(0, 0, 45), "c1", { m = SMO, skin = "Head" }))
+			table.insert(t, p("Block", "head", V3(0.1, 0.1, 0.02), V3(ex, FACE.eyeY - 0.3, -0.931), nil, "c1", { m = SMO, skin = "Head" }))
+		elseif mark == "cross" then
+			table.insert(t, p("Block", "head", V3(0.03, 0.14, 0.02), V3(ex, FACE.eyeY - 0.3, -0.93), nil, "c1", { m = SMO, skin = "Head" }))
+			table.insert(t, p("Block", "head", V3(0.09, 0.03, 0.02), V3(ex, FACE.eyeY - 0.27, -0.931), nil, "c1", { m = SMO, skin = "Head" }))
+		elseif mark == "dots" then
+			for i = 0, 2 do
+				table.insert(t, p("Ball", "head", V3(0.04, 0.04, 0.02), V3(ex + i * 0.06, FACE.eyeY - 0.28, -0.93), nil, "c1", { m = SMO, skin = "Head" }))
+			end
+		elseif mark == "script" then -- a small word over the eyebrow
+			table.insert(t, p("Block", "head", V3(0.42, 0.1, 0.02), V3(ex, FACE.browY + 0.1, -0.95), V3(-15, 0, 0), "c1", { t = 1, skin = "Head",
+				txt = { text = pp.text or "BLESSED", color = "c1", face = "Front", font = "Fantasy" } }))
+		end
+	end
+	return t
+end
+
+------------------------------------------------------------------ lowrider pieces
+F.suspenders = function()
+	local t = mirror({
+		p("Block", "chest", V3(0.07, 1.25, 0.03), V3(0.24, 0.05, -0.05), V3(0, 0, 3), "c1", { m = FAB }),
+		p("Block", "back", V3(0.07, 1.25, 0.03), V3(0.16, 0.05, 0.05), V3(0, 0, -12), "c1", { m = FAB }),
+		p("Block", "chest", V3(0.09, 0.06, 0.04), V3(0.24, -0.55, -0.06), nil, "c2", { m = MET }),
+	})
+	return t
+end
+F.hairnet = function()
+	return { p("Ball", "head", V3(2.16, 1.5, 2.26), V3(0, 0.44, 0.12), nil, "c1", { m = FAB, t = 0.55 }) }
+end
+F.foldedband = function()
+	-- a bandana folded flat and tied low across the forehead, knot at the back
+	local t = {
+		cylY("head", 0.26, 2.14, V3(0, 0.38, 0.06), "c1", { m = FAB }, -10),
+		p("Ball", "head", V3(0.3, 0.26, 0.26), V3(0, 0.25, 1.1), nil, "c1", { m = FAB }),
+	}
+	add(t, mirror({ p("Wedge", "head", V3(0.04, 0.45, 0.22), V3(0.12, -0.05, 1.14), V3(0, 90, 12), "c1", { m = FAB }) }))
+	return t
 end
 
 ---------------------------------------------------------------------------------------------------- frames
@@ -2673,6 +2827,44 @@ local function colourFor(key, ctx)
 	return FIXED[key] or ctx.c1
 end
 
+-- where a piece goes: its size and world CFrame, from its frame
+function B.place(q, fr)
+	local scale
+	if q.fit and fr.size then
+		scale = fr.size
+	else
+		scale = V3(fr.u, fr.u, fr.u)
+	end
+	local sizeScale = scale
+	if q.sh == "Cyl" and q.fit and fr.size then
+		-- a fitted cylinder: its length follows whichever limb axis it lies along and its diameter hugs the
+		-- limb's thickest side (a Roblox cylinder is always round, so a stretched one would shrink inside the limb)
+		local rot = q.lcf and (q.lcf - q.lcf.Position) or CFrame.Angles(rad(q.r.X), rad(q.r.Y), rad(q.r.Z))
+		local ax = rot * V3(1, 0, 0) - rot.Position
+		local a = { math.abs(ax.X), math.abs(ax.Y), math.abs(ax.Z) }
+		local dims = { fr.size.X, fr.size.Y, fr.size.Z }
+		local i = (a[1] >= a[2] and a[1] >= a[3]) and 1 or ((a[2] >= a[3]) and 2 or 3)
+		local d = 0
+		for k = 1, 3 do
+			if k ~= i then
+				d = math.max(d, dims[k])
+			end
+		end
+		sizeScale = V3(dims[i], d, d)
+	end
+	local size = q.s * sizeScale
+	size = V3(math.max(size.X, 0.02), math.max(size.Y, 0.02), math.max(size.Z, 0.02))
+	local cf
+	if q.lcf then
+		cf = fr.cf * CFrame.new(q.lcf.Position * scale) * (q.lcf - q.lcf.Position)
+	else
+		cf = fr.cf * CFrame.new(q.o * scale) * CFrame.Angles(rad(q.r.X), rad(q.r.Y), rad(q.r.Z))
+	end
+	return size, cf
+end
+
+B.colourFor, B.KEY_MAT, B.KEY_REFL = colourFor, KEY_MAT, KEY_REFL
+
 local function makePart(q, fr, ctx, model, item)
 	local sh = q.sh
 	local part
@@ -2683,27 +2875,20 @@ local function makePart(q, fr, ctx, model, item)
 	else
 		part = Instance.new("Part")
 		if sh == "Ball" then
-			part.Shape = Enum.PartType.Ball
+			-- a Ball-shaped Part is always a perfect sphere; a block with a sphere mesh stretches to any size, so
+			-- hair caps, puffers and pendants keep their egg / ellipsoid shapes
+			part.Shape = Enum.PartType.Block
+			local mesh = Instance.new("SpecialMesh")
+			mesh.MeshType = Enum.MeshType.Sphere
+			mesh.Parent = part
 		elseif sh == "Cyl" then
 			part.Shape = Enum.PartType.Cylinder
 		else
 			part.Shape = Enum.PartType.Block
 		end
 	end
-	local scale
-	if q.fit and fr.size then
-		scale = fr.size
-	else
-		scale = V3(fr.u, fr.u, fr.u)
-	end
-	local size = q.s * scale
-	part.Size = V3(math.max(size.X, 0.02), math.max(size.Y, 0.02), math.max(size.Z, 0.02))
-	local cf
-	if q.lcf then
-		cf = fr.cf * CFrame.new(q.lcf.Position * scale) * (q.lcf - q.lcf.Position)
-	else
-		cf = fr.cf * CFrame.new(q.o * scale) * CFrame.Angles(rad(q.r.X), rad(q.r.Y), rad(q.r.Z))
-	end
+	local size, cf = B.place(q, fr)
+	part.Size = size
 	part.CFrame = cf
 	part.Color = colourFor(q.c, ctx)
 	part.Material = q.m or KEY_MAT[q.c] or (item.mat and Enum.Material[item.mat]) or FAB
@@ -2810,26 +2995,10 @@ function B.Clear(char)
 	end
 end
 
--- Apply(char, look, Catalog, opts) -> the folder of built pieces
---   opts.assets: { [itemId] = Accessory } real meshes to wear instead of the procedural pieces
---   opts.sparkle: particle twinkles on iced pieces and small lights on glowing parts (default true)
---   opts.stripAvatar: remove the Roblox avatar's own clothing, accessories and BodyColors (default true)
-function B.Apply(char, look, Catalog, opts)
+-- Plan(look, Catalog, opts) -> regions, builds: the pure part of Apply (no Instances), also used by the offline
+-- preview renderer. regions[name] = { colour, material, bare }; builds = { { e, item, ctx, pieces, skip } }
+function B.Plan(look, Catalog, opts)
 	opts = opts or {}
-	B.Clear(char)
-	if opts.stripAvatar ~= false then
-		for _, d in ipairs(char:GetChildren()) do
-			if d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") or d:IsA("BodyColors") then
-				d:Destroy()
-			elseif d:IsA("Accessory") and not d:GetAttribute("NC_Keep") then
-				d:Destroy()
-			end
-		end
-	end
-	B.ApplyBaseLayer(char)
-	local folder = Instance.new("Folder")
-	folder.Name = B.FOLDER
-	local fr = B.frames(char)
 	local entries = B.resolve(look, Catalog)
 
 	-- skin first, then which slots hide others (helmets / ski masks hide hair; hats flatten hair volume)
@@ -2869,6 +3038,11 @@ function B.Apply(char, look, Catalog, opts)
 		regions[name] = { colour = colour, material = FAB }
 	end
 
+	-- pass 1: every item's body colours (so pass 2 knows which regions are bare skin, for tattoos)
+	local built = {}
+	for name, st in pairs(regions) do
+		st.bare = not B.BASE_LAYER[name]
+	end
 	for _, e in ipairs(entries) do
 		local item = e.item
 		local ctx = { c1 = e.c1, c2 = e.c2, skin = skin, hair = hairColour, under = topColour, sparkle = opts.sparkle ~= false }
@@ -2877,7 +3051,6 @@ function B.Apply(char, look, Catalog, opts)
 			warn("NCLookBuilder: no family " .. tostring(item.fam) .. " for " .. item.id)
 			continue
 		end
-		local skip = (e.slot == "Hair" and hideHair) or (e.slot == "FacialHair" and hideBeard)
 		local pieces, body = fam(item.p or {}, item)
 		if body then
 			for region, v in pairs(body) do
@@ -2888,9 +3061,50 @@ function B.Apply(char, look, Catalog, opts)
 				if key == "skin" and B.BASE_LAYER[region] then
 					continue -- never bare: the base layer stays (under skirts and dresses it reads as bike shorts)
 				end
-				regions[region] = { colour = colourFor(key, ctx), material = m or (key == "skin" and Enum.Material.SmoothPlastic or FAB) }
+				regions[region] = { colour = colourFor(key, ctx), material = m or (key == "skin" and Enum.Material.SmoothPlastic or FAB), bare = key == "skin" }
 			end
 		end
+		local skip = (e.slot == "Hair" and hideHair) or (e.slot == "FacialHair" and hideBeard)
+		table.insert(built, { e = e, item = item, ctx = ctx, pieces = pieces, skip = skip })
+	end
+
+	return regions, built, hatOn, hideHair, hideBeard
+end
+
+-- should this piece of this build be made? (hats flatten hair, clothes cover tattoos)
+function B.wants(b, q, regions, hatOn)
+	if q.skin and not (regions[q.skin] and regions[q.skin].bare) then
+		return false
+	end
+	if q.top and hatOn and b.e.slot == "Hair" then
+		return false
+	end
+	return true
+end
+
+-- Apply(char, look, Catalog, opts) -> the folder of built pieces
+--   opts.assets: { [itemId] = Accessory } real meshes to wear instead of the procedural pieces
+--   opts.sparkle: particle twinkles on iced pieces and small lights on glowing parts (default true)
+--   opts.stripAvatar: remove the Roblox avatar's own clothing, accessories and BodyColors (default true)
+function B.Apply(char, look, Catalog, opts)
+	opts = opts or {}
+	B.Clear(char)
+	if opts.stripAvatar ~= false then
+		for _, d in ipairs(char:GetChildren()) do
+			if d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") or d:IsA("BodyColors") then
+				d:Destroy()
+			elseif d:IsA("Accessory") and not d:GetAttribute("NC_Keep") then
+				d:Destroy()
+			end
+		end
+	end
+	B.ApplyBaseLayer(char)
+	local folder = Instance.new("Folder")
+	folder.Name = B.FOLDER
+	local fr = B.frames(char)
+	local regions, built, hatOn = B.Plan(look, Catalog, opts)
+	for _, b in ipairs(built) do
+		local item, ctx, pieces, skip = b.item, b.ctx, b.pieces, b.skip
 		local asset = opts.assets and opts.assets[item.id]
 		if asset and not skip then
 			local acc = asset:Clone()
@@ -2903,7 +3117,7 @@ function B.Apply(char, look, Catalog, opts)
 			local model = Instance.new("Model")
 			model.Name = item.id
 			for _, q in ipairs(pieces) do
-				if not (q.top and hatOn and e.slot == "Hair") then
+				if B.wants(b, q, regions, hatOn) then
 					local f = fr[q.f]
 					if f then
 						makePart(q, f, ctx, model, item)

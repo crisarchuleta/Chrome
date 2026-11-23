@@ -1700,6 +1700,9 @@ F.shorts = function(pp)
 	if pp.stripe then
 		add(t, mirror({ p("Block", "RUpperLeg", V3(0.06, 1.0, 0.16), V3(0.51, 0, 0), nil, "c2", { m = FAB, fit = true }) }))
 	end
+	if pp.socks then -- long shorts with tall white socks pulled up to the knee
+		return t, { Hips = { c = "c1", m = FAB }, ULeg = { c = "c1", m = FAB }, LLeg = { c = "c2", m = FAB } }
+	end
 	return t, { Hips = { c = "c1", m = FAB }, ULeg = { c = "c1", m = FAB }, LLeg = "skin" }
 end
 F.skirt = function(pp)
@@ -1725,7 +1728,7 @@ F.shoes = function(pp)
 	local h = pp.sole or 0.16
 	local m = pp.m == "leather" and LEA or (pp.m == "rubber" and RUB or FAB)
 	local t = {
-		p("Block", "RFoot", V3(1.08, h, 1.06), V3(0, -0.5 - h / 2 + 0.06, 0), nil, pp.gum and "gum" or "c2", { m = RUB, fit = true }),
+		p("Block", "RFoot", V3(1.0, h, 1.02), V3(0, -0.5 - h / 2 + 0.06, 0), nil, pp.gum and "gum" or pp.soleC or "c2", { m = RUB, fit = true }),
 	}
 	if pp.panel then
 		table.insert(t, p("Block", "RFoot", V3(0.06, 0.35, 0.6), V3(0.52, -0.1, 0.05), nil, "c2", { m = m, fit = true }))
@@ -1761,6 +1764,106 @@ F.shoes = function(pp)
 		foot = "skin"
 	end
 	return mirror(t), { Foot = foot }
+end
+
+------------------------------------------------------------------ tattoos (ink that only shows on bare skin)
+-- q.skin = the body region the ink sits on; Apply drops the piece if that region is covered by clothes
+local function ink(f, region, s, o, r, x)
+	local t = x or {}
+	t.skin, t.fit, t.m = region, true, SMO
+	t.t = t.t or 0.15
+	return p("Ball", f, s, o, r, "c1", t)
+end
+local function inkText(f, region, text, o, size, rot, face, fit)
+	return p("Block", f, size, o, rot, "c1", { fit = fit ~= false, t = 1, skin = region,
+		txt = { text = text, color = "c1", face = face or "Right", font = "Fantasy" } })
+end
+local function armSleeve(side, limbs, n, seed)
+	-- black-and-grey sleeve: a soft grey wash that fades out at the ends, then flowing linework and a few
+	-- solid motifs laid flat on the skin (each piece faces out from the limb)
+	local t = {}
+	for li, pr in ipairs(limbs) do
+		local f, region = side .. pr[1], pr[2]
+		table.insert(t, ink(f, region, V3(1.06, 0.94, 1.06), V3(0, 0, 0), nil, { t = 0.68 }))
+		for i = 1, n do
+			local k = (i * 7919 + seed * 131 + li * 17) % 211
+			local ang = (k % 16) / 16 * math.pi * 2 + li
+			local y = ((k % 11) - 5) * 0.075
+			local solid = (i % 4 == 0)
+			local s = solid and V3(0.05, 0.16 + (k % 3) * 0.04, 0.2 + (k % 2) * 0.08) or V3(0.04, 0.24 + (k % 4) * 0.05, 0.05)
+			local lcf = CFrame.new(math.cos(ang) * 0.52, y, math.sin(ang) * 0.52) * CFrame.Angles(0, -ang, 0)
+				* CFrame.Angles(math.rad((k % 70) - 35), 0, 0)
+			table.insert(t, ink(f, region, s, nil, nil, { lcf = lcf, t = solid and 0.12 or 0.05 }))
+		end
+	end
+	return t
+end
+F.tattoo = function(pp)
+	local t = {}
+	local kind = pp.kind
+	local sides = pp.both and { "R", "L" } or { "R" }
+	for si, side in ipairs(sides) do
+		local sx = side == "R" and 1 or -1
+		local face = side == "R" and "Right" or "Left"
+		if kind == "sleeve" then
+			add(t, armSleeve(side, { { "UpperArm", "UArm" }, { "LowerArm", "LArm" } }, 22, si))
+		elseif kind == "half" then
+			add(t, armSleeve(side, { { "LowerArm", "LArm" } }, 18, si + 2))
+		elseif kind == "forearm" then
+			table.insert(t, inkText(side .. "LowerArm", "LArm", (si == 2 and pp.text2) or pp.text or "FAMILIA", V3(0, -0.08, -0.37), V3(1.14, 0.24, 0.02), V3(0, 0, 90), "Front"))
+		elseif kind == "rose" then -- a rose with leaves on the forearm
+			table.insert(t, ink(side .. "LowerArm", "LArm", V3(0.1, 0.22, 0.4), V3(sx * 0.47, 0.1, 0), V3(0, 0, 0), { t = 0.05 }))
+			table.insert(t, ink(side .. "LowerArm", "LArm", V3(0.1, 0.3, 0.12), V3(sx * 0.48, -0.12, 0.08), V3(30, 0, 0), { t = 0.2 }))
+			table.insert(t, ink(side .. "LowerArm", "LArm", V3(0.1, 0.3, 0.12), V3(sx * 0.48, -0.12, -0.08), V3(-30, 0, 0), { t = 0.2 }))
+		elseif kind == "calf" then
+			add(t, armSleeve(side, { { "LowerLeg", "LLeg" } }, 16, si + 5))
+		elseif kind == "hands" then
+			table.insert(t, inkText(side .. "Hand", "Hand", (si == 2 and pp.text2) or pp.text or "LOVE", V3(0, 0.05, 0.51), V3(0.8, 0.35, 0.02), V3(0, 0, 0), "Back"))
+		end
+	end
+	if kind == "neck" then
+		table.insert(t, inkText("neck", "Head", pp.text or "FAMILIA", V3(0, 0.1, -0.31), V3(0.6, 0.2, 0.02), V3(-6, 0, 0), "Front", false))
+	elseif kind == "face" then
+		local ex = FACE.eyeX + 0.06
+		local mark = pp.mark or "star"
+		if mark == "star" then
+			table.insert(t, p("Block", "head", V3(0.1, 0.1, 0.02), V3(ex, FACE.eyeY - 0.3, -0.93), V3(0, 0, 45), "c1", { m = SMO, skin = "Head" }))
+			table.insert(t, p("Block", "head", V3(0.1, 0.1, 0.02), V3(ex, FACE.eyeY - 0.3, -0.931), nil, "c1", { m = SMO, skin = "Head" }))
+		elseif mark == "cross" then
+			table.insert(t, p("Block", "head", V3(0.03, 0.14, 0.02), V3(ex, FACE.eyeY - 0.3, -0.93), nil, "c1", { m = SMO, skin = "Head" }))
+			table.insert(t, p("Block", "head", V3(0.09, 0.03, 0.02), V3(ex, FACE.eyeY - 0.27, -0.931), nil, "c1", { m = SMO, skin = "Head" }))
+		elseif mark == "dots" then
+			for i = 0, 2 do
+				table.insert(t, p("Ball", "head", V3(0.04, 0.04, 0.02), V3(ex + i * 0.06, FACE.eyeY - 0.28, -0.93), nil, "c1", { m = SMO, skin = "Head" }))
+			end
+		elseif mark == "script" then -- a small word over the eyebrow
+			table.insert(t, p("Block", "head", V3(0.42, 0.1, 0.02), V3(ex, FACE.browY + 0.1, -0.95), V3(-15, 0, 0), "c1", { t = 1, skin = "Head",
+				txt = { text = pp.text or "BLESSED", color = "c1", face = "Front", font = "Fantasy" } }))
+		end
+	end
+	return t
+end
+
+------------------------------------------------------------------ lowrider pieces
+F.suspenders = function()
+	local t = mirror({
+		p("Block", "chest", V3(0.07, 1.25, 0.03), V3(0.24, 0.05, -0.05), V3(0, 0, 3), "c1", { m = FAB }),
+		p("Block", "back", V3(0.07, 1.25, 0.03), V3(0.16, 0.05, 0.05), V3(0, 0, -12), "c1", { m = FAB }),
+		p("Block", "chest", V3(0.09, 0.06, 0.04), V3(0.24, -0.55, -0.06), nil, "c2", { m = MET }),
+	})
+	return t
+end
+F.hairnet = function()
+	return { p("Ball", "head", V3(2.16, 1.5, 2.26), V3(0, 0.44, 0.12), nil, "c1", { m = FAB, t = 0.55 }) }
+end
+F.foldedband = function()
+	-- a bandana folded flat and tied low across the forehead, knot at the back
+	local t = {
+		cylY("head", 0.26, 2.14, V3(0, 0.38, 0.06), "c1", { m = FAB }, -10),
+		p("Ball", "head", V3(0.3, 0.26, 0.26), V3(0, 0.25, 1.1), nil, "c1", { m = FAB }),
+	}
+	add(t, mirror({ p("Wedge", "head", V3(0.04, 0.45, 0.22), V3(0.12, -0.05, 1.14), V3(0, 90, 12), "c1", { m = FAB }) }))
+	return t
 end
 
 ---------------------------------------------------------------------------------------------------- frames
@@ -1864,6 +1967,44 @@ local function colourFor(key, ctx)
 	return FIXED[key] or ctx.c1
 end
 
+-- where a piece goes: its size and world CFrame, from its frame
+function B.place(q, fr)
+	local scale
+	if q.fit and fr.size then
+		scale = fr.size
+	else
+		scale = V3(fr.u, fr.u, fr.u)
+	end
+	local sizeScale = scale
+	if q.sh == "Cyl" and q.fit and fr.size then
+		-- a fitted cylinder: its length follows whichever limb axis it lies along and its diameter hugs the
+		-- limb's thickest side (a Roblox cylinder is always round, so a stretched one would shrink inside the limb)
+		local rot = q.lcf and (q.lcf - q.lcf.Position) or CFrame.Angles(rad(q.r.X), rad(q.r.Y), rad(q.r.Z))
+		local ax = rot * V3(1, 0, 0) - rot.Position
+		local a = { math.abs(ax.X), math.abs(ax.Y), math.abs(ax.Z) }
+		local dims = { fr.size.X, fr.size.Y, fr.size.Z }
+		local i = (a[1] >= a[2] and a[1] >= a[3]) and 1 or ((a[2] >= a[3]) and 2 or 3)
+		local d = 0
+		for k = 1, 3 do
+			if k ~= i then
+				d = math.max(d, dims[k])
+			end
+		end
+		sizeScale = V3(dims[i], d, d)
+	end
+	local size = q.s * sizeScale
+	size = V3(math.max(size.X, 0.02), math.max(size.Y, 0.02), math.max(size.Z, 0.02))
+	local cf
+	if q.lcf then
+		cf = fr.cf * CFrame.new(q.lcf.Position * scale) * (q.lcf - q.lcf.Position)
+	else
+		cf = fr.cf * CFrame.new(q.o * scale) * CFrame.Angles(rad(q.r.X), rad(q.r.Y), rad(q.r.Z))
+	end
+	return size, cf
+end
+
+B.colourFor, B.KEY_MAT, B.KEY_REFL = colourFor, KEY_MAT, KEY_REFL
+
 local function makePart(q, fr, ctx, model, item)
 	local sh = q.sh
 	local part
@@ -1874,27 +2015,20 @@ local function makePart(q, fr, ctx, model, item)
 	else
 		part = Instance.new("Part")
 		if sh == "Ball" then
-			part.Shape = Enum.PartType.Ball
+			-- a Ball-shaped Part is always a perfect sphere; a block with a sphere mesh stretches to any size, so
+			-- hair caps, puffers and pendants keep their egg / ellipsoid shapes
+			part.Shape = Enum.PartType.Block
+			local mesh = Instance.new("SpecialMesh")
+			mesh.MeshType = Enum.MeshType.Sphere
+			mesh.Parent = part
 		elseif sh == "Cyl" then
 			part.Shape = Enum.PartType.Cylinder
 		else
 			part.Shape = Enum.PartType.Block
 		end
 	end
-	local scale
-	if q.fit and fr.size then
-		scale = fr.size
-	else
-		scale = V3(fr.u, fr.u, fr.u)
-	end
-	local size = q.s * scale
-	part.Size = V3(math.max(size.X, 0.02), math.max(size.Y, 0.02), math.max(size.Z, 0.02))
-	local cf
-	if q.lcf then
-		cf = fr.cf * CFrame.new(q.lcf.Position * scale) * (q.lcf - q.lcf.Position)
-	else
-		cf = fr.cf * CFrame.new(q.o * scale) * CFrame.Angles(rad(q.r.X), rad(q.r.Y), rad(q.r.Z))
-	end
+	local size, cf = B.place(q, fr)
+	part.Size = size
 	part.CFrame = cf
 	part.Color = colourFor(q.c, ctx)
 	part.Material = q.m or KEY_MAT[q.c] or (item.mat and Enum.Material[item.mat]) or FAB
@@ -2001,26 +2135,10 @@ function B.Clear(char)
 	end
 end
 
--- Apply(char, look, Catalog, opts) -> the folder of built pieces
---   opts.assets: { [itemId] = Accessory } real meshes to wear instead of the procedural pieces
---   opts.sparkle: particle twinkles on iced pieces and small lights on glowing parts (default true)
---   opts.stripAvatar: remove the Roblox avatar's own clothing, accessories and BodyColors (default true)
-function B.Apply(char, look, Catalog, opts)
+-- Plan(look, Catalog, opts) -> regions, builds: the pure part of Apply (no Instances), also used by the offline
+-- preview renderer. regions[name] = { colour, material, bare }; builds = { { e, item, ctx, pieces, skip } }
+function B.Plan(look, Catalog, opts)
 	opts = opts or {}
-	B.Clear(char)
-	if opts.stripAvatar ~= false then
-		for _, d in ipairs(char:GetChildren()) do
-			if d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") or d:IsA("BodyColors") then
-				d:Destroy()
-			elseif d:IsA("Accessory") and not d:GetAttribute("NC_Keep") then
-				d:Destroy()
-			end
-		end
-	end
-	B.ApplyBaseLayer(char)
-	local folder = Instance.new("Folder")
-	folder.Name = B.FOLDER
-	local fr = B.frames(char)
 	local entries = B.resolve(look, Catalog)
 
 	-- skin first, then which slots hide others (helmets / ski masks hide hair; hats flatten hair volume)
@@ -2060,6 +2178,11 @@ function B.Apply(char, look, Catalog, opts)
 		regions[name] = { colour = colour, material = FAB }
 	end
 
+	-- pass 1: every item's body colours (so pass 2 knows which regions are bare skin, for tattoos)
+	local built = {}
+	for name, st in pairs(regions) do
+		st.bare = not B.BASE_LAYER[name]
+	end
 	for _, e in ipairs(entries) do
 		local item = e.item
 		local ctx = { c1 = e.c1, c2 = e.c2, skin = skin, hair = hairColour, under = topColour, sparkle = opts.sparkle ~= false }
@@ -2068,7 +2191,6 @@ function B.Apply(char, look, Catalog, opts)
 			warn("NCLookBuilder: no family " .. tostring(item.fam) .. " for " .. item.id)
 			continue
 		end
-		local skip = (e.slot == "Hair" and hideHair) or (e.slot == "FacialHair" and hideBeard)
 		local pieces, body = fam(item.p or {}, item)
 		if body then
 			for region, v in pairs(body) do
@@ -2079,9 +2201,50 @@ function B.Apply(char, look, Catalog, opts)
 				if key == "skin" and B.BASE_LAYER[region] then
 					continue -- never bare: the base layer stays (under skirts and dresses it reads as bike shorts)
 				end
-				regions[region] = { colour = colourFor(key, ctx), material = m or (key == "skin" and Enum.Material.SmoothPlastic or FAB) }
+				regions[region] = { colour = colourFor(key, ctx), material = m or (key == "skin" and Enum.Material.SmoothPlastic or FAB), bare = key == "skin" }
 			end
 		end
+		local skip = (e.slot == "Hair" and hideHair) or (e.slot == "FacialHair" and hideBeard)
+		table.insert(built, { e = e, item = item, ctx = ctx, pieces = pieces, skip = skip })
+	end
+
+	return regions, built, hatOn, hideHair, hideBeard
+end
+
+-- should this piece of this build be made? (hats flatten hair, clothes cover tattoos)
+function B.wants(b, q, regions, hatOn)
+	if q.skin and not (regions[q.skin] and regions[q.skin].bare) then
+		return false
+	end
+	if q.top and hatOn and b.e.slot == "Hair" then
+		return false
+	end
+	return true
+end
+
+-- Apply(char, look, Catalog, opts) -> the folder of built pieces
+--   opts.assets: { [itemId] = Accessory } real meshes to wear instead of the procedural pieces
+--   opts.sparkle: particle twinkles on iced pieces and small lights on glowing parts (default true)
+--   opts.stripAvatar: remove the Roblox avatar's own clothing, accessories and BodyColors (default true)
+function B.Apply(char, look, Catalog, opts)
+	opts = opts or {}
+	B.Clear(char)
+	if opts.stripAvatar ~= false then
+		for _, d in ipairs(char:GetChildren()) do
+			if d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") or d:IsA("BodyColors") then
+				d:Destroy()
+			elseif d:IsA("Accessory") and not d:GetAttribute("NC_Keep") then
+				d:Destroy()
+			end
+		end
+	end
+	B.ApplyBaseLayer(char)
+	local folder = Instance.new("Folder")
+	folder.Name = B.FOLDER
+	local fr = B.frames(char)
+	local regions, built, hatOn = B.Plan(look, Catalog, opts)
+	for _, b in ipairs(built) do
+		local item, ctx, pieces, skip = b.item, b.ctx, b.pieces, b.skip
 		local asset = opts.assets and opts.assets[item.id]
 		if asset and not skip then
 			local acc = asset:Clone()
@@ -2094,7 +2257,7 @@ function B.Apply(char, look, Catalog, opts)
 			local model = Instance.new("Model")
 			model.Name = item.id
 			for _, q in ipairs(pieces) do
-				if not (q.top and hatOn and e.slot == "Hair") then
+				if B.wants(b, q, regions, hatOn) then
 					local f = fr[q.f]
 					if f then
 						makePart(q, f, ctx, model, item)

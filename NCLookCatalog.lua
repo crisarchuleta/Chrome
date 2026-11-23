@@ -18,6 +18,8 @@ C.SLOTS = {
 	{ id = "Skin", name = "Skin", icon = "✋", required = true },
 	{ id = "Hair", name = "Hair", icon = "💇" },
 	{ id = "FacialHair", name = "Beard", icon = "🧔" },
+	{ id = "Tattoo", name = "Arm Ink", icon = "🖋️" },
+	{ id = "Tattoo2", name = "Face & Neck Ink", icon = "✒️" },
 	{ id = "Bottom", name = "Bottoms", icon = "👖", required = true },
 	{ id = "Top", name = "Tops", icon = "👕", required = true },
 	{ id = "Outer", name = "Jackets", icon = "🧥" },
@@ -39,7 +41,7 @@ C.SLOTS = {
 
 -- the studio's category tabs group the slots
 C.TABS = {
-	{ name = "Body", slots = { "Skin", "Hair", "FacialHair" } },
+	{ name = "Body", slots = { "Skin", "Hair", "FacialHair", "Tattoo", "Tattoo2" } },
 	{ name = "Clothes", slots = { "Top", "Outer", "Bottom", "Shoes" } },
 	{ name = "Headwear", slots = { "Head", "Face", "Mask" } },
 	{ name = "Bling", slots = { "Neck", "Neck2", "Grillz", "Ears", "Wrist", "Wrist2", "Rings" } },
@@ -49,6 +51,7 @@ C.TABS = {
 -- collections: the "worlds" filter in the studio (Ready Player One style: a bit of everything, all original)
 C.COLLECTIONS = {
 	{ id = "hood", name = "Realistic Hood", blurb = "Locs over the shades, black hoodies, iced chains, ski masks." },
+	{ id = "lowrider", name = "Lowrider", blurb = "Chicano lowrider style: creased khakis, white tees, flannels, zoot suits, fine-line ink." },
 	{ id = "rap", name = "Rap Royalty", blurb = "Gold and iced-out chains, grillz, watches, fits that shine." },
 	{ id = "street", name = "Streetwear", blurb = "Baggy denim, jerseys, chunky sneakers, 2026 street staples." },
 	{ id = "tiktok", name = "For You Page", blurb = "Looks that blew up on short video in the last six months." },
@@ -91,6 +94,7 @@ C.PALETTES = {
 		"#B3122E", "#2B2B2B", "#4A2B6B", "#1B2A41" },
 	lens = { "#111111", "#2A2F38", "#3B2A1F", "#7A1022", "#2E4A7A", "#E8A33D", "#F4A6C8", "#9CC3E6", "#F5F5F2" },
 	sole = { "#F5F5F2", "#111111", "#C8963E", "#8C8C8C", "#B3122E", "#2E4A7A" },
+	ink = { "#1A1A1A", "#26303C", "#2B3A4A", "#3B2A1F", "#1F4F3A", "#7A1022" },
 	camo = { "#4B5320", "#6B7B3A", "#C8B88A", "#8C8C8C", "#2B2B2B", "#F4A6C8", "#4F7CC2", "#B3122E" },
 }
 
@@ -195,11 +199,31 @@ I("beard_handlebar", "FacialHair", "Handlebar Mustache", 140, "mustache", { hand
 I("beard_sideburns", "FacialHair", "Mutton Sideburns", 100, "sideburns", { len = 0.7 }, H, "#3B2A1F", nil, nil, { "retro", "western" })
 I("beard_soul_patch", "FacialHair", "Soul Patch", 60, "soulpatch", {}, H, "#1C1512", nil, nil, { "retro" })
 
+------------------------------------------------------------------ tattoos (only show on bare skin: sleeves cover arm ink)
+local K = "ink"
+I("ink_sleeve_r", "Tattoo", "Full Sleeve (Right Arm)", 300, "tattoo", { kind = "sleeve" }, K, "#26303C", nil, nil, { "lowrider", "hood", "rap" }, T)
+I("ink_sleeves", "Tattoo", "Full Sleeves (Both Arms)", 550, "tattoo", { kind = "sleeve", both = true }, K, "#26303C", nil, nil, { "lowrider", "hood", "rap" }, T)
+I("ink_half", "Tattoo", "Forearm Half Sleeves", 300, "tattoo", { kind = "half", both = true }, K, "#1A1A1A", nil, nil, { "lowrider", "street" })
+I("ink_script_familia", "Tattoo", "Forearm Script: FAMILIA / LOYALTY", 250, "tattoo", { kind = "forearm", both = true, text = "FAMILIA", text2 = "LOYALTY" }, K, "#1A1A1A", nil, nil, { "lowrider" }, T)
+I("ink_script_blessed", "Tattoo", "Forearm Script: BLESSED", 150, "tattoo", { kind = "forearm", text = "BLESSED" }, K, "#1A1A1A", nil, nil, { "street", "rap" })
+I("ink_script_mama", "Tattoo", "Forearm Script: MAMA / PAPA", 200, "tattoo", { kind = "forearm", both = true, text = "MAMA", text2 = "PAPA" }, K, "#26303C", nil, nil, { "lowrider" })
+I("ink_rose", "Tattoo", "Rose Forearms", 220, "tattoo", { kind = "rose", both = true }, K, "#7A1022", nil, nil, { "lowrider", "retro" })
+I("ink_calves", "Tattoo", "Calf Ink", 250, "tattoo", { kind = "calf", both = true }, K, "#26303C", nil, nil, { "lowrider", "coast" })
+I("ink_neck_familia", "Tattoo2", "Neck Script: FAMILIA", 200, "tattoo", { kind = "neck", text = "FAMILIA" }, K, "#1A1A1A", nil, nil, { "lowrider", "hood" }, T)
+I("ink_neck_blessed", "Tattoo2", "Neck Script: BLESSED", 200, "tattoo", { kind = "neck", text = "BLESSED" }, K, "#1A1A1A", nil, nil, { "rap", "hood" })
+I("ink_face_star", "Tattoo2", "Small Star Under Eye", 150, "tattoo", { kind = "face", mark = "star" }, K, "#1A1A1A", nil, nil, { "hood", "rap" }, T)
+I("ink_face_cross", "Tattoo2", "Small Cross Under Eye", 150, "tattoo", { kind = "face", mark = "cross" }, K, "#1A1A1A", nil, nil, { "lowrider", "hood" })
+I("ink_face_script", "Tattoo2", "Eyebrow Script: BLESSED", 180, "tattoo", { kind = "face", mark = "script", text = "BLESSED" }, K, "#1A1A1A", nil, nil, { "rap", "hood" })
+I("ink_hands", "Tattoo2", "Hand Script: LOVE / LIFE", 180, "tattoo", { kind = "hands", both = true, text = "LOVE", text2 = "LIFE" }, K, "#1A1A1A", nil, nil, { "lowrider", "street" })
+
 ------------------------------------------------------------------ tops
 local F = "fabric"
 I("top_tee", "Top", "Plain Tee", 0, "tee", {}, F, "#F5F5F2", F, "#111111", { "street" })
 I("top_tee_black", "Top", "Heavyweight Black Tee", 0, "tee", {}, F, "#111111", F, "#F5F5F2", { "street", "hood" })
-I("top_tank", "Top", "Ribbed Tank", 0, "tee", { sleeve = "tank" }, F, "#F5F5F2", F, "#111111", { "coast", "sport" })
+I("top_tank", "Top", "Ribbed Tank", 0, "tee", { sleeve = "tank" }, F, "#F5F5F2", F, "#111111", { "coast", "sport", "lowrider" })
+I("top_long_white", "Top", "Long Oversized White Tee", 60, "tee", {}, F, "#F5F5F2", F, "#F5F5F2", { "lowrider", "street" }, T)
+I("top_button_flannel", "Top", "Top-Button Flannel", 160, "shirt", { placket = "dark" }, F, "#111111", F, "#2E4A7A", { "lowrider" }, T)
+I("top_short_flannel", "Top", "Short-Sleeve Plaid Shirt", 140, "shirt", { sleeve = "tee", placket = "dark", print = true }, F, "#1B2A41", F, "#F5F5F2", { "lowrider", "coast" })
 I("top_longsleeve", "Top", "Long Sleeve Tee", 60, "tee", { sleeve = "long" }, F, "#2B2B2B", F, "#F5F5F2", { "street" })
 I("top_pocket_tee", "Top", "Pocket Tee", 60, "tee", { pocket = true }, F, "#C8B88A", F, "#5C3A21", { "street", "work" })
 I("top_stripe_tee", "Top", "Chest Stripe Tee", 80, "tee", { stripe = true }, F, "#F5F5F2", F, "#1B2A41", { "retro", "coast" })
@@ -295,6 +319,8 @@ I("out_chef", "Outer", "Chef Jacket", 200, "jacket", { open = false, collar = "s
 I("out_lifeguard", "Outer", "Lifeguard Hoodie", 200, "jacket", { open = false, collar = "hood", back = "GUARD" }, F, "#B3122E", F, "#F5F5F2", { "coast", "work" })
 I("out_cyber", "Outer", "Neon Runner Jacket", 520, "jacket", { zip = "diag", open = false, collar = "stand", neon = true, m = "leather" }, "leather", "#111111", "neon", "#00FFDC", { "scifi" }, T)
 I("out_pirate", "Outer", "Captain's Frock Coat", 450, "jacket", { collar = "lapel", long = 1.4, cuffs = true, cuffC = "gold" }, F, "#7A1022", "metal", "#E2B240", { "fantasy" })
+I("out_zoot", "Outer", "Zoot Suit Drape Coat", 520, "jacket", { collar = "lapel", long = 1.7, collarC = "c1" }, F, "#C8963E", F, "#111111", { "lowrider", "retro", "business" }, TN)
+I("out_suspenders", "Outer", "Suspenders", 80, "suspenders", {}, F, "#111111", "metal", "#D4D6DC", { "lowrider", "retro", "work" })
 I("out_cowboy_vest", "Outer", "Cattleman Vest", 220, "vest", { suit = true }, "leather", "#6B3E22", "metal", "#C8963E", { "western" })
 
 ------------------------------------------------------------------ bottoms
@@ -313,7 +339,10 @@ I("bot_joggers", "Bottom", "Fleece Joggers", 100, "pants", { cuff = true }, F, "
 I("bot_track", "Bottom", "Track Pants", 140, "pants", { stripe = true }, F, "#111111", F, "#F5F5F2", { "street", "retro", "sport" })
 I("bot_trousers", "Bottom", "Pressed Suit Trousers", 200, "pants", { crease = true }, F, "#1B2A41", nil, nil, { "business" })
 I("bot_chinos", "Bottom", "Chinos", 120, "pants", {}, F, "#C8B88A", nil, nil, { "business", "coast" })
-I("bot_khakis", "Bottom", "Creased Khakis", 120, "pants", { crease = true }, F, "#C8B88A", nil, nil, { "street", "retro" })
+I("bot_khakis", "Bottom", "Creased Khakis", 120, "pants", { crease = true }, F, "#C8B88A", nil, nil, { "street", "retro", "lowrider" }, T)
+I("bot_work_creased", "Bottom", "Pressed Work Pants", 120, "pants", { crease = true, wide = true }, F, "#1B2A41", nil, nil, { "lowrider", "work" }, T)
+I("bot_zoot", "Bottom", "High-Waist Zoot Trousers", 260, "pants", { crease = true, wide = true }, F, "#C8963E", nil, nil, { "lowrider", "retro" })
+I("bot_shorts_socks", "Bottom", "Long Shorts & Knee Socks", 120, "shorts", { long = true, socks = true }, F, "#C8B88A", F, "#F5F5F2", { "lowrider" }, T)
 I("bot_leather", "Bottom", "Leather Pants", 280, "pants", { m = "leather" }, "leather", "#111111", nil, nil, { "retro", "rap" })
 I("bot_shorts_hoop", "Bottom", "Long Mesh Hoop Shorts", 100, "shorts", { long = true, stripe = true }, F, "#B3122E", F, "#F5F5F2", { "sport", "street" })
 I("bot_jorts", "Bottom", "Baggy Jorts", 140, "shorts", { long = true }, D, "#4C6F9E", nil, nil, { "street", "tiktok" }, T)
@@ -336,6 +365,8 @@ I("shoe_chunky", "Shoes", "Chunky Retro Runners", 260, "shoes", { sole = 0.32, p
 I("shoe_slim_runner", "Shoes", "Slim Retro Runners", 220, "shoes", { sole = 0.18, panel = true, gum = true }, F, "#2E4A7A", F, "#F5F5F2", { "tiktok", "street" }, TN)
 I("shoe_hightop", "Shoes", "Hoops High-Tops", 280, "shoes", { high = true, panel = true, laces = true }, F, "#B3122E", S, "#F5F5F2", { "sport", "street", "hood" }, T)
 I("shoe_hightop_bw", "Shoes", "Black & White High-Tops", 280, "shoes", { high = true, panel = true }, F, "#111111", S, "#F5F5F2", { "street", "hood" })
+I("shoe_classic", "Shoes", "Classic Leather Runners", 160, "shoes", { sole = 0.16, panel = true, laces = true, soleC = "sole" }, F, "#F5F5F2", "bright", "#FF3B30", { "lowrider", "street", "retro" }, T)
+I("shoe_two_tone", "Shoes", "Two-Tone Dress Shoes", 260, "shoes", { m = "leather", sole = 0.1, panel = true }, "leather", "#F5F5F2", "leather", "#111111", { "lowrider", "retro" })
 I("shoe_skate", "Shoes", "Suede Skate Shoes", 160, "shoes", { sole = 0.2, panel = true, gum = true }, F, "#111111", F, "#F5F5F2", { "street", "retro" })
 I("shoe_runner", "Shoes", "Mesh Running Shoes", 180, "shoes", { sole = 0.24, panel = true }, "bright", "#00A2FF", S, "#F5F5F2", { "sport" })
 I("shoe_slides", "Shoes", "Slides & Socks", 80, "shoes", { slides = true }, F, "#111111", F, "#F5F5F2", { "street", "coast", "hood" }, T)
@@ -366,6 +397,8 @@ I("hat_bucket", "Head", "Bucket Hat", 120, "bucket", {}, F, "#111111", F, "#1111
 I("hat_durag", "Head", "Silky Durag", 120, "durag", { hideHairTop = true }, F, "#111111", F, "#111111", { "hood", "rap" }, T)
 I("hat_durag_velvet", "Head", "Velvet Durag", 150, "durag", { velvet = true }, F, "#7A1022", F, "#7A1022", { "hood", "rap" }, T)
 I("hat_head_bandana", "Head", "Bandana Head Wrap", 80, "headwrap", {}, F, "#B3122E", F, "#F5F5F2", { "hood", "western", "street" })
+I("hat_folded_bandana", "Head", "Folded Bandana Headband", 80, "foldedband", {}, F, "#111111", nil, nil, { "lowrider", "hood" }, T)
+I("hat_hairnet", "Head", "Hairnet", 30, "hairnet", { noFlatten = true }, F, "#111111", nil, nil, { "lowrider", "work" })
 I("hat_headband", "Head", "Sweatband", 40, "headband", { noFlatten = true }, F, "#F5F5F2", nil, nil, { "sport", "retro" })
 I("hat_fedora", "Head", "Classic Fedora", 220, "fedora", {}, F, "#2B2B2B", F, "#111111", { "business", "retro", "heist" })
 I("hat_wide_fedora", "Head", "Wide-Brim Felt Hat", 240, "fedora", { wide = true }, F, "#5C3A21", F, "#111111", { "western", "tiktok" })
@@ -457,6 +490,8 @@ chain("chain_bolt", "Lightning Bolt Pendant", 600, { style = "cuban", drop = 0.7
 chain("chain_palm", "Palm Tree Pendant", 500, { style = "rope", drop = 0.8, w = 0.035, pendant = "palm" }, "#E2B240", "#7CFF9B", { "coast" })
 chain("chain_diamond", "Solitaire Diamond Pendant", 900, { style = "box", drop = 0.5, w = 0.025, pendant = "diamond" }, "#D4D6DC", "#ECF6FF", { "business", "cute" })
 chain("chain_layered", "Layered Gold Chains", 800, { style = "rope", drop = 0.85, w = 0.04, layer = "cuban" }, "#E2B240", "#ECF6FF", { "rap", "street" }, T)
+chain("chain_rosary", "Rosary Beads", 300, { style = "bead", drop = 0.9, w = 0.05, pendant = "cross" }, "#2A2A2A", "#ECF6FF", { "lowrider" }, T)
+chain("chain_rosary_gold", "Gold Rosary", 650, { style = "bead", drop = 0.9, w = 0.05, pendant = "cross" }, "#E2B240", "#ECF6FF", { "lowrider", "rap" })
 chain("chain_dogtags", "Dog Tags", 120, { style = "bead", drop = 0.75, w = 0.025, pendant = "dogtags" }, "#D4D6DC", "#ECF6FF", { "military" })
 chain("chain_pearls", "Pearl Strand", 600, { style = "pearl", drop = 0.4, w = 0.07 }, "#F0EAE0", "#ECF6FF", { "tiktok", "rap", "business" }, T)
 chain("chain_puka", "Puka Shell Necklace", 120, { style = "puka", drop = 0.35, w = 0.06 }, "#F5F5F2", "#B98A5E", { "coast", "retro" })
@@ -557,6 +592,22 @@ C.LOOKS = {
 		Bottom = e("bot_baggy"), Shoes = e("shoe_hightop"), Neck = e("chain_rope_gold"), Waist = e("belt_pocket_bandana") }, T),
 	look("hood_durag", "Durag & Puffer", "hood", { Head = e("hat_durag"), Top = e("top_hoodie"), Outer = e("out_puffer_shine"), Bottom = e("bot_baggy_black"),
 		Shoes = e("shoe_slides"), Neck = e("chain_cuban_iced"), Ears = e("ear_big_studs"), Grillz = e("grill_gold_top") }, T),
+
+	-- Lowrider (Chicano lowrider culture: fashion only, no gang names, colours or numbers)
+	look("low_classic", "Lowrider Classic", "lowrider", { Hair = e("hair_bald"), Top = e("top_long_white"), Bottom = e("bot_khakis"), Shoes = e("shoe_classic"),
+		Face = e("eye_shades_black"), FacialHair = e("beard_goatee"), Neck = e("chain_rosary"), Tattoo = e("ink_script_familia"),
+		Tattoo2 = e("ink_neck_familia"), Waist = e("belt_leather") }, TN),
+	look("low_flannel", "Top-Button Flannel", "lowrider", { Hair = e("hair_slick_back"), Head = e("hat_hairnet"), Top = e("top_button_flannel"),
+		Bottom = e("bot_work_creased"), Shoes = e("shoe_classic"), Face = e("eye_shades_black"), FacialHair = e("beard_pencil"),
+		Tattoo2 = e("ink_face_cross") }, TN),
+	look("low_zoot", "Zoot Suit Sharp", "lowrider", { Hair = e("hair_pomp"), Head = e("hat_fedora", "#111111"), Top = e("top_dress_shirt"), Neck = e("neck_tie_black"),
+		Outer = e("out_zoot"), Bottom = e("bot_zoot"), Shoes = e("shoe_two_tone"), Waist = e("belt_wallet_chain"), FacialHair = e("beard_pencil") }, TN),
+	look("low_cruiser", "Sunday Cruiser", "lowrider", { Hair = e("hair_buzz_fade"), Head = e("hat_folded_bandana"), Top = e("top_tank"), Outer = e("out_suspenders"),
+		Bottom = e("bot_shorts_socks"), Shoes = e("shoe_classic"), Tattoo = e("ink_sleeves"), Neck = e("chain_rosary_gold"),
+		Face = e("eye_shades_black") }, TN),
+	look("low_barrio", "Barrio Sleeves", "lowrider", { Hair = e("hair_buzz"), Top = e("top_tank"), Bottom = e("bot_work_creased", "#111111"), Shoes = e("shoe_classic", "#111111"),
+		Tattoo = e("ink_sleeves"), Tattoo2 = e("ink_neck_blessed"), FacialHair = e("beard_goatee"), Neck = e("chain_cross_gold"),
+		Face = e("eye_shades_black"), Wrist = e("watch_gold") }, T),
 
 	-- Rap Royalty
 	look("rap_iced_out", "Iced Out Rapper", "rap", { Hair = e("hair_locs_gold"), Top = e("top_tee_black"), Outer = e("out_fur"), Bottom = e("bot_leather"),

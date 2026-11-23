@@ -5,9 +5,9 @@ bank robber in a ski mask, a beach local or a knight. It takes the *Ready Player
 everyone, but **every item is original**. Names are generic ("Iced Cuban Link Chain", "Loose Bandana"). Nothing copies
 a brand logo, a real person, or a specific character from a game or movie.
 
-**Status: written and checked offline, not yet tested in Studio.** The Lua passes a syntax check. Every one of the 405
-items has been run through its geometry builder: 3,538 pieces, no errors, no NaNs, no empty sizes. The catalog checker
-passes too.
+**Status: written and checked offline, not yet tested in Studio.** The Lua passes a syntax check. All 435 items
+have been run through the geometry builder with no errors, and the catalog checker passes. Preset looks have been rendered
+on the Neon Coast male body from the real catalog and builder code, to catch pieces that sit wrong.
 
 ## Install (one drag)
 
@@ -46,12 +46,12 @@ studio goes through the same code.
 
 ## What players get
 
-- **405 items in 20 slots:** hair (62 styles), beards (17), tops (56, including jumpsuits, dresses and armour),
+- **435 items in 22 slots:** hair (62 styles), beards (17), tops (56, including jumpsuits, dresses and armour),
   jackets and vests (41), bottoms (28), shoes (21), hats (40), glasses (15), masks (15). Bling: 25 chains, each wearable in two
   layered slots, 9 grillz, 8 earrings, watches, bracelets and rings. Also gloves, belts and back items.
 - **Two colours per item**, from realistic palettes: 20 skin tones from very fair to very deep, natural and dyed hair
   colours, fabric, denim, leather, metals (gold, white gold, rose gold, platinum) and gems.
-- **79 preset looks** in 17 "worlds": Realistic Hood, Rap Royalty, Streetwear, For You Page, Business, Military,
+- **84 preset looks** in 18 "worlds": Realistic Hood, Lowrider, Rap Royalty, Streetwear, For You Page, Business, Military,
   Heist Crew, Neon Coast, Sports, Jobs, Retro, Wild West, Sci-Fi, Fantasy, Heroes & Villains, Spooky and Cute.
   One tap tries on the whole outfit, and you can then tweak any piece. Presets never change your skin tone.
 - **The studio screen:**
@@ -67,10 +67,23 @@ studio goes through the same code.
   nothing gets overwritten.
 - **New players** get the studio on their first spawn so they make their character.
 
+## Tattoos and Lowrider
+
+- **Tattoos** have two slots: Arm Ink (full and half sleeves, forearm script, roses, calves) and Face & Neck Ink (neck
+  script, hand script, a small star or cross under the eye, eyebrow script). They are black-and-grey: a soft grey wash
+  with linework on top.
+- Ink only appears on **bare skin**. A long-sleeve top hides a sleeve, and nothing is ever drawn on the torso, because
+  that's always covered. Roblox requires torso clothing ("modesty layers") on human avatars, so there are no shirtless
+  chest or back pieces. A tank top shows the most ink.
+- The **Lowrider** collection is Chicano lowrider fashion: creased khakis and work pants, white tees and tanks,
+  top-button flannels, zoot suits with suspenders, folded bandanas, hairnets, rosaries, two-tone shoes and script ink.
+  It's fashion only, with no gang names, colours, numbers or symbols, so it stays inside Roblox rules.
+
 ## How the 3D pieces work
 
 `NCLookBuilder` builds every item from plain parts (balls, blocks, cylinders, wedges) welded to the body part they sit
-on. Pieces are massless, with no collision and no touch or query. Sizes come from the body's own attachments: the head
+on. Pieces are massless, with no collision and no touch or query. "Ball" pieces are blocks with a sphere mesh, so they
+stretch into ellipsoids (a plain Ball part is always a perfect sphere). Fitted cylinders hug the limb they wrap. Sizes come from the body's own attachments: the head
 radius from FaceCenter to FaceFront, and the torso unit from Neck to BodyFront. That way the same item fits the
 6.6-stud Neon Coast human and a stock Roblox avatar.
 - The body itself is recoloured per region: shirt on the torso and arms, pants on the hips and legs, shoes on the
