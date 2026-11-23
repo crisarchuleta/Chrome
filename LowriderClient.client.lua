@@ -1322,7 +1322,7 @@ end
 local CAM_OF_MOD = { -- a few mods look somewhere else than their category
 	part_RearBumper = "rear34", part_Spoiler = "rear34", part_Exhaust = "rear34", part_Continental = "rear34", part_Skirts = "side",
 	part_Mirrors = "front34", part_Visor = "front34", part_Glow = "side", taillights = "rear34", part_Trunk = "rear34",
-	fin_Trunk = "rear34", part_Plaque = "rear34", plaque = "rear34", part_Dice = "interior", col_Fur = "interior",
+	fin_Trunk = "rear34", part_Plaque = "rear34", part_Taillights = "rear34", part_SideTrim = "side", part_Audio = "rear34", plaque = "rear34", part_Dice = "interior", col_Fur = "interior",
 }
 local camConn, camEye, camTgt, yaw = nil, nil, nil, 0
 local camPrevType

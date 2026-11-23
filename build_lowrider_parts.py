@@ -27,6 +27,9 @@ COLORS.update({"Dark": (0.05, 0.05, 0.06), "Light": (1.0, 0.97, 0.86), "Seat": (
                "Rubber": (0.07, 0.07, 0.08), "Top": (0.04, 0.04, 0.045), "Spokes": (0.86, 0.87, 0.90), "Dish": (0.86, 0.87, 0.90), "Band": (0.96, 0.96, 0.94)})
 
 
+COLORS.update({"Head": (1.0, 0.97, 0.86), "Tail": (0.85, 0.05, 0.05)})
+
+
 def mat_color(kind):
     info = OPT_INFO.get(kind) or WHEEL_INFO.get(kind)
     if info:
@@ -287,6 +290,143 @@ def tops():
     box(opt(S, "Down", "Chrome"), -(xs_t - 0.05), yA1 - 0.08, ROOF - 0.1, xs_t - 0.05, yA1 + 0.1, ROOF + 0.04, bev=0.03)
 
 
+
+def headlights():
+    S = "Headlights"
+    yb, yf, z = -10.2, -10.47, 1.92
+    for s in (-1, 1):
+        # Quad: four round lamps in chrome rings (the original look)
+        for x in (2.62, 3.18):
+            cyl(opt(S, "Quad", "Head"), (s * x, yb, z), (s * x, yf, z), 0.24, seg=20, bev=0.03)
+            ring(opt(S, "Quad", "Chrome"), (s * x, yf + 0.03, z), (0, 1, 0), 0.23, 0.31, 0.08, seg=24)
+        # Dual: one big round lamp each side
+        cyl(opt(S, "Dual", "Head"), (s * 2.9, yb, z), (s * 2.9, yf, z), 0.34, seg=24, bev=0.04)
+        ring(opt(S, "Dual", "Chrome"), (s * 2.9, yf + 0.03, z), (0, 1, 0), 0.33, 0.43, 0.09, seg=28)
+        # Square: rectangular quads in one chrome bezel
+        for x in (2.62, 3.18):
+            box(opt(S, "Square", "Head"), s * x - 0.24, yf, z - 0.2, s * x + 0.24, yb, z + 0.2, bev=0.04)
+        box(opt(S, "Square", "Chrome"), s * 2.9 - 0.62, yf + 0.02, z - 0.27, s * 2.9 + 0.62, yf + 0.06, z - 0.21)
+        box(opt(S, "Square", "Chrome"), s * 2.9 - 0.62, yf + 0.02, z + 0.21, s * 2.9 + 0.62, yf + 0.06, z + 0.27)
+        # Frenched: lamps set back in body-colour tunnels
+        for x in (2.62, 3.18):
+            cyl(opt(S, "Frenched", "Head"), (s * x, yb + 0.1, z), (s * x, yb - 0.08, z), 0.22, seg=20)
+            cyl(opt(S, "Frenched", "Body"), (s * x, yb, z), (s * x, yf - 0.06, z), 0.3, seg=24, r2=0.29)
+            cyl(opt(S, "Frenched", "Dark"), (s * x, yf - 0.06, z), (s * x, yf - 0.065, z), 0.24, seg=20)
+        # Hooded: quads under body-colour eyebrows
+        for x in (2.62, 3.18):
+            cyl(opt(S, "Hooded", "Head"), (s * x, yb, z), (s * x, yf, z), 0.24, seg=20, bev=0.03)
+            ring(opt(S, "Hooded", "Chrome"), (s * x, yf + 0.03, z), (0, 1, 0), 0.23, 0.3, 0.06, seg=24)
+        prism(opt(S, "Hooded", "Body"), [(s * 2.25, yf + 0.05, z + 0.3), (s * 3.55, yf + 0.05, z + 0.3), (s * 3.55, yf - 0.32, z + 0.22), (s * 2.25, yf - 0.32, z + 0.22)],
+              [(s * 2.25, yf + 0.05, z + 0.38), (s * 3.55, yf + 0.05, z + 0.38), (s * 3.55, yf - 0.32, z + 0.3), (s * 2.25, yf - 0.32, z + 0.3)])
+
+
+def taillights():
+    S = "Taillights"
+    yb, yf, z = 10.25, 10.55, 1.98
+    for s in (-1, 1):
+        for x in (1.55, 2.3, 3.02):                      # Triple round (original)
+            cyl(opt(S, "Triple", "Tail"), (s * x, yb, z), (s * x, yf, z), 0.23, seg=20, bev=0.03)
+            ring(opt(S, "Triple", "Chrome"), (s * x, yf - 0.03, z), (0, 1, 0), 0.22, 0.29, 0.08, seg=24)
+        for x in (1.9, 2.85):                            # Twin big rounds
+            cyl(opt(S, "Twin", "Tail"), (s * x, yb, z), (s * x, yf, z), 0.3, seg=24, bev=0.04)
+            ring(opt(S, "Twin", "Chrome"), (s * x, yf - 0.03, z), (0, 1, 0), 0.29, 0.37, 0.08, seg=28)
+        box(opt(S, "Oval", "Tail"), s * 1.4, yb, z - 0.17, s * 3.3, yf, z + 0.17, bev=0.15)   # Oval pods
+        box(opt(S, "Oval", "Chrome"), s * 1.32, yf - 0.06, z - 0.23, s * 3.38, yf - 0.02, z + 0.23, bev=0.18)
+        for zz in (1.72, 2.22):                          # Stacked pairs at the corners
+            cyl(opt(S, "Stacked", "Tail"), (s * 3.0, yb, zz), (s * 3.0, yf, zz), 0.2, seg=20, bev=0.03)
+            ring(opt(S, "Stacked", "Chrome"), (s * 3.0, yf - 0.03, zz), (0, 1, 0), 0.19, 0.26, 0.07, seg=24)
+    box(opt(S, "Bar", "Tail"), -3.35, yb, z - 0.12, 3.35, yf, z + 0.12)                     # full-width bar
+    box(opt(S, "Bar", "Chrome"), -3.42, yf - 0.05, z - 0.17, 3.42, yf - 0.01, z - 0.12)
+    box(opt(S, "Bar", "Chrome"), -3.42, yf - 0.05, z + 0.12, 3.42, yf - 0.01, z + 0.17)
+
+
+def side_trim():
+    S = "SideTrim"
+    a0, a1 = WY_F + ARCH + 0.25, WY_R - ARCH - 0.25
+    for s in (-1, 1):
+        x = s * (W + 0.02)
+        k = opt(S, "Classic", "Chrome")                  # spear between the arches + fender spears + rocker moulding
+        beam(k, (x, a0, 2.12), (x, a1, 2.12), 0.06, 0.07)
+        beam(k, (x, WY_F - ARCH - 0.2, 2.12), (s * (W - 0.02), -9.9, 2.12), 0.06, 0.07)
+        beam(k, (x, WY_R + ARCH + 0.2, 2.12), (s * (W - 0.02), 10.0, 2.12), 0.06, 0.07)
+        beam(k, (s * (W * 0.975 + 0.02), WY_F + ARCH + 0.2, 0.98), (s * (W * 0.975 + 0.02), WY_R - ARCH - 0.2, 0.98), 0.05, 0.12)
+        k = opt(S, "Belt", "Chrome")                     # one long strip on the belt line, nose to tail
+        beam(k, (s * (W - 0.01), -10.0, 2.64), (s * (W - 0.01), 10.1, 2.64), 0.07, 0.08)
+        k = opt(S, "Double", "Chrome")                   # two parallel spears + rocker moulding
+        for z in (2.12, 1.6):
+            beam(k, (x, a0, z), (x, a1, z), 0.05, 0.06)
+        beam(k, (s * (W * 0.975 + 0.02), WY_F + ARCH + 0.2, 0.98), (s * (W * 0.975 + 0.02), WY_R - ARCH - 0.2, 0.98), 0.05, 0.12)
+        k = opt(S, "Sweep", "Chrome")                    # a spear sweeping down from the front fender
+        beam(k, (x, a0, 2.45), (x, a1, 1.45), 0.06, 0.08)
+        beam(k, (x, WY_F - ARCH - 0.2, 2.45), (s * (W - 0.02), -9.9, 2.45), 0.05, 0.07)
+        k = opt(S, "Wide", "Chrome")                     # wide brushed rocker panel + spear
+        box(k, s * (W - 0.02), a0, 0.82, s * (W + 0.04), a1, 1.18, bev=0.02)
+        beam(k, (x, a0, 2.12), (x, a1, 2.12), 0.06, 0.07)
+
+
+def door_panels():
+    S = "Doors"
+    for s in (-1, 1):
+        for v in ("Rolls", "Diamond", "Smooth", "WoodInsert", "Channel"):
+            box(opt(S, v, "Seat"), s * 3.3 - 0.1, -2.4, 1.05, s * 3.3 + 0.1, 5.0, 2.75)
+        xi = s * 3.18
+        for k in range(6):                                # tuck-and-roll
+            z = 1.3 + k * 0.22
+            box(opt(S, "Rolls", "SeatTrim"), xi - 0.03, -2.2, z, xi + 0.03, 4.8, z + 0.06)
+        for i in range(12):                               # diamond buttons
+            for j in range(4):
+                y = -2.0 + i * 0.58 + (0.29 if j % 2 else 0)
+                cyl(opt(S, "Diamond", "SeatTrim"), (xi + s * 0.02, y, 1.45 + j * 0.3), (xi - s * 0.03, y, 1.45 + j * 0.3), 0.04, seg=6)
+        box(opt(S, "Smooth", "Chrome"), xi - 0.03, -2.2, 2.2, xi + 0.03, 4.8, 2.26)          # smooth + chrome strip + armrest
+        box(opt(S, "Smooth", "SeatTrim"), xi - s * 0.15, -0.6, 1.75, xi + s * 0.02, 1.6, 1.95, bev=0.05)
+        box(opt(S, "WoodInsert", "Wood"), xi - 0.03, -2.0, 1.95, xi + 0.03, 4.6, 2.45)        # wood band
+        box(opt(S, "WoodInsert", "Chrome"), xi - 0.035, -2.0, 1.9, xi + 0.035, 4.6, 1.94)
+        for i in range(10):                               # wide vertical channels
+            y = -2.1 + i * 0.7
+            box(opt(S, "Channel", "SeatTrim"), xi - 0.03, y, 1.25, xi + 0.03, y + 0.06, 2.6)
+
+
+def headliner():
+    S = "Headliner"
+    z = 4.44
+    for v in ("Plain", "Diamond", "Pleated", "Stars"):
+        box(opt(S, v, "Seat"), -2.85, -0.7, z, 2.85, 3.2, z + 0.06)
+    for i in range(9):
+        for j in range(6):
+            x = -2.4 + i * 0.6 + (0.3 if j % 2 else 0)
+            cyl(opt(S, "Diamond", "SeatTrim"), (x, -0.4 + j * 0.62, z - 0.02), (x, -0.4 + j * 0.62, z + 0.01), 0.04, seg=6)
+    for i in range(12):
+        x = -2.6 + i * 0.47
+        box(opt(S, "Pleated", "SeatTrim"), x - 0.03, -0.6, z - 0.03, x + 0.03, 3.1, z)
+    import random as _r
+    rnd = _r.Random(7)
+    for i in range(60):                                   # fibre-optic star ceiling
+        x, y = rnd.uniform(-2.7, 2.7), rnd.uniform(-0.6, 3.1)
+        cube(opt(S, "Stars", "Neon"), Vector((x, y, z - 0.01)), (0.035, 0.035, 0.02))
+
+
+def audio():
+    S = "Audio"
+    for s in (-1, 1):
+        x, y, z = s * 1.9, 4.75, 3.02
+        for v in ("Speakers", "Neon"):
+            box(opt(S, v, "Dark"), x - 0.55, y - 0.3, z - 0.06, x + 0.55, y + 0.3, z + 0.04, bev=0.04)
+            ring(opt(S, v, "Chrome"), (x, y, z + 0.05), (0, 0, 1), 0.2, 0.26, 0.04, seg=24)
+        ring(opt(S, "Neon", "Neon"), (x, y, z + 0.06), (0, 0, 1), 0.27, 0.32, 0.03, seg=24)
+    box(opt(S, "Speakers", "Dark"), -0.6, 4.45, 2.96, 0.6, 5.05, 3.06)   # centre tweeter bar
+    box(opt(S, "Neon", "Dark"), -0.6, 4.45, 2.96, 0.6, 5.05, 3.06)
+
+
+def pedals():
+    S = "Pedals"
+    for v, m in (("Stock", "Dark"), ("Billet", "Chrome"), ("Chain", "Chrome")):
+        k = opt(S, v, m)
+        box(k, 1.0, -2.45, 1.25, 1.35, -2.38, 1.55, bev=0.02)           # brake
+        box(k, 1.65, -2.45, 1.2, 1.85, -2.38, 1.6, bev=0.02)            # gas
+    for i in range(5):
+        torus(opt("Pedals", "Chain", "Chrome"), (1.75, -2.36, 1.24 + i * 0.09), (0, 0, 1) if i % 2 else (1, 0, 0), 0.04, 0.012, seg=8, seg2=4)
+
+
 def continental():
     S = "Continental"
     k = opt(S, "Kit", "Chrome")
@@ -345,6 +485,16 @@ def seat_bench(v, tuck):
             for i in range(9):
                 x = -2.7 + i * 0.675
                 box(t, x - 0.03, yb + 0.1, 1.74, x + 0.03, yb + depth - 0.4, 1.78)
+        elif tuck == "channel":  # wide vertical channels, piped
+            for i in range(7):
+                x = -2.6 + i * 0.86
+                box(t, x - 0.04, yb + depth - 0.42, 1.85, x + 0.04, yb + depth - 0.3, 3.25)
+                box(t, x - 0.04, yb + 0.05, 1.74, x + 0.04, yb + depth - 0.4, 1.8)
+        elif tuck == "pillow":  # puffy horizontal pillows across the back
+            for j in range(4):
+                z = 1.98 + j * 0.34
+                cyl(k, (-2.95, yb + depth - 0.38, z), (2.95, yb + depth - 0.38, z), 0.15, seg=12)
+                box(t, -3.0, yb + depth - 0.4, z + 0.15, 3.0, yb + depth - 0.33, z + 0.18)
         else:  # split: two halves and a centre armrest
             box(t, -0.25, yb + 0.3, 1.75, 0.25, yb + depth - 0.4, 2.15, bev=0.08)
             for s in (-1, 1):
@@ -573,6 +723,15 @@ def build_options():
     seat_bench("Rolls", "rolls")
     seat_bench("Diamond", "diamond")
     seat_bench("SplitBench", "split")
+    seat_bench("Channel", "channel")
+    seat_bench("Pillow", "pillow")
+    headlights()
+    taillights()
+    side_trim()
+    door_panels()
+    headliner()
+    audio()
+    pedals()
     seat_buckets()
     steering()
     dashes()

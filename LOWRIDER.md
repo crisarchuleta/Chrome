@@ -63,6 +63,9 @@ the road.
 | Front bumper | Classic chrome, Bullet guards, Split with plate frame, Tube push bar, Shaved roll pan |
 | Rear bumper | Classic, Bullet, Tube, Shaved |
 | Grille | Bars, Eggcrate, Waterfall, Diamond mesh, Billet |
+| Headlights | Quad rounds, Dual big rounds, Square quads, Frenched (tunnelled), Hooded eyebrows (bezels take a finish, lamps any colour) |
+| Taillights | Triple rounds, Twin big rounds, Oval pods, Stacked pairs, Full-width light bar |
+| Side trim | Classic spear + rocker, Double spear, Sweep spear, Full-length belt strip, Wide rocker panel, Shaved |
 | Hood | Chrome spear, Smooth, Louvers, Cowl, Scoop (+ ornament: Sunburst, Wings, Comet) |
 | Spoiler | Ducktail, Wing, Tail fins with fin lights (rides on the trunk lid) |
 | Side skirts | Rocker panels, Chrome plates, Rear fender skirts |
@@ -70,7 +73,9 @@ the road.
 | Visor / exhaust / continental | Chrome or painted visor; dual tips, turndowns, side pipes; continental kit |
 | Underglow | neon strips + real lights under the car, any colour |
 | Trunk | Street (2 pumps, 6 batteries), Show (4 upright pumps, mirror floor, battery rack) |
-| Seats | Tuck-and-roll, Diamond tufted, Split bench + armrest, Buckets + console |
+| Seats | Tuck-and-roll, Diamond tufted, Channel stitched, Pillow top, Split bench + armrest, Buckets + console |
+| Door panels | Tuck-and-roll, Diamond tufted, Channel stitched, Smooth + chrome strip + armrest, Wood insert |
+| Headliner / audio / pedals | Plain, Pleated, Diamond, Star ceiling; 6x9 rear deck speakers (chrome or neon rings); stock, billet or chain pedals |
 | Steering wheel | Chain link, Wood rim, Sport, Banjo, Mini chain |
 | Dash | Classic chrome strip, Wood panel, Billet slats, Digital + neon; a live speedometer on every one |
 | Shifter | Column, Chain-link, Crystal knob, Wood knob, T-handle |

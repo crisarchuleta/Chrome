@@ -543,3 +543,4 @@ Full notes and install steps in `LOWRIDER.md`.
   finishes per chrome group, seat material + colours, tint, light colours, engine tunes; 15 liveries.
   Parts are in `build_lowrider_parts.py`; options and prices are in `NCLowriderConfig.Mods`.
   Roofs: hardtop, landau, full vinyl, convertible top down. 3 saved build slots, random build, back to stock.
+  Headlight, taillight and side trim styles; 6 seat styles, door panels, headliners, rear deck speakers, pedals.

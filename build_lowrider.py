@@ -358,28 +358,13 @@ def build_car():
 
     # ---- lights and side trim (bumpers, grille, mirrors etc. are swappable parts: build_lowrider_parts.py)
     for s in (-1, 1):
-        for x in (2.62, 3.18):
-            cyl("Headlight", (s * x, -10.2, 1.92), (s * x, -10.47, 1.92), 0.24, seg=20, bev=0.03)
-            ring("Chrome", (s * x, -10.44, 1.92), (0, 1, 0), 0.23, 0.31, 0.08, seg=24)
-        for x in (1.55, 2.3, 3.02):                                        # triple round taillights
-            cyl("Taillight", (s * x, 10.25, 1.98), (s * x, 10.55, 1.98), 0.23, seg=20, bev=0.03)
-            ring("Chrome", (s * x, 10.52, 1.98), (0, 1, 0), 0.22, 0.29, 0.08, seg=24)
         box("Chrome", s * 0.9, 10.44, 1.62, s * 3.4, 10.5, 1.66)            # rear cove trim
-        # side spear (between the arches), rocker moulding, door seams, handle, mirror
-        beam("Chrome", (s * (W + 0.02), WY_F + ARCH + 0.25, 2.12), (s * (W + 0.02), WY_R - ARCH - 0.25, 2.12), 0.06, 0.07)
-        beam("Chrome", (s * (W + 0.02), WY_F - ARCH - 0.2, 2.12), (s * (W - 0.02), -9.9, 2.12), 0.06, 0.07)
-        beam("Chrome", (s * (W + 0.02), WY_R + ARCH + 0.2, 2.12), (s * (W - 0.02), 10.0, 2.12), 0.06, 0.07)
-        beam("Chrome", (s * (W * 0.975 + 0.02), WY_F + ARCH + 0.2, 0.98), (s * (W * 0.975 + 0.02), WY_R - ARCH - 0.2, 0.98), 0.05, 0.12)
+        # door seams + handle (lights, side trim, door panels are swappable parts)
         for y in (-2.65, 2.35):
             box("Seam", s * W - 0.02, y - 0.015, 0.95, s * W + 0.02, y + 0.015, 2.6)
         box("Chrome", s * (W + 0.03) - 0.04, 1.6, 2.38, s * (W + 0.03) + 0.04, 2.15, 2.46, bev=0.02)
     # ---- interior shell: carpet, door cards, steering column (seats, dash, wheel, shifter are parts)
     box("Carpet", -3.2, -2.6, 0.95, 3.2, 5.6, 1.05)
-    for s in (-1, 1):
-        box("Interior", s * 3.3 - 0.1, -2.4, 1.05, s * 3.3 + 0.1, 5.0, 2.75)           # door cards
-        for k in range(6):
-            z = 1.3 + k * 0.22
-            box("Tuck", s * 3.18 - 0.03, -2.2, z, s * 3.18 + 0.03, 4.8, z + 0.06)
     cyl("Dash", (1.55, -2.3, 2.45), (1.55, -1.75, 2.85), 0.06, seg=10)               # column
     # ---- trunk lid (hinged at its front edge); the trunk setups are parts
     lid = bmesh.new()
@@ -929,7 +914,8 @@ PAINT = lin(COLORS["Body"])
 plain = {}
 BASE_BUILD = {"FrontBumper": "Classic", "RearBumper": "Classic", "Grille": "Bars", "Hood": "Spear", "Mirrors": "Bullet",
               "Seats": "Rolls", "Steering": "Chain", "Dash": "Classic", "Shifter": "Column", "Trunk": "Street",
-              "Rim": "Wire100", "KO": "Bar2", "Tire": "Classic", "Band": "ClassicThin"}
+              "Rim": "Wire100", "KO": "Bar2", "Tire": "Classic", "Band": "ClassicThin",
+              "Headlights": "Quad", "Taillights": "Triple", "SideTrim": "Classic", "Doors": "Rolls", "Headliner": "Plain", "Pedals": "Stock"}
 
 
 def part_visible(ob, build):
@@ -974,38 +960,40 @@ def shot(name, loc, tgt):
 show_livery("flames")
 shot("flames_front34", (-17, -24, 7.5), (0, -1.5, 1.8))
 shot("flames_side", (26, 0.5, 3.2), (0, 0.5, 2.0))
-show_livery("showcar", {"FrontBumper": "Bullet", "RearBumper": "Bullet", "Grille": "Waterfall", "Ornament": "Wings", "Skirts": "Fender",
+show_livery("showcar", {"Taillights": "Stacked", "FrontBumper": "Bullet", "RearBumper": "Bullet", "Grille": "Waterfall", "Ornament": "Wings", "Skirts": "Fender",
                         "Visor": "Chrome", "Continental": "Kit", "Trunk": "Show", "Rim": "Wire72", "KO": "Bar3", "Band": "ClassicWide"})
 shot("showcar_front34", (-20, -16, 9), (0, 0.5, 1.8))
 shot("showcar_rear34", (15, 25, 8.5), (0, 2.5, 1.8))
 show_livery("purple_lace", {"Hood": "Louvers", "Spoiler": "Ducktail"}, paint=(0.25, 0.05, 0.4))
 shot("purple_lace_top", (8, -14, 22), (0, 0.5, 1.5))
-show_livery("lightning", {"FrontBumper": "Tube", "RearBumper": "Tube", "Grille": "Mesh", "Hood": "Scoop", "Spoiler": "Wing", "Skirts": "Rocker",
+show_livery("lightning", {"Headlights": "Square", "Taillights": "Bar", "SideTrim": "", "FrontBumper": "Tube", "RearBumper": "Tube", "Grille": "Mesh", "Hood": "Scoop", "Spoiler": "Wing", "Skirts": "Rocker",
                      "Mirrors": "Rect", "Exhaust": "Side", "Glow": "On", "Rim": "Turbine", "KO": "Cap", "Tire": "Balloon", "Band": ""},
             paint=(0.02, 0.15, 0.55))
 shot("street_front34", (-17, -24, 7.5), (0, -1.5, 1.8))
-show_livery("retro_waves", {"FrontBumper": "Shaved", "RearBumper": "Shaved", "Grille": "Billet", "Hood": "Cowl", "Spoiler": "Fins",
+show_livery("retro_waves", {"Headlights": "Frenched", "SideTrim": "Belt", "FrontBumper": "Shaved", "RearBumper": "Shaved", "Grille": "Billet", "Hood": "Cowl", "Spoiler": "Fins",
                      "Mirrors": "Stem", "Ornament": "Sun", "Exhaust": "Turndown", "Rim": "Steelie", "KO": "", "Tire": "Skinny", "Band": "SkinnyDouble"},
             paint=(0.6, 0.85, 0.75))
 shot("retro_front34", (-17, -24, 7.5), (0, -1.5, 1.8))
-show_livery("tropical", {"Skirts": "Fender", "Continental": "Kit", "RearBumper": "Bullet", "Rim": "Star", "KO": "Cap"}, paint=(0.02, 0.45, 0.5))
+show_livery("tropical", {"Taillights": "Twin", "SideTrim": "Wide", "Skirts": "Fender", "Continental": "Kit", "RearBumper": "Bullet", "Rim": "Star", "KO": "Cap"}, paint=(0.02, 0.45, 0.5))
 shot("tropical_rear34", (15, 25, 8.5), (0, 2.5, 1.8))
-show_livery("scallops", {"Grille": "Eggcrate", "Hood": "", "Ornament": "Comet", "Visor": "Body", "Rim": "Split"}, paint=(0.05, 0.05, 0.07))
+show_livery("scallops", {"Headlights": "Hooded", "SideTrim": "Sweep", "Grille": "Eggcrate", "Hood": "", "Ornament": "Comet", "Visor": "Body", "Rim": "Split"}, paint=(0.05, 0.05, 0.07))
 shot("scallops_front34", (-17, -24, 7.5), (0, -1.5, 1.8))
-show_livery("roses", {"Rim": "Mesh", "KO": "Bar3"}, paint=(0.9, 0.85, 0.75))
+show_livery("roses", {"SideTrim": "Double", "Rim": "Mesh", "KO": "Bar3"}, paint=(0.9, 0.85, 0.75))
 shot("roses_side", (26, 0.5, 3.2), (0, 0.5, 2.0))
-show_livery("flames_teal", {"Top": "Down", "Seats": "Diamond", "Steering": "Wood", "Dash": "Wood", "Grille": "Waterfall",
+show_livery("flames_teal", {"Headlights": "Dual", "Top": "Down", "Doors": "Diamond", "Audio": "Neon", "Seats": "Diamond", "Steering": "Wood", "Dash": "Wood", "Grille": "Waterfall",
                             "Skirts": "Fender", "Rim": "Wire72", "KO": "Bar3", "Band": "ClassicWide"}, paint=(0.04, 0.05, 0.3))
 shot("convertible_front34", (-17, -22, 9.5), (0, -0.5, 1.8))
-show_livery("pinstripe", {"Top": "Landau", "Ornament": "Wings", "Visor": "Chrome", "Mirrors": "Dual", "Rim": "Wire100", "Band": "ClassicDouble"},
+show_livery("pinstripe", {"Taillights": "Oval", "Top": "Landau", "Ornament": "Wings", "Visor": "Chrome", "Mirrors": "Dual", "Rim": "Wire100", "Band": "ClassicDouble"},
             paint=(0.12, 0.02, 0.04))
 shot("landau_rear34", (15, 25, 8.5), (0, 2.5, 1.8))
 show_livery("none")
 shot("clean_side", (26, 0.5, 3.2), (0, 0.5, 2.0))
 # interiors: roof hidden, looking down into the cabin
-for (nm, b) in (("interior_classic", {"Seats": "Rolls", "Steering": "Chain", "Dash": "Classic", "Shifter": "Chain", "Dice": "On"}),
-                ("interior_show", {"Seats": "Diamond", "Steering": "Wood", "Dash": "Wood", "Shifter": "Crystal", "Plaque": "Chain"}),
-                ("interior_sport", {"Seats": "Buckets", "Steering": "Sport", "Dash": "Digital", "Shifter": "THandle"})):
+for (nm, b) in (("interior_classic", {"Seats": "Rolls", "Steering": "Chain", "Dash": "Classic", "Shifter": "Chain", "Dice": "On", "Headliner": ""}),
+                ("interior_show", {"Seats": "Diamond", "Doors": "Diamond", "Steering": "Wood", "Dash": "Wood", "Shifter": "Crystal", "Plaque": "Chain", "Audio": "Speakers", "Headliner": ""}),
+                ("interior_sport", {"Seats": "Buckets", "Doors": "Smooth", "Steering": "Sport", "Dash": "Digital", "Shifter": "THandle", "Audio": "Neon", "Headliner": ""}),
+                ("interior_channel", {"Seats": "Channel", "Doors": "Channel", "Steering": "Banjo", "Dash": "Billet", "Shifter": "WoodKnob", "Headliner": ""}),
+                ("interior_pillow", {"Seats": "Pillow", "Doors": "WoodInsert", "Steering": "Mini", "Dash": "Wood", "Shifter": "Chain", "Pedals": "Chain", "Headliner": ""})):
     show_livery("none", b)
     for ob in scene.objects:
         if ob.get("pkind") in ("PanelRoof", "Glass", "RoofGlass", "RoofBody", "RoofChrome", "Body"):

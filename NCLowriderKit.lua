@@ -836,7 +836,7 @@ local function syncCarParts(car, look)
 	local hinge = lid and lid:FindFirstChild("LidRoot")
 	local hingeInv = CFrame.new(v3(Data.Car.LidHinge)):Inverse()
 	syncParts(folder, t, function(slot)
-		if slot == "Visor" and look.part_Top == "Down" then
+		if (slot == "Visor" or slot == "Headliner") and look.part_Top == "Down" then
 			return "" -- nothing to hang a visor on with the top down
 		end
 		return look["part_" .. slot] or ""
@@ -881,7 +881,8 @@ local DECAL_FACE = { PanelHood = Enum.NormalId.Top, PanelRoof = Enum.NormalId.To
 -- which finish key the chrome pieces of each slot follow (everything else: fin_Trim)
 local FIN_GROUP = {
 	FrontBumper = "Bumpers", RearBumper = "Bumpers", Grille = "Grille", Mirrors = "Mirrors", Exhaust = "Exhaust", Trunk = "Trunk",
-	Steering = "Cabin", Dash = "Cabin", Shifter = "Cabin", Plaque = "Cabin", Rim = "Rim", KO = "KO",
+	Steering = "Cabin", Dash = "Cabin", Shifter = "Cabin", Plaque = "Cabin", Doors = "Cabin", Audio = "Cabin", Pedals = "Cabin",
+	Headlights = "Lights", Taillights = "Lights", Rim = "Rim", KO = "KO",
 }
 
 -- the uploaded image id for a livery's panel ("" if there's none)
@@ -990,7 +991,9 @@ function styleFor(role, look, ctx)
 		return Enum.Material.Glass, tint.color, 0.15, tr
 	elseif mat == "Headlight" then
 		return Enum.Material.Neon, colorOf(look, "headlights", Color3.fromRGB(255, 238, 200)), 0, 0
-	elseif mat == "Taillight" or mat == "Light" then
+	elseif mat == "Head" then
+		return Enum.Material.Neon, colorOf(look, "headlights", Color3.fromRGB(255, 238, 200)), 0, 0
+	elseif mat == "Taillight" or mat == "Light" or mat == "Tail" then
 		return Enum.Material.Neon, colorOf(look, "taillights", Color3.fromRGB(220, 15, 15)), 0, 0
 	elseif mat == "TrunkFloor" then
 		local on = (look.part_Trunk or "") ~= ""
