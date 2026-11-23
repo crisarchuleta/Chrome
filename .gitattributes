@@ -1,0 +1,6 @@
+# Files are mirrored byte-for-byte from the Windows project folder, so git leaves line endings alone.
+* -text
+*.glb binary
+*.fbx binary
+*.blend binary
+*.rbxmx binary

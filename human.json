@@ -1,0 +1,44 @@
+{
+ "tris_total": 13176,
+ "tris": {
+  "LowerTorso": 396,
+  "UpperTorso": 1070,
+  "Head": 2278,
+  "RightUpperArm": 570,
+  "RightLowerArm": 416,
+  "RightHand": 1746,
+  "RightUpperLeg": 616,
+  "RightLowerLeg": 686,
+  "RightFoot": 628,
+  "LeftUpperArm": 570,
+  "LeftLowerArm": 412,
+  "LeftHand": 1902,
+  "LeftUpperLeg": 572,
+  "LeftLowerLeg": 686,
+  "LeftFoot": 628
+ },
+ "bones": 55,
+ "extra_bones": 38,
+ "missing_heat_bones": [
+  "Head"
+ ],
+ "height": 6.6,
+ "hipHeight": 2.7,
+ "reach_over_studs": {
+  "Land": 0.003,
+  "LandHard": 0.0,
+  "Stumble": 0.0,
+  "GetUp": 0.0,
+  "Idle": 0.0,
+  "TiredIdle": 0.0,
+  "Walk": 0.0,
+  "Jog": 0.0,
+  "Sprint": 0.0
+ },
+ "lua_chars": 448307,
+ "strides": {
+  "Walk": 5.0,
+  "Jog": 10.88,
+  "Sprint": 14.0
+ }
+}

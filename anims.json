@@ -1,0 +1,124 @@
+{
+ "reach_over_studs": {
+  "Land": 0.002,
+  "LandHard": 0.0,
+  "Stumble": 0.0,
+  "GetUp": 0.0,
+  "Idle": 0.0,
+  "TiredIdle": 0.0,
+  "Walk": 0.0,
+  "Jog": 0.053,
+  "Sprint": 0.094
+ },
+ "clips": {
+  "Idle": {
+   "dur": 4.0,
+   "samples": 48,
+   "loop": true,
+   "stride": null
+  },
+  "TiredIdle": {
+   "dur": 2.0,
+   "samples": 32,
+   "loop": true,
+   "stride": null
+  },
+  "Fall": {
+   "dur": 1.2,
+   "samples": 24,
+   "loop": true,
+   "stride": null
+  },
+  "Walk": {
+   "dur": 0.64,
+   "samples": 24,
+   "loop": true,
+   "stride": 3.2
+  },
+  "Jog": {
+   "dur": 0.5,
+   "samples": 24,
+   "loop": true,
+   "stride": 8.0
+  },
+  "Sprint": {
+   "dur": 0.42,
+   "samples": 24,
+   "loop": true,
+   "stride": 10.5
+  },
+  "JumpUp": {
+   "dur": 0.4,
+   "samples": 13,
+   "loop": false,
+   "stride": null
+  },
+  "Land": {
+   "dur": 0.32,
+   "samples": 11,
+   "loop": false,
+   "stride": null
+  },
+  "LandHard": {
+   "dur": 0.7,
+   "samples": 22,
+   "loop": false,
+   "stride": null
+  },
+  "Stumble": {
+   "dur": 0.45,
+   "samples": 15,
+   "loop": false,
+   "stride": null
+  },
+  "Roll": {
+   "dur": 0.65,
+   "samples": 21,
+   "loop": false,
+   "stride": null
+  },
+  "Vault": {
+   "dur": 0.55,
+   "samples": 17,
+   "loop": false,
+   "stride": null
+  },
+  "Mantle": {
+   "dur": 0.75,
+   "samples": 23,
+   "loop": false,
+   "stride": null
+  },
+  "Climb": {
+   "dur": 1.3,
+   "samples": 40,
+   "loop": false,
+   "stride": null
+  },
+  "GetUp": {
+   "dur": 0.9,
+   "samples": 28,
+   "loop": false,
+   "stride": null
+  },
+  "Bump": {
+   "dur": 0.45,
+   "samples": 15,
+   "loop": false,
+   "stride": null
+  },
+  "Skid": {
+   "dur": 0.55,
+   "samples": 17,
+   "loop": false,
+   "stride": null
+  },
+  "Pivot": {
+   "dur": 0.38,
+   "samples": 12,
+   "loop": false,
+   "stride": null
+  }
+ },
+ "lua_chars": 128075
+}
