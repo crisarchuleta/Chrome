@@ -79,6 +79,71 @@ studio goes through the same code.
   top-button flannels, zoot suits with suspenders, folded bandanas, hairnets, rosaries, two-tone shoes and script ink.
   It's fashion only, with no gang names, colours, numbers or symbols, so it stays inside Roblox rules.
 
+## Real tattoos on the MakeHuman bodies (NCInk)
+
+The MakeHuman bodies get real printed ink, done the same way as the car vinyls: a transparent PNG on a thin layer
+that hugs the skin, so it looks like part of the skin, not a sticker.
+
+- **Ink layers.** Every body has 13 layers (`Ink_LeftUpperArm`, `Ink_LeftLowerArm`, `Ink_LeftHand`, `Ink_LeftUpperLeg`,
+  `Ink_LeftLowerLeg`, the same on the right, `Ink_NeckHead`, `Ink_NeckUpperTorso`, `Ink_Face`). Each one is a copy of the
+  skin faces lifted 1.1 mm, with the exact same bone weights, so it bends with the body. Clothes sit above it, so
+  anything covered hides the ink. There is never any ink on the torso. The files are `ink/NC_Ink_<Body>.fbx`, one per
+  body, built by `tools/ink/build_ink.py`.
+- **Canvases.** All bodies share the same canvases, so one PNG fits every body without stretching:
+  - Arm: shoulder to wrist, 768×1024, about 0.5 mm per pixel. Text is never mirrored. Positions are mirrored left to
+    right so a piece faces forward on both arms.
+  - Leg: hip to ankle, 640×1024.
+  - Hand: back of the hand, 512×1024.
+  - Neck: wraps around from under the ears, 1024×384.
+  - Face: 768×1024.
+  - Textures are clamped at the edge and each one keeps a clear border, so nothing repeats. Faces that span the cut
+    between body parts are left out of the layers, so no ink smears across a seam.
+- **Library.** There are 110 original tattoos, `ink/ink_catalog.json` → `NCInkCatalog.lua`. About 70% are black & grey
+  and 30% colour:
+
+  | Group | Count |
+  |---|---|
+  | Full sleeves | 12 |
+  | Half sleeves (upper arm) | 9 |
+  | Forearm sleeves | 8 |
+  | Forearm pieces | 17, including 9 script words |
+  | Upper-arm pieces | 8 |
+  | Bands (upper arm and wrist) | 12 |
+  | Hands | 13 |
+  | Neck | 9 |
+  | Face | 7, small, nothing on the eye |
+  | Legs | 15, including leg sleeves, calf pieces and ankle bands |
+
+  The art is drawn in Python (`tools/ink/motifs*.py`, `compose.py`) and rendered with Chromium (`rast.js`) using OFL
+  Google fonts.
+- **PG rules.**
+  - Every word comes from the fixed safe list (`NCInkCatalog.WORDS`: Familia, Lealtad, Respeto, Bendecido, Fe, Amor,
+    Smile Now / Cry Later ...).
+  - There are no gang names, colours, numbers or symbols: no dots, no 13/14/18, no teardrop, no spiderweb.
+  - There are no weapons and no bad words.
+  - Chicano style comes from roses, clouds, clocks, rosaries, drama masks, dice, cards, lowriders, sugar skulls and
+    old-English lettering.
+- **Slots.** A look's ink is `{ L = { upper, lower, hand, leg }, R = { ... }, neck, face }`:
+  - A full sleeve fills both upper and lower on that arm.
+  - A leg sleeve fills the thigh and calf.
+  - `NCInk.Validate` and `NCInk.Price` are for the server.
+- **Studio setup.**
+  1. Import `ink/NCInkSwatches.glb`, which holds every PNG on a plane, so Studio uploads the images.
+  2. Run `require(game.ServerStorage.NCInkSetup).Prepare(workspace.NCInkSwatches)`. It saves each texture id into
+     `ReplicatedStorage.NCInkIds`.
+  3. Import the 10 `NC_Ink_<Body>.fbx` files into `ReplicatedStorage.NCInkRigs` as Models named after the body.
+- **Runtime.**
+  1. `NCInk.Attach(character, "Male_Average")` once after the body is built.
+  2. `NCInk.Apply(character, ink)` whenever the look changes.
+
+  The layers bind to the rig's bones by name.
+- **Rebuilding.**
+  1. `python tools/ink/compose.py <out>` makes the PNGs and the catalog.
+  2. `python tools/ink/build_ink.py rig.blend <out>` makes the layers.
+  3. `python tools/ink/make_lua_catalog.py` makes the Lua catalog.
+  4. `tools/ink/build_swatches.py` makes the swatch file.
+  5. `tools/ink/review.sh <Body>` renders every tattoo on a body to check it.
+
 ## How the 3D pieces work
 
 `NCLookBuilder` builds every item from plain parts (balls, blocks, cylinders, wedges) welded to the body part they sit
