@@ -14,7 +14,7 @@ return {
 			{-3.82, 0.75, -10.8, 3.82, 2.8, 10.85},
 			{-3.1, 2.8, -2.6, 3.1, 4.75, 5.2},
 		},
-		ImportMax = {4.13, 4.77, 11.5},
+		ImportMax = {4.13, 4.8, 11.5},
 		ImportMin = {-4.13, -0.25, -12.0},
 		LidHinge = {-0.0, 2.88, 6.03},
 		OptInfo = {
@@ -508,6 +508,36 @@ return {
 				slot = "Steering",
 				variant = "Wood",
 			},
+			OptTopDownChrome = {
+				mat = "Chrome",
+				slot = "Top",
+				variant = "Down",
+			},
+			OptTopDownTop = {
+				mat = "Top",
+				slot = "Top",
+				variant = "Down",
+			},
+			OptTopLandauChrome = {
+				mat = "Chrome",
+				slot = "Top",
+				variant = "Landau",
+			},
+			OptTopLandauTop = {
+				mat = "Top",
+				slot = "Top",
+				variant = "Landau",
+			},
+			OptTopVinylChrome = {
+				mat = "Chrome",
+				slot = "Top",
+				variant = "Vinyl",
+			},
+			OptTopVinylTop = {
+				mat = "Top",
+				slot = "Top",
+				variant = "Vinyl",
+			},
 			OptTrunkShowChrome = {
 				mat = "Chrome",
 				slot = "Trunk",
@@ -567,6 +597,7 @@ return {
 			Skirts = {"Rocker", "Chrome", "Fender"},
 			Spoiler = {"Ducktail", "Wing", "Fins"},
 			Steering = {"Chain", "Wood", "Sport", "Banjo", "Mini"},
+			Top = {"Vinyl", "Landau", "Down"},
 			Trunk = {"Street", "Show"},
 			Visor = {"Chrome", "Body"},
 		},
@@ -577,7 +608,7 @@ return {
 			PanelSideL = "side",
 			PanelSideR = "side",
 		},
-		Pieces = {"Body", "Carpet", "Chrome", "Dash", "Glass", "Headlight", "Interior", "Lid", "OptContinentalKitBody", "OptContinentalKitChrome", "OptDashBilletChrome", "OptDashBilletDash", "OptDashBilletGauge", "OptDashClassicChrome", "OptDashClassicDash", "OptDashClassicGauge", "OptDashDigitalDash", "OptDashDigitalGauge", "OptDashDigitalNeon", "OptDashWoodDash", "OptDashWoodGauge", "OptDashWoodWood", "OptDiceOnDark", "OptDiceOnFur", "OptExhaustDualChrome", "OptExhaustDualDark", "OptExhaustSideChrome", "OptExhaustSideDark", "OptExhaustTurndownChrome", "OptFrontBumperBulletChrome", "OptFrontBumperClassicChrome", "OptFrontBumperShavedBody", "OptFrontBumperShavedChrome", "OptFrontBumperSplitChrome", "OptFrontBumperSplitDark", "OptFrontBumperTubeChrome", "OptGlowOnNeon", "OptGrilleBarsChrome", "OptGrilleBarsDark", "OptGrilleBilletChrome", "OptGrilleBilletDark", "OptGrilleEggcrateChrome", "OptGrilleEggcrateDark", "OptGrilleMeshChrome", "OptGrilleMeshDark", "OptGrilleWaterfallChrome", "OptGrilleWaterfallDark", "OptHoodCowlBody", "OptHoodLouversBody", "OptHoodLouversDark", "OptHoodScoopBody", "OptHoodScoopChrome", "OptHoodScoopDark", "OptHoodSpearChrome", "OptMirrorsBulletChrome", "OptMirrorsDualChrome", "OptMirrorsRectChrome", "OptMirrorsRectGlass", "OptMirrorsStemChrome", "OptOrnamentCometChrome", "OptOrnamentSunChrome", "OptOrnamentWingsChrome", "OptPlaqueChainChrome", "OptPlaqueChainGauge", "OptRearBumperBulletChrome", "OptRearBumperClassicChrome", "OptRearBumperShavedBody", "OptRearBumperShavedChrome", "OptRearBumperTubeChrome", "OptSeatsBucketsSeat", "OptSeatsBucketsSeatTrim", "OptSeatsDiamondSeat", "OptSeatsDiamondSeatTrim", "OptSeatsRollsSeat", "OptSeatsRollsSeatTrim", "OptSeatsSplitBenchSeat", "OptSeatsSplitBenchSeatTrim", "OptShifterChainChrome", "OptShifterChainDark", "OptShifterColumnChrome", "OptShifterCrystalChrome", "OptShifterCrystalDark", "OptShifterCrystalGlass", "OptShifterTHandleChrome", "OptShifterTHandleDark", "OptShifterWoodKnobChrome", "OptShifterWoodKnobDark", "OptShifterWoodKnobWood", "OptSkirtsChromeChrome", "OptSkirtsFenderBody", "OptSkirtsFenderChrome", "OptSkirtsRockerBody", "OptSkirtsRockerChrome", "OptSpoilerDucktailBody", "OptSpoilerFinsBody", "OptSpoilerFinsLight", "OptSpoilerWingBody", "OptSpoilerWingChrome", "OptSteeringBanjoChrome", "OptSteeringBanjoSeat", "OptSteeringChainChrome", "OptSteeringMiniChrome", "OptSteeringSportChrome", "OptSteeringSportDash", "OptSteeringWoodChrome", "OptSteeringWoodWood", "OptTrunkShowChrome", "OptTrunkShowDark", "OptTrunkShowGlass", "OptTrunkShowNeon", "OptTrunkStreetChrome", "OptTrunkStreetDark", "OptVisorBodyBody", "OptVisorChromeChrome", "PanelHood", "PanelRoof", "PanelSideL", "PanelSideR", "Seam", "Taillight", "TrunkFloor", "Tuck", "Under"},
+		Pieces = {"Body", "Carpet", "Chrome", "Dash", "Glass", "Headlight", "Interior", "Lid", "OptContinentalKitBody", "OptContinentalKitChrome", "OptDashBilletChrome", "OptDashBilletDash", "OptDashBilletGauge", "OptDashClassicChrome", "OptDashClassicDash", "OptDashClassicGauge", "OptDashDigitalDash", "OptDashDigitalGauge", "OptDashDigitalNeon", "OptDashWoodDash", "OptDashWoodGauge", "OptDashWoodWood", "OptDiceOnDark", "OptDiceOnFur", "OptExhaustDualChrome", "OptExhaustDualDark", "OptExhaustSideChrome", "OptExhaustSideDark", "OptExhaustTurndownChrome", "OptFrontBumperBulletChrome", "OptFrontBumperClassicChrome", "OptFrontBumperShavedBody", "OptFrontBumperShavedChrome", "OptFrontBumperSplitChrome", "OptFrontBumperSplitDark", "OptFrontBumperTubeChrome", "OptGlowOnNeon", "OptGrilleBarsChrome", "OptGrilleBarsDark", "OptGrilleBilletChrome", "OptGrilleBilletDark", "OptGrilleEggcrateChrome", "OptGrilleEggcrateDark", "OptGrilleMeshChrome", "OptGrilleMeshDark", "OptGrilleWaterfallChrome", "OptGrilleWaterfallDark", "OptHoodCowlBody", "OptHoodLouversBody", "OptHoodLouversDark", "OptHoodScoopBody", "OptHoodScoopChrome", "OptHoodScoopDark", "OptHoodSpearChrome", "OptMirrorsBulletChrome", "OptMirrorsDualChrome", "OptMirrorsRectChrome", "OptMirrorsRectGlass", "OptMirrorsStemChrome", "OptOrnamentCometChrome", "OptOrnamentSunChrome", "OptOrnamentWingsChrome", "OptPlaqueChainChrome", "OptPlaqueChainGauge", "OptRearBumperBulletChrome", "OptRearBumperClassicChrome", "OptRearBumperShavedBody", "OptRearBumperShavedChrome", "OptRearBumperTubeChrome", "OptSeatsBucketsSeat", "OptSeatsBucketsSeatTrim", "OptSeatsDiamondSeat", "OptSeatsDiamondSeatTrim", "OptSeatsRollsSeat", "OptSeatsRollsSeatTrim", "OptSeatsSplitBenchSeat", "OptSeatsSplitBenchSeatTrim", "OptShifterChainChrome", "OptShifterChainDark", "OptShifterColumnChrome", "OptShifterCrystalChrome", "OptShifterCrystalDark", "OptShifterCrystalGlass", "OptShifterTHandleChrome", "OptShifterTHandleDark", "OptShifterWoodKnobChrome", "OptShifterWoodKnobDark", "OptShifterWoodKnobWood", "OptSkirtsChromeChrome", "OptSkirtsFenderBody", "OptSkirtsFenderChrome", "OptSkirtsRockerBody", "OptSkirtsRockerChrome", "OptSpoilerDucktailBody", "OptSpoilerFinsBody", "OptSpoilerFinsLight", "OptSpoilerWingBody", "OptSpoilerWingChrome", "OptSteeringBanjoChrome", "OptSteeringBanjoSeat", "OptSteeringChainChrome", "OptSteeringMiniChrome", "OptSteeringSportChrome", "OptSteeringSportDash", "OptSteeringWoodChrome", "OptSteeringWoodWood", "OptTopDownChrome", "OptTopDownTop", "OptTopLandauChrome", "OptTopLandauTop", "OptTopVinylChrome", "OptTopVinylTop", "OptTrunkShowChrome", "OptTrunkShowDark", "OptTrunkShowGlass", "OptTrunkShowNeon", "OptTrunkStreetChrome", "OptTrunkStreetDark", "OptVisorBodyBody", "OptVisorChromeChrome", "PanelHood", "PanelRoof", "PanelSideL", "PanelSideR", "RoofBody", "RoofChrome", "RoofGlass", "Seam", "Taillight", "TrunkFloor", "Tuck", "Under"},
 		Plaque = {
 			Centre = {-0.0, 3.35, 4.68},
 			Size = {2.0, 0.6},

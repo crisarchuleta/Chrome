@@ -542,3 +542,4 @@ Full notes and install steps in `LOWRIDER.md`.
   speedometer, 5 shifters, dice and a club plaque; 8 rims, 3 knock-offs, 3 tyre profiles, 4 whitewall styles;
   finishes per chrome group, seat material + colours, tint, light colours, engine tunes; 15 liveries.
   Parts are in `build_lowrider_parts.py`; options and prices are in `NCLowriderConfig.Mods`.
+  Roofs: hardtop, landau, full vinyl, convertible top down. 3 saved build slots, random build, back to stock.

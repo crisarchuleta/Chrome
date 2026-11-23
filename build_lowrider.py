@@ -336,24 +336,24 @@ def build_car():
     # windshield + rear glass
     prism("Glass", [(-3.2, yA0, zb), (3.2, yA0, zb), (xs_t - 0.08, yA1, ROOF), (-(xs_t - 0.08), yA1, ROOF)],
           [(-3.2, yA0 + 0.06, zb - 0.04), (3.2, yA0 + 0.06, zb - 0.04), (xs_t - 0.08, yA1 + 0.06, ROOF - 0.04), (-(xs_t - 0.08), yA1 + 0.06, ROOF - 0.04)])
-    prism("Glass", [(-(xs_t - 0.08), yC0, ROOF), (xs_t - 0.08, yC0, ROOF), (3.25, yC1, zb), (-3.25, yC1, zb)],
+    prism("RoofGlass", [(-(xs_t - 0.08), yC0, ROOF), (xs_t - 0.08, yC0, ROOF), (3.25, yC1, zb), (-3.25, yC1, zb)],
           [(-(xs_t - 0.08), yC0 - 0.06, ROOF - 0.04), (xs_t - 0.08, yC0 - 0.06, ROOF - 0.04), (3.25, yC1 - 0.06, zb - 0.04), (-3.25, yC1 - 0.06, zb - 0.04)])
     for s in (-1, 1):
         # A pillars (chrome) and the windshield / rear-glass reveal mouldings
         beam("Chrome", (s * 3.24, yA0, zb), (s * xs_t, yA1, ROOF), 0.16, 0.16)
-        beam("Chrome", (s * xs_t, yC0, ROOF), (s * 3.28, yC1, zb), 0.12, 0.12)
+        beam("RoofChrome", (s * xs_t, yC0, ROOF), (s * 3.28, yC1, zb), 0.12, 0.12)
         # side glass, frameless hardtop window
         ys = [(yA0 + 0.3, zb), (yA1 + 0.05, ROOF - 0.08), (2.1, ROOF - 0.08), (2.3, zb)]
         outer = [(s * gx(z), y, z) for (y, z) in ys]
         inner = [(s * (gx(z) - 0.05), y, z) for (y, z) in ys]
-        prism("Glass", outer, inner)
+        prism("RoofGlass", outer, inner)
         # sail panel (wide C pillar) in body colour
         ys = [(2.1, ROOF - 0.02), (yC0 + 0.05, ROOF - 0.02), (yC1, zb - 0.02), (2.3, zb - 0.02)]
         outer = [(s * (gx(z) + 0.03), y, z) for (y, z) in ys]
         inner = [(s * min(gx(z) - 0.12, 3.25 - (y - 2.3) * 0.0), y, z) for (y, z) in ys]
-        prism("Body", outer, inner)
+        prism("RoofBody", outer, inner)
         # chrome drip rail along the roof edge and the belt moulding under the glass
-        beam("Chrome", (s * (xs_t + 0.05), yA1, ROOF + 0.02), (s * (xs_t + 0.05), yC0, ROOF + 0.02), 0.07, 0.07)
+        beam("RoofChrome", (s * (xs_t + 0.05), yA1, ROOF + 0.02), (s * (xs_t + 0.05), yC0, ROOF + 0.02), 0.07, 0.07)
         beam("Chrome", (s * (gx(zb) + 0.05), yA0 + 0.2, zb + 0.02), (s * (gx(zb) + 0.05), yC1 - 0.3, zb + 0.02), 0.08, 0.06)
 
     # ---- lights and side trim (bumpers, grille, mirrors etc. are swappable parts: build_lowrider_parts.py)
@@ -709,6 +709,8 @@ def join_style(style, prefix):
         mat.diffuse_color = (*col, 1)
         mat.metallic = 0.9 if ck in ("Chrome", "Rim", "Spokes", "Hub", "Dish", "Pump", "ContChrome", "SteeringWheel") else 0.0
         paint = ck in ("Body", "Lid", "ContBody") or kind.startswith("Panel")
+        if ck == "Top":
+            mat.roughness = 0.9
         mat.roughness = 0.15 if mat.metallic > 0.5 else (0.3 if paint else 0.7)
         try:
             mat.use_nodes = True
@@ -944,8 +946,10 @@ def show_livery(liv, build=None, paint=None):
         if ob.type != "MESH":
             continue
         ob.hide_render = ob.get("style") != "Lowrider" or not part_visible(ob, b)
+        if b.get("Top") == "Down" and ob.get("pkind") in ("RoofGlass", "RoofBody", "RoofChrome", "PanelRoof"):
+            ob.hide_render = True
         kind = ob.get("pkind", "")
-        if kind in PANEL_OF or (paint and OPT_INFO.get(kind, {}).get("mat") == "Body") or (paint and kind == "Body"):
+        if kind in PANEL_OF or (paint and OPT_INFO.get(kind, {}).get("mat") == "Body") or (paint and kind in ("Body", "RoofBody")):
             plain.setdefault(ob.name, ob.data.materials[0])
             path = VINYLS.get(liv, {}).get(PANEL_OF.get(kind, ""))
             if path:
@@ -990,6 +994,12 @@ show_livery("scallops", {"Grille": "Eggcrate", "Hood": "", "Ornament": "Comet", 
 shot("scallops_front34", (-17, -24, 7.5), (0, -1.5, 1.8))
 show_livery("roses", {"Rim": "Mesh", "KO": "Bar3"}, paint=(0.9, 0.85, 0.75))
 shot("roses_side", (26, 0.5, 3.2), (0, 0.5, 2.0))
+show_livery("flames_teal", {"Top": "Down", "Seats": "Diamond", "Steering": "Wood", "Dash": "Wood", "Grille": "Waterfall",
+                            "Skirts": "Fender", "Rim": "Wire72", "KO": "Bar3", "Band": "ClassicWide"}, paint=(0.04, 0.05, 0.3))
+shot("convertible_front34", (-17, -22, 9.5), (0, -0.5, 1.8))
+show_livery("pinstripe", {"Top": "Landau", "Ornament": "Wings", "Visor": "Chrome", "Mirrors": "Dual", "Rim": "Wire100", "Band": "ClassicDouble"},
+            paint=(0.12, 0.02, 0.04))
+shot("landau_rear34", (15, 25, 8.5), (0, 2.5, 1.8))
 show_livery("none")
 shot("clean_side", (26, 0.5, 3.2), (0, 0.5, 2.0))
 # interiors: roof hidden, looking down into the cabin
@@ -998,7 +1008,7 @@ for (nm, b) in (("interior_classic", {"Seats": "Rolls", "Steering": "Chain", "Da
                 ("interior_sport", {"Seats": "Buckets", "Steering": "Sport", "Dash": "Digital", "Shifter": "THandle"})):
     show_livery("none", b)
     for ob in scene.objects:
-        if ob.get("pkind") in ("PanelRoof", "Glass", "Body"):
+        if ob.get("pkind") in ("PanelRoof", "Glass", "RoofGlass", "RoofBody", "RoofChrome", "Body"):
             ob.hide_render = True
     shot(nm, (6, -9, 13), (0.3, 0.6, 1.8))
 # wheel line-up: every rim design with a different knock-off / tyre / whitewall

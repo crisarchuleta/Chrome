@@ -1197,6 +1197,61 @@ render = function()
 				render()
 			end)
 		end
+		-- saved designs + quick builds
+		local hdr = label(list, "MY BUILDS", UDim2.new(), UDim2.new(1, -6, 0, 24), CYAN, Enum.Font.GothamBlack)
+		hdr.LayoutOrder = nextOrder()
+		local builds = decode(player:GetAttribute("LowriderBuilds")) or {}
+		for i = 1, Config.BuildSlots do
+			local b = builds[i]
+			row(("Build %d"):format(i), type(b) == "table" and "saved" or "empty", type(b) == "table" and CYAN or Color3.fromRGB(160, 160, 176), false, function()
+				view.level, view.slot = "build", i
+				render()
+			end, type(b) == "table" and Config.ColorOf("paint", b.paint) or nil)
+		end
+		row("Surprise me (random build)", "preview", Color3.fromRGB(160, 160, 176), false, function()
+			for key, m in Config.ModByKey do
+				if key ~= "susp" and key ~= "engine" then
+					draft[key] = m.options[math.random(1, #m.options)].id
+				end
+			end
+			render()
+		end)
+		row("Back to stock", "preview", Color3.fromRGB(160, 160, 176), false, function()
+			for key, m in Config.ModByKey do
+				if key ~= "susp" and key ~= "engine" then
+					draft[key] = m.default
+				end
+			end
+			render()
+		end)
+	elseif view.level == "build" then
+		local i = view.slot
+		crumbL.Text = ("My builds  >  Build %d"):format(i)
+		local builds = decode(player:GetAttribute("LowriderBuilds")) or {}
+		local b = type(builds[i]) == "table" and builds[i] or nil
+		if b then
+			local cost = Config.Quote(saved, Config.CleanLook(b), unlockedNow())
+			row("Load it (preview + cart)", cost > 0 and ("$" .. cost) or "owned", cost > 0 and GOLD or Color3.fromRGB(150, 230, 140), false, function()
+				draft = Config.CleanLook(b)
+				view.level, view.slot = "cats", nil
+				render()
+			end, Config.ColorOf("paint", b.paint))
+		end
+		row(b and "Save what's on my car now over it" or "Save what's on my car now", nil, nil, false, function()
+			local ok, msg = ShopRF:InvokeServer("saveBuild", { slot = i, look = draft })
+			notify(msg or (ok and "Saved." or "Couldn't save."))
+			task.wait(0.2)
+			render()
+		end)
+		if b then
+			row("Clear this slot", nil, nil, false, function()
+				local ok, msg = ShopRF:InvokeServer("saveBuild", { slot = i })
+				notify(msg or "")
+				task.wait(0.2)
+				render()
+			end)
+		end
+		note("A build saves the whole design (everything in the menu, even parts you haven't bought yet). Loading one puts it in your cart.", 56)
 	elseif view.level == "mods" then
 		crumbL.Text = view.cat.name
 		for _, m in view.cat.mods do
@@ -1355,7 +1410,7 @@ backB.MouseButton1Click:Connect(function()
 	if view.level == "opts" then
 		view.level, view.mod = "mods", nil
 	else
-		view.level, view.cat = "cats", nil
+		view.level, view.cat, view.slot = "cats", nil, nil
 	end
 	yaw = 0
 	render()
@@ -1370,6 +1425,11 @@ buyB.MouseButton1Click:Connect(function()
 	notify(msg or (ok and "Done!" or "Couldn't do that."))
 	if ok then
 		saved = table.clone(draft)
+		task.delay(1.5, function() -- the server's parts have replicated by now: drop my local preview copies
+			if shopOpen then
+				preview()
+			end
+		end)
 	end
 	render()
 end)
@@ -1393,7 +1453,7 @@ ContextActionService:BindActionAtPriority("NCShopBack", function(_, stateIn)
 		if view.level == "opts" then
 			view.level, view.mod = "mods", nil
 		else
-			view.level, view.cat = "cats", nil
+			view.level, view.cat, view.slot = "cats", nil, nil
 		end
 		render()
 	end

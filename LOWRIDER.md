@@ -59,6 +59,7 @@ the road.
 
 | Slot | Variants |
 |---|---|
+| Roof | Hardtop, Landau vinyl top with chrome S-bars, Full vinyl top, Convertible with the top down (any top colour) |
 | Front bumper | Classic chrome, Bullet guards, Split with plate frame, Tube push bar, Shaved roll pan |
 | Rear bumper | Classic, Bullet, Tube, Shaved |
 | Grille | Bars, Eggcrate, Waterfall, Diamond mesh, Billet |
@@ -113,6 +114,8 @@ The tuning menu (GTA-style, left side): pick a category (Paint, Vinyls, Body kit
 Hydraulics, Extras), then a mod, then an option. The camera swings to that part, and pointing at an option previews
 it on your car before you pick it. The cart at the bottom counts your changes and the total; BUY BUILD pays for all
 of it at once, UNDO ALL goes back to what you own. Colours take a custom colour picker (hue + shade + hex) too.
+MY BUILDS keeps 3 saved designs (saved to the DataStore; loading one puts it in the cart), and there's a
+"Surprise me" random build and "Back to stock" to try ideas fast.
 
 Around 60 mods with 300+ options: 22 paints + custom, 7 finishes (incl. chrome wrap, matte), two-tone roof, 15
 liveries, every part above, finishes for each group of chrome (chrome, 24k gold, black chrome, rose gold, copper,

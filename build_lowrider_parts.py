@@ -24,7 +24,7 @@ def wopt(slot, variant, mat):
 WHEEL_INFO = {}
 COLORS.update({"Dark": (0.05, 0.05, 0.06), "Light": (1.0, 0.97, 0.86), "Seat": (0.95, 0.93, 0.88), "SeatTrim": (0.85, 0.82, 0.78),
                "Wood": (0.42, 0.22, 0.1), "Gauge": (0.02, 0.02, 0.03), "Neon": (0.9, 0.2, 0.8), "Fur": (0.95, 0.95, 0.95),
-               "Rubber": (0.07, 0.07, 0.08), "Spokes": (0.86, 0.87, 0.90), "Dish": (0.86, 0.87, 0.90), "Band": (0.96, 0.96, 0.94)})
+               "Rubber": (0.07, 0.07, 0.08), "Top": (0.04, 0.04, 0.045), "Spokes": (0.86, 0.87, 0.90), "Dish": (0.86, 0.87, 0.90), "Band": (0.96, 0.96, 0.94)})
 
 
 def mat_color(kind):
@@ -32,7 +32,7 @@ def mat_color(kind):
     if info:
         m = info["mat"]
         return {"Chrome": "Chrome", "Body": "Body", "Dash": "Dash", "Hub": "Chrome", "Rim": "Chrome"}.get(m, m)
-    return kind
+    return {"RoofGlass": "Glass", "RoofBody": "Body", "RoofChrome": "Chrome"}.get(kind, kind)
 
 
 # ================================================================================================ exterior
@@ -261,6 +261,30 @@ def underglow():
         box(k, s * 3.2 - 0.05, -8.5, 0.68, s * 3.2 + 0.05, 8.5, 0.72)
     box(k, -2.8, -9.9, 0.68, 2.8, -9.8, 0.72)
     box(k, -2.8, 9.8, 0.68, 2.8, 9.9, 0.72)
+
+
+def tops():
+    """roof: vinyl tops (landau = rear half) and the convertible (game hides the hardtop roof, rear + side glass)"""
+    S = "Top"
+    ROOF, xs_t, yA1, yC0, yC1, zb, xs_b = 4.62, 2.92, -0.85, 3.3, 5.35, 2.84, 3.42
+
+    def gx(z):
+        return xs_b + (xs_t - xs_b) * (z - zb) / (4.56 - zb)
+    # Vinyl: grained top over the whole roof, Landau: rear half + chrome S-bars on the sail panels
+    for v, y0 in (("Vinyl", yA1 - 0.08), ("Landau", 1.2)):
+        y1 = yC0 + 0.12
+        cube(opt(S, v, "Top"), Vector((0, (y0 + y1) / 2, ROOF + 0.08)), (2 * xs_t + 0.24, y1 - y0, 0.2), 0.09)
+        box(opt(S, v, "Chrome"), -xs_t - 0.08, y0 - 0.03, ROOF + 0.06, xs_t + 0.08, y0 + 0.03, ROOF + 0.17)
+    for s in (-1, 1):
+        k = opt(S, "Landau", "Chrome")
+        pts = [(2.75, 4.25), (3.25, 4.15), (3.6, 3.85), (3.85, 3.62), (4.25, 3.5), (4.6, 3.3)]
+        for (ya, za), (yb, zb2) in zip(pts, pts[1:]):
+            beam(k, (s * (gx(za) + 0.06 + (ya - 2.3) * 0.0), ya, za), (s * (gx(zb2) + 0.06), yb, zb2), 0.08, 0.05)
+    # Down: folded top under a boot behind the rear seat + a chrome windshield header
+    k = opt(S, "Down", "Top")
+    box(k, -3.05, 4.25, 2.7, 3.05, 5.55, 3.15, bev=0.18)
+    box(opt(S, "Down", "Chrome"), -3.1, 5.5, 2.72, 3.1, 5.62, 2.86)
+    box(opt(S, "Down", "Chrome"), -(xs_t - 0.05), yA1 - 0.08, ROOF - 0.1, xs_t - 0.05, yA1 + 0.1, ROOF + 0.04, bev=0.03)
 
 
 def continental():
@@ -542,6 +566,7 @@ def build_options():
     ornaments()
     exhausts()
     visors()
+    tops()
     underglow()
     continental()
     trunks()

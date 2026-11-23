@@ -836,6 +836,9 @@ local function syncCarParts(car, look)
 	local hinge = lid and lid:FindFirstChild("LidRoot")
 	local hingeInv = CFrame.new(v3(Data.Car.LidHinge)):Inverse()
 	syncParts(folder, t, function(slot)
+		if slot == "Visor" and look.part_Top == "Down" then
+			return "" -- nothing to hang a visor on with the top down
+		end
 		return look["part_" .. slot] or ""
 	end, function(c, slot, rel)
 		if LID_SLOTS[slot] and hinge then
@@ -914,12 +917,15 @@ local function printVinyl(p, role, id)
 	end
 end
 
+local ROOF_ROLES = { PanelRoof = true, RoofGlass = true, RoofBody = true, RoofChrome = true }
+
 local function colorOf(look, key, fallback)
 	return Config.ColorOf(key, look[key]) or fallback
 end
 
 -- material, colour, reflectance, transparency for one piece
-local function styleFor(role, look, ctx)
+local styleFor
+function styleFor(role, look, ctx)
 	local inf = OPT[role] or WOPT[role]
 	local mat = inf and inf.mat or role
 	local function trim(key)
@@ -957,6 +963,14 @@ local function styleFor(role, look, ctx)
 		return st.glow and Enum.Material.Neon or Enum.Material.SmoothPlastic, st.face, 0, 0
 	elseif mat == "Neon" then
 		return Enum.Material.Neon, ctx.neon, 0, 0
+	elseif mat == "Top" then
+		return Enum.Material.Fabric, colorOf(look, "col_Top", Color3.fromRGB(14, 14, 16)), 0, 0
+	elseif mat == "RoofGlass" then
+		return styleFor("Glass", look, ctx)
+	elseif mat == "RoofChrome" then
+		return trim("fin_Trim")
+	elseif mat == "RoofBody" then
+		return ctx.finish.material, ctx.paint, ctx.finish.reflectance, 0
 	elseif mat == "Fur" then
 		return Enum.Material.Fabric, colorOf(look, "col_Fur", Color3.new(1, 1, 1)), 0, 0
 	elseif mat == "Dark" then
@@ -1010,6 +1024,7 @@ function Kit.ApplyLook(car, look)
 	}
 	local art = Config.ById.Art[look.art] or Config.Art[1]
 	local trunkOn, contOn = (look.part_Trunk or "") ~= "", (look.part_Continental or "") ~= ""
+	local topDown = look.part_Top == "Down"
 	for _, p in car:GetDescendants() do
 		if not p:IsA("BasePart") then
 			continue
@@ -1024,6 +1039,17 @@ function Kit.ApplyLook(car, look)
 		end
 		if PANEL_OF[role] then
 			printVinyl(p, role, art.id == "none" and "" or Kit.VinylId(art.id, PANEL_OF[role]))
+		end
+		-- convertible: the hardtop roof, rear glass and side glass go away
+		if ROOF_ROLES[role] then
+			p.Transparency = topDown and 1 or p.Transparency
+			local d = p:FindFirstChild("Vinyl")
+			if d then
+				d.Transparency = topDown and 1 or 0
+			end
+			if topDown and p:IsA("MeshPart") then
+				p.TextureID = ""
+			end
 		end
 		-- pieces that only the part-made fallback car has
 		if role == "Pump" or role == "Battery" or role == "BatteryCap" then

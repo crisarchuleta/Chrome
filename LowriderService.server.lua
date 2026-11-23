@@ -62,7 +62,7 @@ end
 local cleanLook = Config.CleanLook
 
 local function load(p)
-	local prof = { owned = false, look = copy(Config.StarterLook), unlocked = {}, bestHop = 0 }
+	local prof = { owned = false, look = copy(Config.StarterLook), unlocked = {}, bestHop = 0, builds = {} }
 	if store then
 		local ok, data = pcall(function()
 			return store:GetAsync("u" .. p.UserId)
@@ -73,6 +73,10 @@ local function load(p)
 			prof.look = cleanLook(d.look)
 			prof.unlocked = Config.MigrateUnlocked(d.unlocked)
 			prof.bestHop = tonumber(d.bestHop) or 0
+			for i = 1, Config.BuildSlots do -- saved builds (designs only; they still have to be bought)
+				local b = type(d.builds) == "table" and d.builds[i]
+				prof.builds[i] = type(b) == "table" and cleanLook(b) or false
+			end
 		end
 	end
 	profiles[p] = prof
@@ -80,6 +84,7 @@ local function load(p)
 	p:SetAttribute("LowriderLook", HttpService:JSONEncode(prof.look))
 	p:SetAttribute("LowriderUnlocked", HttpService:JSONEncode(prof.unlocked))
 	p:SetAttribute("BestHop", prof.bestHop)
+	p:SetAttribute("LowriderBuilds", HttpService:JSONEncode(prof.builds))
 end
 
 local function save(p)
@@ -91,7 +96,7 @@ local function save(p)
 		local ok = pcall(function()
 			store:UpdateAsync("u" .. p.UserId, function(old)
 				old = type(old) == "table" and old or {}
-				old.lowrider = { owned = prof.owned, look = prof.look, unlocked = prof.unlocked, bestHop = prof.bestHop }
+				old.lowrider = { owned = prof.owned, look = prof.look, unlocked = prof.unlocked, bestHop = prof.bestHop, builds = prof.builds }
 				return old
 			end)
 		end)
@@ -326,6 +331,19 @@ ShopRF.OnServerInvoke = function(player, action, arg)
 		return true, ok and "It's yours! Hop in." or msg
 	elseif action == "spawn" then
 		return spawnCar(player)
+	elseif action == "saveBuild" then
+		-- arg = { slot = 1..BuildSlots, look = {...} } or { slot = n } to clear it
+		local slot = type(arg) == "table" and tonumber(arg.slot)
+		if not slot or slot ~= math.floor(slot) or slot < 1 or slot > Config.BuildSlots then
+			return false, "?"
+		end
+		prof.builds[slot] = type(arg.look) == "table" and cleanLook(arg.look) or false
+		for i = 1, Config.BuildSlots do
+			prof.builds[i] = prof.builds[i] or false
+		end
+		player:SetAttribute("LowriderBuilds", HttpService:JSONEncode(prof.builds))
+		task.spawn(save, player)
+		return true, prof.builds[slot] and ("Saved to slot %d."):format(slot) or ("Slot %d cleared."):format(slot)
 	elseif action == "quote" then
 		local total = quote(prof, cleanLook(arg))
 		return true, total

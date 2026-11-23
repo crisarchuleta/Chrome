@@ -33,6 +33,7 @@ C.Paints = {
 	{ id = "bubblegum", name = "Bubblegum Pink", color = Color3.fromRGB(240, 140, 190), price = 400 },
 }
 C.CustomColorPrice = 750 -- any colour from the colour picker (paid once per exact colour)
+C.BuildSlots = 3 -- saved build designs in the tuning menu
 
 -- how the paint is laid down (Roblox material + shine)
 C.Finishes = {
@@ -180,6 +181,8 @@ C.Mods = {
 		{ key = "art", name = "Livery", options = fromList(C.Art), default = "none" },
 	} },
 	{ id = "body", name = "Body kit", cam = "front34", mods = {
+		{ key = "part_Top", name = "Roof", default = "", options = opts({ { "", "Hardtop" }, { "Landau", "Landau vinyl top + S-bars", 900 }, { "Vinyl", "Full vinyl top", 1100 }, { "Down", "Convertible, top down", 2500 } }) },
+		{ key = "col_Top", name = "Vinyl / soft top colour", default = "black", custom = C.CustomColorPrice, options = opts({ { "black", "Black", 0, rgb(14, 14, 16) }, { "white", "White", 150, rgb(236, 234, 226) }, { "burgundy", "Burgundy", 200, rgb(90, 14, 26) }, { "tan", "Tan", 200, rgb(170, 128, 84) }, { "navy", "Navy", 200, rgb(20, 28, 70) } }) },
 		{ key = "part_FrontBumper", name = "Front bumper", default = "Classic", options = opts({ { "Classic", "Classic chrome" }, { "Bullet", "Bullet guards", 900 }, { "Split", "Split with plate frame", 1000 }, { "Tube", "Tube push bar", 700 }, { "Shaved", "Shaved roll pan", 1200 } }) },
 		{ key = "part_RearBumper", name = "Rear bumper", default = "Classic", options = opts({ { "Classic", "Classic chrome" }, { "Bullet", "Bullet guards", 900 }, { "Tube", "Tube bar", 700 }, { "Shaved", "Shaved roll pan", 1200 } }) },
 		{ key = "fin_Bumpers", name = "Bumper finish", options = FIN, default = "chrome" },
