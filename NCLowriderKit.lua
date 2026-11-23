@@ -15,7 +15,7 @@
 --                   front = -Z. Holds the CoM attachment, the VectorForce "Drive" and the Torque "Turn".
 --     Cabin         invisible hull for the greenhouse (welded)
 --     Visual        every body piece, welded, massless, no collision; each has attribute Role (Body, Chrome, ...)
---     Lid           the trunk lid pieces (+ mural / lid pinstripe), welded by "LidHinge" (server opens it)
+--     Lid           the trunk lid (a paint panel too), welded by "LidHinge" (server opens it)
 --     W_FL/W_FR/W_RL/W_RR   wheel models; their weld (Hub.WheelWeld) is posed every frame by each client
 --     DriveSeat (VehicleSeat), Seat_Passenger, Seat_RearL, Seat_RearR
 local RS = game:GetService("ReplicatedStorage")
@@ -150,6 +150,38 @@ function Kit.Prepare(import)
 		wheel.Parent = folder
 		table.insert(made, "Wheel")
 	end
+	-- vinyls: LowriderVinyls.glb holds every decal image on a copy of its panel. Studio uploads the images on
+	-- import; keep their ids (as attributes of LowriderAssets.Vinyls) and drop the copies.
+	local vinyls = folder:FindFirstChild("Vinyls") or Instance.new("Configuration")
+	vinyls.Name = "Vinyls"
+	vinyls.Parent = folder
+	local nV = 0
+	for _, p in import:GetDescendants() do
+		local liv, pan = nil, nil
+		local cur = p
+		while cur and not liv do
+			liv, pan = cur.Name:match("^Livery_(.+)_(%a+)$")
+			cur = cur.Parent
+		end
+		if liv and p:IsA("MeshPart") then
+			local id = p.TextureID
+			local sa = p:FindFirstChildOfClass("SurfaceAppearance")
+			if (id == nil or id == "") and sa then
+				pcall(function()
+					id = sa.ColorMap
+				end)
+			end
+			if id and id ~= "" then
+				vinyls:SetAttribute(liv .. "_" .. pan, id)
+				nV += 1
+			else
+				warn("NCLowriderKit.Prepare: " .. p:GetFullName() .. " came in without its image; upload lowrider_vinyls/" .. liv .. "_" .. pan .. ".png and put its id in NCLowriderConfig.VinylIds")
+			end
+		end
+	end
+	if nV > 0 then
+		table.insert(made, nV .. " vinyls")
+	end
 	if yawShop ~= 0 then
 		import:PivotTo(import:GetPivot() * CFrame.Angles(0, yawShop, 0))
 	end
@@ -162,7 +194,7 @@ function Kit.Prepare(import)
 		shop.Parent = folder
 		table.insert(made, "Shop")
 	end
-	assert(#made > 0, "NCLowriderKit.Prepare: no Lowrider_*, LowriderWheel_* or LowSlowShop_* pieces in " .. import:GetFullName())
+	assert(#made > 0, "NCLowriderKit.Prepare: no Lowrider_*, LowriderWheel_*, Livery_* or LowSlowShop_* pieces in " .. import:GetFullName())
 	print("NCLowriderKit: prepared " .. table.concat(made, ", ") .. " in ReplicatedStorage.LowriderAssets")
 	return made
 end
@@ -171,6 +203,8 @@ end
 local M = Enum.Material
 local DEFAULT = {
 	Body = { M.SmoothPlastic, Color3.fromRGB(150, 8, 24) }, Lid = { M.SmoothPlastic, Color3.fromRGB(150, 8, 24) },
+	PanelHood = { M.SmoothPlastic, Color3.fromRGB(150, 8, 24) }, PanelRoof = { M.SmoothPlastic, Color3.fromRGB(150, 8, 24) },
+	PanelSideL = { M.SmoothPlastic, Color3.fromRGB(150, 8, 24) }, PanelSideR = { M.SmoothPlastic, Color3.fromRGB(150, 8, 24) },
 	ContBody = { M.SmoothPlastic, Color3.fromRGB(150, 8, 24) }, Chrome = { M.Metal, Color3.fromRGB(225, 228, 235) },
 	ContChrome = { M.Metal, Color3.fromRGB(225, 228, 235) }, Pump = { M.Metal, Color3.fromRGB(225, 228, 235) },
 	SteeringWheel = { M.Metal, Color3.fromRGB(225, 228, 235) }, Glass = { M.Glass, Color3.fromRGB(70, 90, 105), 0.45 },
@@ -256,11 +290,11 @@ local function fallbackCar()
 	B.box("Body", -W, 2.6, ZR - AR, W, 2.8, ZR + AR)
 	B.box("Body", -2.4, 0.75, ZR - AR, 2.4, 2.6, ZR + AR)
 	B.box("Body", -W, 0.75, ZR + AR, W, 2.62, 10.45)
-	B.box("Body", -W + 0.15, 2.62, -10.3, W - 0.15, 2.74, ZF - AR) -- hood deck
+	B.box("PanelHood", -W + 0.15, 2.62, -10.3, W - 0.15, 2.74, -2.7) -- hood deck (takes the hood vinyl as a Decal)
 	B.box("Body", -W + 0.15, 2.62, ZR + AR, W - 0.15, 2.74, 6.03)
 	B.box("Body", -W + 0.15, 2.62, 9.82, W - 0.15, 2.74, 10.4)
 	-- greenhouse
-	B.box("Body", -3.0, 4.55, -0.85, 3.0, 4.75, 3.3)
+	B.box("PanelRoof", -3.0, 4.55, -0.85, 3.0, 4.75, 3.3)
 	B.beam("Glass", Vector3.new(0, 2.84, -2.75), Vector3.new(0, 4.6, -0.85), 6.3, 0.08)
 	B.beam("Glass", Vector3.new(0, 4.6, 3.3), Vector3.new(0, 2.84, 5.35), 6.3, 0.08)
 	for _, s in { -1, 1 } do
@@ -311,33 +345,6 @@ local function fallbackCar()
 	B.cyl("ContChrome", Vector3.new(0, 2.05, 11.9), 0.1, 0.6, CFrame.Angles(0, math.pi / 2, 0))
 	-- lid + art
 	B.box("Lid", -3.18, 2.74, 6.03, 3.18, 2.84, 9.82)
-	B.cyl("LidMuralSky", Vector3.new(0, 2.86, 7.95), 0.03, 3.2, CFrame.Angles(0, 0, math.pi / 2))
-	B.cyl("LidMuralSun", Vector3.new(0, 2.875, 7.7), 0.03, 1.6, CFrame.Angles(0, 0, math.pi / 2))
-	for k = 0, 3 do
-		B.box("LidMuralSea", -1.2 + k * 0.1, 2.88, 7.4 - k * 0.28, 1.2 - k * 0.1, 2.89, 7.3 - k * 0.28)
-	end
-	for _, s in { -1, 1 } do
-		B.beam("LidMuralPalm", Vector3.new(s * 1.6, 2.895, 7.0), Vector3.new(s * 1.2, 2.895, 9.0), 0.12, 0.02)
-		for k = -2, 2 do
-			B.beam("LidMuralPalm", Vector3.new(s * 1.2, 2.9, 9.0), Vector3.new(s * 1.2 + k * 0.35, 2.9, 9.5 + math.abs(k) * -0.15), 0.1, 0.02)
-		end
-		-- side patterns: a framed panel with diamonds
-		for k = 0, 6 do
-			local z = -4.3 + k * 1.25
-			B.part("Patterns2", Vector3.new(0.02, 0.55, 0.55), CFrame.new(s * (W + 0.03), 1.7, z) * CFrame.Angles(math.rad(45), 0, 0))
-		end
-		B.box("Patterns", s * (W + 0.02) - 0.01, 1.42, -4.3, s * (W + 0.02) + 0.01, 1.47, 3.6)
-		B.box("Patterns", s * (W + 0.02) - 0.01, 1.93, -4.3, s * (W + 0.02) + 0.01, 1.98, 3.6)
-		-- flames: licks on the hood and the doors
-		for k = 0, 3 do
-			B.beam("Flames", Vector3.new(s * (0.4 + k * 0.85), 2.76, -10.0), Vector3.new(s * (0.6 + k * 0.7), 2.76, -6.6 + k * 0.7), 0.6 - k * 0.08, 0.02)
-			B.beam("Flames", Vector3.new(s * (W + 0.03), 2.3 - k * 0.38, -4.6), Vector3.new(s * (W + 0.03), 2.2 - k * 0.38, 1.5 - k * 0.9), 0.02, 0.28, Vector3.xAxis)
-		end
-		-- pinstripe: a line over the spear and a hood scroll
-		B.box("Pinstripe", s * (W + 0.03) - 0.01, 2.28, -4.4, s * (W + 0.03) + 0.01, 2.32, 3.8)
-		B.beam("Pinstripe", Vector3.new(s * 0.2, 2.77, -9.4), Vector3.new(s * 1.5, 2.77, -7.0), 0.06, 0.02)
-		B.beam("Pinstripe", Vector3.new(s * 1.5, 2.77, -7.0), Vector3.new(s * 0.3, 2.77, -4.6), 0.06, 0.02)
-	end
 	return model
 end
 
@@ -427,7 +434,7 @@ local function source(name)
 	return fallbackShop(), false
 end
 
-local LID_ROLES = { Lid = true, LidMuralSky = true, LidMuralSun = true, LidMuralSea = true, LidMuralPalm = true, LidPinstripe = true }
+local LID_ROLES = { Lid = true }
 
 local function weldTo(part, base, name)
 	local w = Instance.new("Weld")
@@ -597,19 +604,50 @@ local function finishFor(kind)
 end
 
 -- paints a car with a look table (see Config.StarterLook); safe to call on the client for a live preview
+local PANEL_OF = Data.Car.PanelOf or { PanelSideL = "side", PanelSideR = "side", PanelHood = "hood", Lid = "trunk", PanelRoof = "roof" }
+-- the fallback (part-made) car shows a vinyl as a Decal on this face of each panel part
+local DECAL_FACE = { PanelHood = Enum.NormalId.Top, PanelRoof = Enum.NormalId.Top, Lid = Enum.NormalId.Top, PanelSideL = Enum.NormalId.Left, PanelSideR = Enum.NormalId.Right }
+
+-- the uploaded image id for a livery's panel ("" if there's none)
+function Kit.VinylId(livery, panel)
+	local key = livery .. "_" .. panel
+	local id = Config.VinylIds[key]
+	if id and id ~= "" then
+		return id
+	end
+	local f = RS:FindFirstChild("LowriderAssets")
+	local v = f and f:FindFirstChild("Vinyls")
+	return v and v:GetAttribute(key) or ""
+end
+
+local function printVinyl(p, role, id)
+	if p:IsA("MeshPart") then
+		p.TextureID = id -- clear pixels show the part's Color (the candy paint) through
+	else
+		local d = p:FindFirstChild("Vinyl")
+		if id == "" then
+			if d then
+				d:Destroy()
+			end
+			return
+		end
+		if not d then
+			d = Instance.new("Decal")
+			d.Name = "Vinyl"
+			d.Face = DECAL_FACE[role] or Enum.NormalId.Top
+			d.Parent = p
+		end
+		d.Texture = id
+	end
+end
+
+-- paints a car with a look table (see Config.StarterLook); safe to call on the client for a live preview
 function Kit.ApplyLook(car, look)
 	look = look or Config.StarterLook
 	local paint = Config.Paint(look.paint).color
 	local finish = Config.ById.Finishes[look.finish] or Config.Finishes[1]
 	local art = Config.ById.Art[look.art] or Config.Art[1]
-	local artColor = Config.Paint(look.artColor).color
-	local stripe = Config.Paint(look.stripeColor).color
 	local wheel = Config.ById.Wheels[look.wheels] or Config.Wheels[1]
-	local artOn = {}
-	for _, r in art.pieces do
-		artOn[r] = true
-	end
-	local ART = { Flames = 1, FlamesEdge = 1, Patterns = 1, Patterns2 = 1, LidMuralSky = 1, LidMuralSun = 1, LidMuralSea = 1, LidMuralPalm = 1, LidPinstripe = 1 }
 	for _, p in car:GetDescendants() do
 		if not p:IsA("BasePart") then
 			continue
@@ -619,19 +657,13 @@ function Kit.ApplyLook(car, look)
 			continue
 		end
 		local d = DEFAULT[role]
-		if role == "Body" or role == "Lid" or role == "ContBody" then
+		if role == "Body" or role == "ContBody" or PANEL_OF[role] then
 			p.Color = paint
 			p.Material = finish.material
 			p.Reflectance = finish.reflectance
-		elseif ART[role] then
-			p.Transparency = artOn[role] and 0 or 1
-			p.Material = Enum.Material.SmoothPlastic
-			p.Reflectance = 0.1
-			p.Color = Config.MuralColors[role] or (role == "LidPinstripe" and stripe) or artColor
-		elseif role == "Pinstripe" then
-			p.Transparency = look.pinstripe and 0 or 1
-			p.Color = stripe
-			p.Material = Enum.Material.SmoothPlastic
+			if PANEL_OF[role] then
+				printVinyl(p, role, art.id == "none" and "" or Kit.VinylId(art.id, PANEL_OF[role]))
+			end
 		elseif role == "Spokes" then
 			local f = wheel.spokes == "paint" and { Enum.Material.SmoothPlastic, paint, 0.2 } or finishFor(wheel.spokes)
 			p.Material, p.Color, p.Reflectance = f[1], f[2], f[3]

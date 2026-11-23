@@ -3,17 +3,20 @@
 # The car: an original long, low two-door hardtop in the classic lowrider style (no real make or model). Swept body
 # lofted from cross sections, tubbed wheel wells, wraparound chrome bumpers, quad headlights, triple round
 # taillights, a pillarless greenhouse with wide sail panels, white tuck-and-roll interior with a chain steering
-# wheel, an opening trunk lid over a chrome pump-and-battery setup, a continental kit, and paint artwork made as
-# real geometry projected onto the body (pinstripe scrolls, side flames, panel patterns, a sunset-and-palms mural
-# on the trunk lid). Every art layer is its own piece so the game can switch it on and recolour it.
+# wheel, an opening trunk lid over a chrome pump-and-battery setup and a continental kit.
+# Paint: the body's paintable skin is split into UV-mapped panels (both sides, hood, trunk lid, roof) whose UVs
+# match the vinyl images from make_lowrider_vinyls.py exactly, so artwork prints flush in the paint like real
+# vinyl / airbrush (transparent pixels show the candy colour). LowriderVinyls.glb carries every vinyl image on a
+# copy of its panel: importing it into Studio uploads the images, and NCLowriderKit.Prepare records their ids.
 # The wheel: "Classic Wire 100-Spoke" (generic name, no brand): 100 cross-laced spokes in three rows, chrome
 # dish and lip, two-bar knock-off spinner, low-profile tyre with a thin whitewall. Built once; the game clones it.
 # The shop: a two-bay custom garage with a neon sign, a paint turntable in bay 1 and a hop pit with a height
 # board in bay 2 (markers in the data).
 # Units: 1 Blender unit = 1 stud. The car's front faces -Y, its origin is on the ground at the centre between the
 # axles; wheels sit at ride height. Car-local Roblox frame used by the game: forward = -Z, (X, Y, Z) = (-x, z, y).
-# Out: Lowrider.glb (car pieces Lowrider_*, wheel pieces LowriderWheel_* at x = 30), LowSlowShop.glb,
-#      lowrider.json, NCLowriderData.lua (game data), previews/Lowrider_*.png
+# Run make_lowrider_vinyls.py first (it writes lowrider_vinyls/*.png).
+# Out: Lowrider.glb (car pieces Lowrider_*, wheel pieces LowriderWheel_* at x = 30), LowriderVinyls.glb,
+#      LowSlowShop.glb, lowrider.json, NCLowriderData.lua (game data), previews/Lowrider_*.png
 import sys, json, os, math
 HERE = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else r"C:\Users\Crisa\Documents\NeonCoast_Blender"
 sys.path.insert(0, HERE)
@@ -270,6 +273,7 @@ def loft_body():
 
 def build_car():
     body = loft_body()
+    body["loft"] = True
     # wheel tubs: short cylinders from each side (not through the car, so the wells are closed boxes)
     cutters = bpy.data.collections.new("Cutters")
     bpy.context.scene.collection.children.link(cutters)
@@ -328,7 +332,7 @@ def build_car():
     yA0, yA1 = -2.75, -0.85                               # windshield base / top
     yC0, yC1 = 3.3, 5.35                                  # rear glass top / base
     ROOF = 4.62
-    cube("Body", Vector((0, (yA1 + yC0) / 2, ROOF + 0.07)), (2 * xs_t + 0.16, yC0 - yA1 + 0.2, 0.16), 0.07)
+    cube("PanelRoof", Vector((0, (yA1 + yC0) / 2, ROOF + 0.07)), (2 * xs_t + 0.16, yC0 - yA1 + 0.2, 0.16), 0.07)
     # windshield + rear glass
     prism("Glass", [(-3.2, yA0, zb), (3.2, yA0, zb), (xs_t - 0.08, yA1, ROOF), (-(xs_t - 0.08), yA1, ROOF)],
           [(-3.2, yA0 + 0.06, zb - 0.04), (3.2, yA0 + 0.06, zb - 0.04), (xs_t - 0.08, yA1 + 0.06, ROOF - 0.04), (-(xs_t - 0.08), yA1 + 0.06, ROOF - 0.04)])
@@ -465,256 +469,122 @@ def build_car():
     box("ContChrome", -0.12, 11.05, 1.25, 0.12, 11.4, 1.9)
 
 
-# ------------------------------------------------------------------ paint artwork as projected geometry
-def join_bvh(kinds):
-    bms = bmesh.new()
-    for ob in OBJS:
-        if ob["kind"] in kinds and ob["style"] == "Lowrider":
-            bake(ob)
-            tmp = ob.data.copy()
-            tmp.transform(ob.matrix_world)
-            bms.from_mesh(tmp)
-            bpy.data.meshes.remove(tmp)
-    return BVHTree.FromBMesh(bms)
+# ------------------------------------------------------------------ paint panels (UV-mapped for the vinyls)
+PANELS = {  # Blender stud bounds of each vinyl image; must match PANELS in make_lowrider_vinyls.py
+    "side": ((-10.5, 10.5), (0.65, 2.95)),    # y (front -> rear = image left -> right), z (top of image = up)
+    "hood": ((-3.85, 3.85), (-10.4, -2.7)),   # x (car's left = image left), y (front = image top)
+    "trunk": ((-3.2, 3.2), (6.0, 9.85)),
+    "roof": ((-3.1, 3.1), (-0.85, 3.4)),
+}
+PANEL_OF = {"PanelSideL": "side", "PanelSideR": "side", "PanelHood": "hood", "Lid": "trunk", "PanelRoof": "roof"}
+SOURCE_OF = {"side": "PanelSideL", "hood": "PanelHood", "trunk": "Lid", "roof": "PanelRoof"}
 
 
-def V3(p):
-    return Vector((p[0], p[1], 0.0))
+def panel_uv(panel, co):
+    (a0, a1), (b0, b1) = PANELS[panel]
+    if panel == "side":
+        return ((co.y - a0) / (a1 - a0), (co.z - b0) / (b1 - b0))
+    return ((a1 - co.x) / (a1 - a0), 1 - (co.y - b0) / (b1 - b0))
 
 
-def perp(d):
-    v = Vector((-d.y, d.x, 0.0))
-    return v.normalized() if v.length > 1e-6 else v
+def set_uv(ob, panel):
+    bake(ob)
+    me = ob.data
+    for layer in list(me.uv_layers):
+        me.uv_layers.remove(layer)
+    uv = me.uv_layers.new(name="UVMap")
+    for poly in me.polygons:
+        for li in poly.loop_indices:
+            co = ob.matrix_world @ me.vertices[me.loops[li].vertex_index].co
+            uv.data[li].uv = panel_uv(panel, co)
+    ob["uv"] = True
 
 
-def resample(pts, step=0.18, closed=False):
-    pts = [V3(p) for p in pts]
-    if closed:
-        pts = pts + [pts[0]]
-    out = [pts[0]]
-    for a, b in zip(pts, pts[1:]):
-        n = max(1, int((b - a).length / step))
-        for k in range(1, n + 1):
-            out.append(a.lerp(b, k / n))
-    if closed:
-        out.pop()
+def split_panels():
+    """cut the lofted body's skin into the paint panels: both sides, the hood; lid and roof are already pieces"""
+    body = [o for o in OBJS if o.get("loft")][0]
+    bake(body)
+    regions = {}
+    for f in body.data.polygons:
+        c, n = f.center, f.normal
+        if abs(n.x) > 0.5 and abs(c.x) > W - 0.35:
+            r = "PanelSideL" if c.x > 0 else "PanelSideR"
+        elif n.z > 0.5 and -10.45 < c.y < -2.62:
+            r = "PanelHood"
+        else:
+            r = "Body"
+        regions.setdefault(r, set()).add(f.index)
+    moved = set()
+    for r, idx in regions.items():
+        if r == "Body":
+            continue
+        bm = bmesh.new()
+        bm.from_mesh(body.data)
+        bm.faces.ensure_lookup_table()
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.index not in idx], context="FACES")
+        set_uv(new_obj(bm, r, smooth=35.0), PANEL_OF[r])
+        moved |= idx
+    bm = bmesh.new()
+    bm.from_mesh(body.data)
+    bm.faces.ensure_lookup_table()
+    bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.index in moved], context="FACES")
+    bm.to_mesh(body.data)
+    bm.free()
+    for o in list(OBJS):
+        if o["kind"] in ("Lid", "PanelRoof"):
+            set_uv(o, PANEL_OF[o["kind"]])
+
+
+def vinyl_dir():
+    for d in (os.path.join(OUT, "lowrider_vinyls"), os.path.join(HERE, "lowrider_vinyls")):
+        if os.path.isdir(d):
+            return d
+    return None
+
+
+def vinyl_files():
+    """{livery: {panel: path}} from lowrider_vinyls/<livery>_<panel>.png"""
+    out = {}
+    d = vinyl_dir()
+    if not d:
+        print("NEONCOAST_WARN no lowrider_vinyls folder: run make_lowrider_vinyls.py first")
+        return out
+    for fn in sorted(os.listdir(d)):
+        if fn.endswith(".png") and "_" in fn:
+            liv, pan = fn[:-4].rsplit("_", 1)
+            if pan in PANELS:
+                out.setdefault(liv, {})[pan] = os.path.join(d, fn)
     return out
 
 
-def bezier(p0, p1, p2, n=10):
-    p0, p1, p2 = V3(p0), V3(p1), V3(p2)
-    return [((1 - t) ** 2) * p0 + 2 * (1 - t) * t * p1 + t * t * p2 for t in (k / n for k in range(n + 1))]
-
-
-class Projector:
-    def __init__(self, bvh, mode, side=1, lift=0.03):
-        self.bvh, self.mode, self.side, self.lift = bvh, mode, side, lift
-        self.outward = Vector((0, 0, 1)) if mode == "top" else Vector((side, 0, 0))
-
-    def __call__(self, uv):
-        u, v = uv[0], uv[1]
-        if self.mode == "top":            # (x, y) seen from above
-            o, d = Vector((u, v, 20.0)), Vector((0, 0, -1))
-        else:                             # (y, z) on the side x = side * ...
-            o, d = Vector((self.side * 12.0, u, v)), Vector((-self.side, 0, 0))
-        hit, n, _, _ = self.bvh.ray_cast(o, d, 40.0)
-        if hit is None:
-            return None
-        if n.dot(d) > 0:
-            n = -n
-        return hit + n * self.lift
-
-
-def emit(kind, tris2d, proj, style="Lowrider"):
-    """2D triangles -> projected mesh piece (skips triangles that miss the surface)"""
-    bm = bmesh.new()
-    cache = {}
-
-    def vert(p):
-        key = (round(p[0], 4), round(p[1], 4))
-        if key not in cache:
-            w = proj(p)
-            cache[key] = bm.verts.new(w) if w is not None else None
-        return cache[key]
-    for (a, b, c) in tris2d:
-        vs = [vert(a), vert(b), vert(c)]
-        if None in vs or len(set(vs)) < 3:
-            continue
+def image_mat(name, path, base=None):
+    """material with a vinyl image: alone (alpha blended), or printed over a base paint colour (previews)"""
+    mat = bpy.data.materials.new(name)
+    try:
+        mat.use_nodes = True
+    except Exception:
+        pass
+    nt = mat.node_tree
+    b = nt.nodes.get("Principled BSDF")
+    tex = nt.nodes.new("ShaderNodeTexImage")
+    tex.image = bpy.data.images.load(path, check_existing=True)
+    if base is None:
+        nt.links.new(tex.outputs["Color"], b.inputs["Base Color"])
+        nt.links.new(tex.outputs["Alpha"], b.inputs["Alpha"])
         try:
-            bm.faces.new(vs)
-        except ValueError:
+            mat.blend_method = "BLEND"
+        except Exception:
             pass
-    if not bm.faces:
-        bm.free()
-        return None
-    bm.normal_update()
-    flip = [f for f in bm.faces if f.normal.dot(proj.outward) < 0]   # Roblox culls back faces: face outwards
-    if flip:
-        bmesh.ops.reverse_faces(bm, faces=flip)
-    return new_obj(bm, kind, style, 0.0)
-
-
-def ribbon(pts, w):
-    """polyline -> 2D triangles of a strip of width w"""
-    pts = resample(pts, 0.15)
-    tris = []
-    L, R = [], []
-    for i, p in enumerate(pts):
-        a = pts[max(0, i - 1)]
-        b = pts[min(len(pts) - 1, i + 1)]
-        t = (b - a)
-        if t.length < 1e-6:
-            t = Vector((1, 0, 0))
-        t.normalize()
-        nrm = Vector((-t.y, t.x, 0)) * (w / 2)
-        L.append(p + nrm)
-        R.append(p - nrm)
-    for i in range(len(pts) - 1):
-        tris.append((L[i], R[i], R[i + 1]))
-        tris.append((L[i], R[i + 1], L[i + 1]))
-    return tris
-
-
-def fill(poly, step=0.25):
-    """simple polygon -> 2D triangles, with interior points so the projection follows curved panels"""
-    bm = bmesh.new()
-    vs = [bm.verts.new((p[0], p[1], 0)) for p in resample(poly, step, closed=True)]
-    f = bm.faces.new(vs)
-    bmesh.ops.triangulate(bm, faces=[f], quad_method="BEAUTY", ngon_method="BEAUTY")
-    for _ in range(2):
-        long_edges = [e for e in bm.edges if e.calc_length() > step * 2.2]
-        if not long_edges:
-            break
-        bmesh.ops.subdivide_edges(bm, edges=long_edges, cuts=1, use_grid_fill=False)
-        bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method="BEAUTY", ngon_method="BEAUTY")
-    tris = [tuple(V3(v.co) for v in f.verts) for f in bm.faces]
-    bm.free()
-    return tris
-
-
-def circle(c, r, n=24, a0=0.0, a1=2 * math.pi):
-    return [Vector((c[0] + r * math.cos(a0 + (a1 - a0) * k / n), c[1] + r * math.sin(a0 + (a1 - a0) * k / n), 0)) for k in range(n + 1)]
-
-
-def build_art():
-    bvh = join_bvh({"Body"})
-    top = Projector(bvh, "top", lift=0.025)
-    # Pinstripe: a symmetric scroll on the hood + a stripe down each side spear line
-    lines = []
-    for s in (-1, 1):
-        loop = [Vector((s * (0.25 + 1.1 * math.sin(t) * (1 - t / 7)), -9.4 + 0.75 * t - 0.5 * math.sin(2 * t), 0)) for t in [k * 0.12 for k in range(55)]]
-        lines.append(loop)
-        lines.append(bezier((s * 0.15, -5.6), (s * 1.9, -6.2), (s * 2.3, -8.6), 14))
-        lines.append([Vector((s * (0.25 + 0.55 * math.cos(a)), -4.6 + 0.55 * math.sin(a), 0)) for a in [k * 0.25 for k in range(26)]])
-        lines.append(bezier((s * 0.2, -3.6), (s * 1.2, -3.2), (s * 2.6, -4.2), 12))
-    tris = []
-    for ln in lines:
-        tris += ribbon(ln, 0.07)
-    emit("Pinstripe", tris, Projector(bvh, "top", lift=0.054))
-    for s in (-1, 1):
-        side = Projector(bvh, "side", s, 0.054)
-        tris = ribbon([Vector((WY_F + ARCH + 0.4, 2.3, 0)), Vector((WY_R - ARCH - 0.4, 2.3, 0))], 0.05)
-        tris += ribbon(bezier((WY_R - ARCH - 0.4, 2.3), (WY_R - ARCH + 0.2, 2.5), (WY_R - ARCH - 0.8, 2.48), 8), 0.05)
-        tris += ribbon(bezier((WY_F + ARCH + 0.4, 2.3), (WY_F + ARCH - 0.2, 2.5), (WY_F + ARCH + 0.8, 2.48), 8), 0.05)
-        emit("Pinstripe", tris, side)
-
-    # Flames: licks on the hood from the grille back, and down each door behind the front wheel
-    def flame_poly(base0, base1, licks, axis_dir, bulge=0.2):
-        """base0/base1: the two ends of the flame's root; licks: list of (tip, valley) points"""
-        pts = [V3(base0)]
-        prev = V3(base0)
-        for tip, valley in licks:
-            tip, valley = V3(tip), V3(valley)
-            pts += bezier(prev, prev.lerp(tip, 0.6) + perp(tip - prev) * bulge * axis_dir, tip, 8)[1:]
-            pts += bezier(tip, tip.lerp(valley, 0.5) + perp(valley - tip) * bulge * 1.25 * axis_dir, valley, 6)[1:]
-            prev = valley
-        pts += bezier(prev, prev.lerp(V3(base1), 0.5), base1, 4)[1:]
-        return pts
-    hood = []
-    for s in (-1, 1):
-        lk = [((s * 2.9, -6.2), (s * 2.4, -8.2)), ((s * 2.2, -4.4), (s * 1.6, -7.4)), ((s * 1.3, -3.6), (s * 0.9, -6.9)), ((s * 0.4, -4.8), (s * 0.05, -7.6))]
-        hood.append(flame_poly((s * 3.4, -10.0), (0.0, -10.0), lk, s))
-    tris = []
-    for p in hood:
-        tris += fill(p, 0.2)
-    emit("Flames", tris, Projector(bvh, "top", lift=0.03))
-    edge = []
-    for p in hood:
-        edge += ribbon(p + [p[0]], 0.06)
-    emit("FlamesEdge", edge, Projector(bvh, "top", lift=0.035))
-    for s in (-1, 1):
-        y0 = WY_F + ARCH + 0.35
-        lk = [((y0 + 5.2, 2.35), (y0 + 1.4, 2.1)), ((y0 + 6.8, 1.95), (y0 + 1.8, 1.7)), ((y0 + 5.8, 1.5), (y0 + 1.5, 1.27)),
-              ((y0 + 3.6, 1.1), (y0 + 0.8, 1.0))]
-        poly = flame_poly((y0, 2.45), (y0, 0.95), lk, -1, bulge=0.12)
-        side = Projector(bvh, "side", s, 0.03)
-        emit("Flames", fill(poly, 0.2), side)
-        emit("FlamesEdge", ribbon(poly + [poly[0]], 0.06), Projector(bvh, "side", s, 0.035))
-
-    # Patterns: the classic panel work: a long panel on each side with diamonds and fans, and a roof panel
-    for s in (-1, 1):
-        side = Projector(bvh, "side", s, 0.042)
-        side2 = Projector(bvh, "side", s, 0.048)
-        y0, y1, z0, z1 = WY_F + ARCH + 0.5, WY_R - ARCH - 0.5, 1.45, 1.95
-        frame = [Vector((y0, z0, 0)), Vector((y1, z0, 0)), Vector((y1, z1, 0)), Vector((y0, z1, 0)), Vector((y0, z0, 0))]
-        tris = ribbon(frame, 0.06)
-        n = 7
-        d2 = []
-        for k in range(n):
-            cy = y0 + (y1 - y0) * (k + 0.5) / n
-            dz = (z1 - z0) / 2 - 0.06
-            dia = [Vector((cy - 0.45, (z0 + z1) / 2, 0)), Vector((cy, (z0 + z1) / 2 + dz, 0)), Vector((cy + 0.45, (z0 + z1) / 2, 0)), Vector((cy, (z0 + z1) / 2 - dz, 0))]
-            d2 += fill(dia, 0.12)
-            tris += ribbon([Vector((cy - 0.6, z0 + 0.06, 0)), Vector((cy, (z0 + z1) / 2, 0)), Vector((cy - 0.6, z1 - 0.06, 0))], 0.04)
-        emit("Patterns", tris, side)
-        emit("Patterns2", d2, side2)
-    # roof panel: inset frame + a grid of lace rosettes (reads as old-school lace from a distance)
-    rbvh = join_bvh({"Body"})
-    roof = Projector(rbvh, "top", lift=0.042)
-    roof2 = Projector(rbvh, "top", lift=0.048)
-    x0, x1, y0, y1 = -2.5, 2.5, -0.5, 3.0
-    tris = ribbon([Vector((x0, y0, 0)), Vector((x1, y0, 0)), Vector((x1, y1, 0)), Vector((x0, y1, 0)), Vector((x0, y0, 0))], 0.08)
-    lace = []
-    for i in range(5):
-        for j in range(3):
-            c = (x0 + 0.5 + i * 1.0, y0 + 0.6 + j * 1.15)
-            lace += ribbon(circle(c, 0.38, 20), 0.035)
-            for k in range(6):
-                a = k * math.pi / 3
-                lace += ribbon([Vector((c[0], c[1], 0)), Vector((c[0] + 0.38 * math.cos(a), c[1] + 0.38 * math.sin(a), 0))], 0.03)
-    emit("Patterns", tris, roof)
-    emit("Patterns2", lace, roof2)
-
-    # Mural on the trunk lid: sunset sky, sun, sea stripes and two palm silhouettes (kept clean and simple)
-    lid = [o for o in OBJS if o["kind"] == "Lid"][0]
-    bm = bmesh.new()
-    bm.from_mesh(lid.data)
-    lbvh = BVHTree.FromBMesh(bm)
-    P = lambda lift: Projector(lbvh, "top", lift=lift)
-    cx, cy, rx, ry = 0.0, 7.95, 2.7, 1.6
-    oval = [Vector((cx + rx * math.cos(a), cy + ry * math.sin(a), 0)) for a in [k * 2 * math.pi / 48 for k in range(48)]]
-    emit("LidMuralSky", fill(oval, 0.2), P(0.02))
-    sun = [Vector((cx + 0.9 * math.cos(a), cy + 0.25 + 0.9 * math.sin(a) * -1, 0)) for a in [k * math.pi / 20 for k in range(21)]]
-    emit("LidMuralSun", fill(sun, 0.12), P(0.03))
-    sea = []
-    for k in range(4):
-        yy = cy + 0.4 + k * 0.28
-        half = math.sqrt(max(0.0, 1 - ((yy - cy) / ry) ** 2)) * rx - 0.15
-        sea += ribbon([Vector((cx - half, yy, 0)), Vector((cx + half, yy, 0))], 0.1)
-    emit("LidMuralSea", sea, P(0.035))
-    palms = []
-    for (bx, by, lean) in ((-1.7, 9.0, 0.5), (1.85, 8.95, -0.4)):
-        trunk = bezier((bx, by), (bx + lean * 0.4, by - 0.9), (bx + lean, by - 1.9), 10)
-        palms += ribbon(trunk, 0.13)
-        tx, ty = bx + lean, by - 1.9
-        for k in range(6):
-            a = math.pi * (0.1 + k * 0.16)
-            tip = (tx + 0.85 * math.cos(a + math.pi), ty - 0.55 * math.sin(a) + 0.15)
-            frond = bezier((tx, ty), ((tx + tip[0]) / 2, ty - 0.45), tip, 8)
-            palms += ribbon(frond, 0.11)
-    emit("LidMuralPalm", palms, P(0.045))
-    # lid pinstripe frame
-    emit("LidPinstripe", ribbon(oval + [oval[0]], 0.06), P(0.04))
+    else:
+        mix = nt.nodes.new("ShaderNodeMix")
+        mix.data_type = "RGBA"
+        nt.links.new(tex.outputs["Alpha"], mix.inputs[0])
+        mix.inputs[6].default_value = (*base, 1)
+        nt.links.new(tex.outputs["Color"], mix.inputs[7])
+        nt.links.new(mix.outputs[2], b.inputs["Base Color"])
+        b.inputs["Coat Weight"].default_value = 1.0
+        b.inputs["Roughness"].default_value = 0.3
+    return mat
 
 
 # ------------------------------------------------------------------ the wheel
@@ -856,6 +726,7 @@ def join_style(style, prefix):
     for kind, obs in sorted(groups.items()):
         bm = bmesh.new()
         smooth = max(o.get("smooth", 0.0) for o in obs)
+        custom_uv = any(o.get("uv") for o in obs)
         for ob in obs:
             bake(ob)
             me = ob.data.copy()
@@ -871,9 +742,10 @@ def join_style(style, prefix):
         me = bpy.data.meshes.new(name)
         bm.to_mesh(me)
         bm.free()
-        # box-projected UVs (1 tile per 8 studs) so imported meshes take materials cleanly
-        uv = me.uv_layers.new(name="UVMap")
-        for poly in me.polygons:
+        # box-projected UVs (1 tile per 8 studs) so imported meshes take materials cleanly; paint panels keep
+        # their vinyl UVs
+        uv = None if custom_uv else me.uv_layers.new(name="UVMap")
+        for poly in (me.polygons if uv else []):
             n = poly.normal
             ax = max(range(3), key=lambda i: abs(n[i]))
             for li in poly.loop_indices:
@@ -891,10 +763,11 @@ def join_style(style, prefix):
         bpy.context.scene.collection.objects.link(ob)
         ob["style"] = style
         mat = bpy.data.materials.new(name)
-        col = lin(COLORS.get(kind.replace("Lid", "", 1) if kind.startswith("Lid") and kind != "Lid" else kind, (0.8, 0.8, 0.8)))
+        col = lin(COLORS.get("Body" if kind.startswith("Panel") else kind, (0.8, 0.8, 0.8)))
         mat.diffuse_color = (*col, 1)
         mat.metallic = 0.9 if kind in ("Chrome", "Rim", "Spokes", "Hub", "Pump", "ContChrome", "SteeringWheel") else 0.0
-        mat.roughness = 0.15 if mat.metallic > 0.5 else (0.3 if kind in ("Body", "Lid", "ContBody") else 0.7)
+        paint = kind in ("Body", "Lid", "ContBody") or kind.startswith("Panel")
+        mat.roughness = 0.15 if mat.metallic > 0.5 else (0.3 if paint else 0.7)
         try:
             mat.use_nodes = True
         except Exception:
@@ -905,7 +778,7 @@ def join_style(style, prefix):
                 b.inputs["Base Color"].default_value = (*col, 1)
                 b.inputs["Metallic"].default_value = mat.metallic
                 b.inputs["Roughness"].default_value = mat.roughness
-                if kind in ("Body", "Lid", "ContBody"):
+                if paint:
                     b.inputs["Coat Weight"].default_value = 1.0          # candy clear coat
                 if kind in ("Headlight", "Taillight", "Neon", "Neon2"):
                     b.inputs["Emission Color"].default_value = (*col, 1)
@@ -933,8 +806,27 @@ def export(objs, fname):
 
 
 build_car()
-build_art()
+split_panels()
 car, car_tris = join_style("Lowrider", "Lowrider")
+# every vinyl image on a copy of its panel: importing this GLB in Studio uploads the images
+VINYLS = vinyl_files()
+vinyl_objs = []
+by_kind = {ob.name.split("_", 1)[1]: ob for ob in car}
+for liv, panels in sorted(VINYLS.items()):
+    for pan, path in sorted(panels.items()):
+        src = by_kind[SOURCE_OF[pan]]
+        cp = src.copy()
+        cp.data = src.data.copy()
+        cp.name = f"Livery_{liv}_{pan}"
+        cp.data.name = cp.name
+        cp.data.materials.clear()
+        cp.data.materials.append(image_mat(cp.name, path))
+        bpy.context.scene.collection.objects.link(cp)
+        vinyl_objs.append(cp)
+if vinyl_objs:
+    export(vinyl_objs, "LowriderVinyls.glb")
+for ob in vinyl_objs:
+    bpy.data.objects.remove(ob)
 WHEEL_X = 30.0
 build_wheel(WHEEL_X)
 wheel, wheel_tris = join_style("LowriderWheel", "LowriderWheel")
@@ -1011,6 +903,8 @@ data = {
         "Seats": {"Driver": car_pt((1.55, 0.35, 1.75)), "Passenger": car_pt((-1.55, 0.35, 1.75)),
                   "RearL": car_pt((1.55, 3.3, 1.75)), "RearR": car_pt((-1.55, 3.3, 1.75))},
         "FrontBumper": car_pt((0, -10.75, 1.22)), "RearBumper": car_pt((0, 10.8, 1.22)),
+        # which panel each paint piece prints, and which vinyl images exist per livery
+        "PanelOf": PANEL_OF, "Vinyls": {liv: sorted(p) for liv, p in VINYLS.items()},
     },
     "Wheel": {"ImportMin": wmn, "ImportMax": wmx, "Centre": imp_pt((WHEEL_X, 0, 0)),
               "Pieces": sorted(k.split("_", 1)[1] for k in wheel_tris)},
@@ -1068,17 +962,21 @@ for (wx, wy) in ((WX, WY_F), (-WX, WY_F), (WX, WY_R), (-WX, WY_R)):      # previ
         d["style"] = "Lowrider"
         scene.collection.objects.link(d)
         d.matrix_world = Matrix.Translation((wx, wy, WR)) @ Matrix.Rotation(0 if wx > 0 else math.pi, 4, "Z") @ Matrix.Translation((-WHEEL_X, 0, 0))
-ART_SETS = {"Flames": ("Flames", "FlamesEdge"), "Patterns": ("Patterns", "Patterns2"), "Mural": ("LidMuralSky", "LidMuralSun", "LidMuralSea", "LidMuralPalm", "LidPinstripe")}
+PAINT = lin(COLORS["Body"])
+plain = {}
 
 
-def show_art(sets):
-    on = {k for s_ in sets for k in ART_SETS.get(s_, ())} | ({"Pinstripe"} if "Pinstripe" in sets else set())
-    every = {k for v in ART_SETS.values() for k in v} | {"Pinstripe"}
+def show_livery(liv):
+    """print a livery's vinyls over the paint on the preview car"""
     for ob in scene.objects:
         if ob.type != "MESH":
             continue
-        kind = ob.name.split("_", 1)[1].split(".")[0] if "_" in ob.name else ""
-        ob.hide_render = ob.get("style") != "Lowrider" or (kind in every and kind not in on)
+        ob.hide_render = ob.get("style") != "Lowrider"
+        kind = ob.name.split("_", 1)[1] if ob.name.startswith("Lowrider_") else ""
+        if kind in PANEL_OF:
+            plain.setdefault(ob.name, ob.data.materials[0])
+            path = VINYLS.get(liv, {}).get(PANEL_OF[kind])
+            ob.data.materials[0] = image_mat(f"prev_{liv}_{kind}", path, PAINT) if path else plain[ob.name]
 
 
 def shot(name, loc, tgt):
@@ -1088,13 +986,18 @@ def shot(name, loc, tgt):
     bpy.ops.render.render(write_still=True)
 
 
-show_art(["Flames", "Mural", "Pinstripe"])
-shot("front34", (-17, -24, 7.5), (0, -1.5, 1.8))
-shot("rear34", (15, 25, 8.5), (0, 2.5, 1.8))
-shot("side", (26, 0.5, 3.2), (0, 0.5, 2.0))
-show_art(["Patterns", "Mural"])
-shot("patterns", (-20, -16, 9), (0, 0.5, 1.8))
-shot("top", (0.01, 0.5, 36), (0, 0.5, 0))
+show_livery("flames")
+shot("flames_front34", (-17, -24, 7.5), (0, -1.5, 1.8))
+shot("flames_side", (26, 0.5, 3.2), (0, 0.5, 2.0))
+show_livery("showcar")
+shot("showcar_front34", (-20, -16, 9), (0, 0.5, 1.8))
+shot("showcar_rear34", (15, 25, 8.5), (0, 2.5, 1.8))
+show_livery("purple_lace")
+shot("purple_lace_top", (8, -14, 22), (0, 0.5, 1.5))
+show_livery("pinstripe")
+shot("pinstripe_front34", (-17, -24, 7.5), (0, -1.5, 1.8))
+show_livery("none")
+shot("clean_side", (26, 0.5, 3.2), (0, 0.5, 2.0))
 for ob in scene.objects:
     if ob.type == "MESH":
         ob.hide_render = ob.get("style") != "LowriderWheel"

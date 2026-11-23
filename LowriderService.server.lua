@@ -1,6 +1,6 @@
 --!nonstrict
 -- LowriderService (server): Low & Slow Kustoms, the lowrider custom shop. Buy the Royale Lowrider, get it out of the
--- shop, and customize it: candy paint and finish, artwork, pinstripes, Classic Wire 100-Spoke wheels, air bags or
+-- shop, and customize it: candy paint and finish, vinyl decals, Classic Wire 100-Spoke wheels, air bags or
 -- hydraulics, a continental kit and a chrome pump setup in the trunk. Everything is saved (DataStore
 -- NeonCoast_Garage_v1) and paid for with the game's Cash through NCWallet.
 --
@@ -72,11 +72,9 @@ local function cleanLook(look)
 	pick("paint", "Paints")
 	pick("finish", "Finishes")
 	pick("art", "Art")
-	pick("artColor", "Paints")
-	pick("stripeColor", "Paints")
 	pick("wheels", "Wheels")
 	pick("susp", "Suspension")
-	for _, k in { "pinstripe", "whitewall", "continental", "trunkSetup" } do
+	for _, k in { "whitewall", "continental", "trunkSetup" } do
 		if type(look[k]) == "boolean" then
 			out[k] = look[k]
 		end
@@ -312,7 +310,7 @@ local function spawnCar(player)
 end
 
 ---------------------------------------------------------------------------------------------------- shop purchases
-local LIST_FOR = { paint = "Paints", finish = "Finishes", art = "Art", wheels = "Wheels", susp = "Suspension", artColor = "Paints", stripeColor = "Paints" }
+local LIST_FOR = { paint = "Paints", finish = "Finishes", art = "Art", wheels = "Wheels", susp = "Suspension" }
 
 -- what a new look costs on top of what the player already has unlocked
 local function quote(prof, look)
@@ -322,17 +320,13 @@ local function quote(prof, look)
 			local it = Config.ById[list][look[key]]
 			local tag = list .. ":" .. look[key]
 			local price = it and it.price or 0
-			if key == "artColor" or key == "stripeColor" then
-				tag = key .. ":" .. look[key]
-				price = Config.ArtColorPrice
-			end
 			if not prof.unlocked[tag] and price > 0 then
 				total += price
 				table.insert(items, tag)
 			end
 		end
 	end
-	local extras = { pinstripe = Config.PinstripePrice, whitewall = Config.WhitewallPrice, continental = Config.ContinentalPrice, trunkSetup = Config.TrunkSetupPrice }
+	local extras = { whitewall = Config.WhitewallPrice, continental = Config.ContinentalPrice, trunkSetup = Config.TrunkSetupPrice }
 	for key, price in extras do
 		if look[key] and not prof.look[key] and not prof.unlocked["Extra:" .. key] then
 			total += price
@@ -400,10 +394,10 @@ ShopRF.OnServerInvoke = function(player, action, arg)
 		end
 		-- whatever you had on before stays unlocked, so you can switch back for free
 		for key, list in LIST_FOR do
-			local tag = (key == "artColor" or key == "stripeColor") and (key .. ":" .. prof.look[key]) or (list .. ":" .. prof.look[key])
+			local tag = list .. ":" .. prof.look[key]
 			prof.unlocked[tag] = true
 		end
-		for _, key in { "pinstripe", "whitewall", "continental", "trunkSetup" } do
+		for _, key in { "whitewall", "continental", "trunkSetup" } do
 			if prof.look[key] then
 				prof.unlocked["Extra:" .. key] = true
 			end

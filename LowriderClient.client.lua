@@ -873,7 +873,7 @@ local function decode(attr)
 end
 
 -- mirror of the server's price check (the server has the final say)
-local LIST_FOR = { paint = "Paints", finish = "Finishes", art = "Art", wheels = "Wheels", susp = "Suspension", artColor = "Paints", stripeColor = "Paints" }
+local LIST_FOR = { paint = "Paints", finish = "Finishes", art = "Art", wheels = "Wheels", susp = "Suspension" }
 local function quote(look)
 	local unlocked = decode(player:GetAttribute("LowriderUnlocked")) or {}
 	local total = 0
@@ -881,15 +881,12 @@ local function quote(look)
 		if look[key] ~= saved[key] then
 			local it = Config.ById[l][look[key]]
 			local tag, price = l .. ":" .. look[key], it and it.price or 0
-			if key == "artColor" or key == "stripeColor" then
-				tag, price = key .. ":" .. look[key], Config.ArtColorPrice
-			end
 			if not unlocked[tag] and price > 0 then
 				total += price
 			end
 		end
 	end
-	for key, price in { pinstripe = Config.PinstripePrice, whitewall = Config.WhitewallPrice, continental = Config.ContinentalPrice, trunkSetup = Config.TrunkSetupPrice } do
+	for key, price in { whitewall = Config.WhitewallPrice, continental = Config.ContinentalPrice, trunkSetup = Config.TrunkSetupPrice } do
 		if look[key] and not saved[key] and not unlocked["Extra:" .. key] then
 			total += price
 		end
@@ -950,7 +947,7 @@ local function priceTag(price, tag)
 	return "$" .. price
 end
 
-local TABS = { "Car", "Paint", "Art", "Stripes", "Wheels", "Hydraulics", "Extras" }
+local TABS = { "Car", "Paint", "Vinyls", "Wheels", "Hydraulics", "Extras" }
 render = function()
 	for _, ch in list:GetChildren() do
 		if ch:IsA("GuiObject") then
@@ -1021,39 +1018,25 @@ render = function()
 				render()
 			end)
 		end
-	elseif activeTab == "Art" then
-		header("Artwork")
+	elseif activeTab == "Vinyls" then
+		header("Vinyls and airbrush")
+		local vinyls = Data.Car.Vinyls or {}
+		local missing = false
 		for _, a in Config.Art do
+			local panels = vinyls[a.id] or {}
+			local parts = #panels > 0 and (" · " .. table.concat(panels, ", ")) or ""
+			if a.id ~= "none" and #panels > 0 and Kit.VinylId(a.id, panels[1]) == "" then
+				missing = true
+			end
 			row(a.name, priceTag(a.price, "Art:" .. a.id), draft.art == a.id, function()
 				draft.art = a.id
 				preview()
 				render()
-			end)
+			end).Name = a.id .. parts
 		end
-		header("Art colour")
-		for _, p in Config.Paints do
-			row(p.name, priceTag(Config.ArtColorPrice, "artColor:" .. p.id), draft.artColor == p.id, function()
-				draft.artColor = p.id
-				preview()
-				render()
-			end, p.color)
-		end
-	elseif activeTab == "Stripes" then
-		header("Pinstripes")
-		row(draft.pinstripe and "Pinstripes: ON" or "Pinstripes: OFF", priceTag(Config.PinstripePrice, "Extra:pinstripe"), draft.pinstripe, function()
-			draft.pinstripe = not draft.pinstripe
-			preview()
-			render()
-		end)
-		header("Stripe colour")
-		for _, p in Config.Paints do
-			row(p.name, priceTag(Config.ArtColorPrice, "stripeColor:" .. p.id), draft.stripeColor == p.id, function()
-				draft.stripeColor = p.id
-				draft.pinstripe = true
-				preview()
-				render()
-			end, p.color)
-		end
+		local t = label(list, missing and "Some vinyl images aren't uploaded yet (import LowriderVinyls.glb in Studio and run NCLowriderKit.Prepare on it)." or "Printed right on the paint. Clear parts show your candy colour through, so every vinyl works with every paint.", UDim2.new(), UDim2.new(1, -8, 0, 56), Color3.fromRGB(200, 200, 210), Enum.Font.Gotham)
+		t.TextWrapped = true
+		t.LayoutOrder = 999
 	elseif activeTab == "Wheels" then
 		header("Classic Wire 100-Spoke")
 		for _, w in Config.Wheels do

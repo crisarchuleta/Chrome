@@ -532,6 +532,7 @@ Full notes and install steps in `LOWRIDER.md`.
   `LowSlowShop.glb` (two-bay custom shop with a neon sign, paint turntable and hop pit), `NCLowriderData.lua`.
 - Drivable with raycast suspension; air bags (smooth lifts, lay frame) or hydraulics (corner lifts, front hop,
   body hop, three-wheel, dance). Hop pit measures hops in inches; top five show on the board.
-- Customize at the shop with live preview: candy paints and finishes, flames / patterns / mural artwork, pinstripes,
+- Customize at the shop with live preview: candy paints and finishes, vinyl decals printed flush on the paint
+  (flames, pinstripes, patterns + lace, sunset mural; images from make_lowrider_vinyls.py, LowriderVinyls.glb),
   wheel finishes, whitewalls, suspension kits, continental kit, trunk pump setup. Saved in `NeonCoast_Garage_v1`.
 - Works right away with a part-made car and shop; `NCLowriderKit.Prepare(import)` switches to the Blender meshes.

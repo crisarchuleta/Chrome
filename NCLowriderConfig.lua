@@ -7,12 +7,12 @@ local C = {}
 C.CarName = "Royale Lowrider"
 C.CarPrice = 2500
 C.StarterLook = {
-	paint = "candy_sunset", finish = "candy", art = "none", artColor = "gold_leaf", pinstripe = false,
-	stripeColor = "gold_leaf", wheels = "wire_chrome", whitewall = true, susp = "stock", continental = false,
+	paint = "candy_sunset", finish = "candy", art = "none", wheels = "wire_chrome", whitewall = true, susp = "stock",
+	continental = false,
 	trunkSetup = false, plate = "",
 }
 
--- paint colours (used for the body and as art / pinstripe colours)
+-- candy paint colours
 C.Paints = {
 	{ id = "candy_sunset", name = "Candy Sunset Red", color = Color3.fromRGB(150, 8, 24), price = 0 },
 	{ id = "candy_brandy", name = "Candy Brandywine", color = Color3.fromRGB(96, 6, 22), price = 400 },
@@ -38,21 +38,22 @@ C.Finishes = {
 	{ id = "satin", name = "Satin", material = Enum.Material.Plastic, reflectance = 0, price = 300 },
 }
 
--- paint artwork (each one is a set of real model pieces, coloured with artColor)
+-- vinyls: real decal artwork printed flush on the paint (images from make_lowrider_vinyls.py, lowrider_vinyls/).
+-- Each livery prints an image on some of the panels (hood, side, trunk, roof); see NCLowriderData.Car.Vinyls.
+-- Clear parts of an image show the candy paint underneath, so every livery works with every paint colour.
 C.Art = {
-	{ id = "none", name = "Clean (no art)", price = 0, pieces = {} },
-	{ id = "flames", name = "Flames", price = 900, pieces = { "Flames", "FlamesEdge" } },
-	{ id = "patterns", name = "Panel patterns + lace roof", price = 1100, pieces = { "Patterns", "Patterns2" } },
-	{ id = "mural", name = "Sunset mural (trunk)", price = 1300, pieces = { "LidMuralSky", "LidMuralSun", "LidMuralSea", "LidMuralPalm", "LidPinstripe" } },
-	{ id = "full", name = "Show car (patterns + mural)", price = 2000, pieces = { "Patterns", "Patterns2", "LidMuralSky", "LidMuralSun", "LidMuralSea", "LidMuralPalm", "LidPinstripe" } },
+	{ id = "none", name = "Clean (no vinyls)", price = 0 },
+	{ id = "pinstripe", name = "Gold pinstripe scrolls", price = 500 },
+	{ id = "flames", name = "Hot flames with blue pinstripe", price = 1100 },
+	{ id = "flames_teal", name = "Ice flames with purple pinstripe", price = 1100 },
+	{ id = "patterns", name = "Patterns, lace and fades", price = 1400 },
+	{ id = "purple_lace", name = "Purple lace and fades", price = 1400 },
+	{ id = "mural", name = "Sunset mural on the trunk + pinstripes", price = 1600 },
+	{ id = "showcar", name = "Show car: patterns, lace roof and mural", price = 2400 },
 }
-C.PinstripePrice = 350
-C.ArtColorPrice = 150
--- fixed colours for the mural (the sky follows artColor)
-C.MuralColors = {
-	LidMuralSun = Color3.fromRGB(255, 214, 70), LidMuralSea = Color3.fromRGB(20, 160, 190),
-	LidMuralPalm = Color3.fromRGB(18, 12, 26), Patterns2 = Color3.fromRGB(25, 205, 215), FlamesEdge = Color3.fromRGB(255, 220, 60),
-}
+-- Decal image ids. Importing LowriderVinyls.glb and running NCLowriderKit.Prepare on it fills these in by itself;
+-- you can also upload the PNGs yourself and paste ids here, e.g. flames_side = "rbxassetid://123456".
+C.VinylIds = {}
 
 -- wheels: "Classic Wire 100-Spoke" in different finishes
 C.Wheels = {
