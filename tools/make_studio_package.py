@@ -3,7 +3,8 @@ Drag the .rbxmx into ServerScriptService in Studio; LookStudioService moves the 
 import os
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ITEMS = [("ModuleScript", "NCLookCatalog", "NCLookCatalog.lua"), ("ModuleScript", "NCLookBuilder", "NCLookBuilder.lua"),
-         ("Script", "LookStudioService", "LookStudioService.server.lua"), ("LocalScript", "LookStudioClient", "LookStudioClient.client.lua")]
+         ("Script", "LookStudioService", "LookStudioService.server.lua"), ("LocalScript", "LookStudioClient", "LookStudioClient.client.lua"),
+         ("ModuleScript", "NCBodyData", "NCBodyData.lua"), ("Script", "NCBodyService", "NCBodyService.server.lua")]
 out = ['<roblox version="4"><Item class="Folder" referent="RBX0"><Properties><string name="Name">NeonCoastCharacterStudio</string></Properties>']
 for i, (cls, name, f) in enumerate(ITEMS, 1):
     src = open(os.path.join(root, f), encoding="utf-8").read().replace("]]>", "]]]]><![CDATA[>")

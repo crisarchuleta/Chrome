@@ -600,6 +600,36 @@ local function buildSlotBar()
 		end)
 		table.insert(slotButtons, b)
 	end
+	-- the body frame (NCBodyService): Male / Female MakeHuman body; the build comes from your fitness
+	local BodyRF = tabDef.name == "Body" and Remotes:FindFirstChild("NCBody")
+	if BodyRF then
+		local cur = player:GetAttribute("BodyGender") or "Male"
+		for i, g in ipairs({ "Male", "Female" }) do
+			local b = button((g == "Male" and "♂ " or "♀ ") .. g .. " body", COL.card, { Size = UDim2.fromOffset(0, 32), AutomaticSize = Enum.AutomaticSize.X, TextSize = 13, LayoutOrder = 100 + i, Parent = slotBar })
+			pad(10).Parent = b
+			setChip(b, g == cur)
+			b.MouseButton1Click:Connect(function()
+				if g == (player:GetAttribute("BodyGender") or "Male") then
+					return
+				end
+				local before = player.Character
+				local ok, msg = BodyRF:InvokeServer("SetGender", g)
+				if not ok then
+					say(msg or "Couldn't change body", COL.bad or Color3.fromRGB(255, 120, 110))
+					return
+				end
+				local t0 = os.clock()
+				while player.Character == before and os.clock() - t0 < 3 do
+					task.wait(0.05)
+				end
+				task.wait(0.3) -- let the new body get dressed
+				buildDummy()
+				renderDraft()
+				buildSlotBar()
+			end)
+			table.insert(slotButtons, b)
+		end
+	end
 end
 
 function refreshGrid()

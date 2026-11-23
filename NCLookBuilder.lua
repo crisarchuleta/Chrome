@@ -2121,6 +2121,65 @@ function B.ApplyBaseLayer(char)
 			end
 		end
 	end
+	B.ApplyEyes(char)
+end
+
+-- eyes for the MakeHuman bodies: their heads have real eye openings and an NC_<Side>EyeAttachment at the centre of
+-- each eyeball (put there by AssembleMakeHumanBodies, radius in the Head's NC_EyeRadius attribute). A white
+-- eyeball, an iris and a pupil, welded to the head, looking straight ahead. Bodies without the attachments (stock
+-- avatars) are left alone. Kept outside the look folder, so changing outfits never removes them.
+B.EYE = { white = Color3.fromRGB(238, 236, 230), iris = Color3.fromRGB(78, 52, 32), pupil = Color3.fromRGB(14, 12, 12) }
+function B.ApplyEyes(char, irisColour)
+	local head = char:FindFirstChild("Head")
+	if not (head and head:IsA("BasePart")) then
+		return
+	end
+	local old = char:FindFirstChild("NC_Eyes")
+	if old and not irisColour and old:GetAttribute("For") == head:GetDebugId() then
+		return
+	end
+	if old then
+		old:Destroy()
+	end
+	local r = head:GetAttribute("NC_EyeRadius") or 0.06
+	local folder
+	for _, side in ipairs({ "Left", "Right" }) do
+		local at = head:FindFirstChild("NC_" .. side .. "EyeAttachment")
+		if at and at:IsA("Attachment") then
+			if not folder then
+				folder = Instance.new("Folder")
+				folder.Name = "NC_Eyes"
+				folder:SetAttribute("For", head:GetDebugId())
+			end
+			local centre = CFrame.new(at.WorldPosition) * (head.CFrame - head.CFrame.Position)
+			local function bit(name, shape, size, cf, colour, mat)
+				local part = Instance.new("Part")
+				part.Name = side .. name
+				part.Shape = shape
+				part.Size = size
+				part.CFrame = cf
+				part.Color = colour
+				part.Material = mat
+				part.CanCollide, part.CanTouch, part.CanQuery, part.Massless, part.Anchored = false, false, false, true, false
+				part.CastShadow = false
+				part.TopSurface, part.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+				local w = Instance.new("WeldConstraint")
+				w.Part0, w.Part1 = head, part
+				w.Parent = part
+				part.Parent = folder
+			end
+			bit("Eye", Enum.PartType.Ball, Vector3.one * 2 * r, centre, B.EYE.white, Enum.Material.SmoothPlastic)
+			-- discs face forward (-Z): a cylinder's axis is X, turned a quarter round Y
+			local disc = CFrame.Angles(0, math.rad(90), 0)
+			bit("Iris", Enum.PartType.Cylinder, Vector3.new(0.06 * r, 1.0 * r, 1.0 * r), centre * CFrame.new(0, 0, -0.99 * r) * disc,
+				irisColour or B.EYE.iris, Enum.Material.SmoothPlastic)
+			bit("Pupil", Enum.PartType.Cylinder, Vector3.new(0.06 * r, 0.42 * r, 0.42 * r), centre * CFrame.new(0, 0, -1.02 * r) * disc,
+				B.EYE.pupil, Enum.Material.SmoothPlastic)
+		end
+	end
+	if folder then
+		folder.Parent = char
+	end
 end
 
 function B.Clear(char)

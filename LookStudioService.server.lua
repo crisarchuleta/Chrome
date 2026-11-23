@@ -24,7 +24,7 @@ local InsertService = game:GetService("InsertService")
 -- ServerScriptService), move the shared modules to ReplicatedStorage and the client to StarterPlayerScripts
 do
 	local here = script.Parent
-	for _, n in ipairs({ "NCLookCatalog", "NCLookBuilder" }) do
+	for _, n in ipairs({ "NCLookCatalog", "NCLookBuilder", "NCBodyData" }) do
 		local m = here:FindFirstChild(n)
 		if m and m:IsA("ModuleScript") then
 			local old = RS:FindFirstChild(n)
