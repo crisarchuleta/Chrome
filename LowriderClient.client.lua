@@ -1491,14 +1491,15 @@ end)
 -- went through it. Anyone seated in a kit car (not bikes) gets a driving pose each frame, on top of the sit
 -- animation: body lifted a little, thighs up and splayed round the steering wheel, shins reaching forward to the
 -- footwell, and the driver's hands toward the wheel. Works on Motor6D and AnimationConstraint joints. Tunables:
+-- (values tuned live on the K2 with Male_Average, place v126)
 local SEAT_POSE = {
-	lift = 0.2, -- studs the body rises off the seat
-	hip = 104, -- thigh, degrees forward from hanging straight down
-	shin = 50, -- shin, degrees forward of straight down
-	splay = 10, -- knees apart (degrees)
-	shoulder = 46, -- driver's arms forward
-	shoulderIn = 16, -- driver's arms inward
-	elbow = 72,
+	lift = 0.1, -- studs the body rises off the seat
+	hip = 96, -- thigh, degrees forward from hanging straight down
+	shin = 70, -- shin, degrees forward of straight down
+	splay = 8, -- knees apart (degrees)
+	shoulder = 10, -- driver's arms forward
+	shoulderIn = 28, -- driver's arms inward
+	elbow = 90,
 }
 do
 	local JOINTS = { "Root", "RightHip", "LeftHip", "RightKnee", "LeftKnee", "RightAnkle", "LeftAnkle", "RightShoulder",
