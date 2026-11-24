@@ -762,8 +762,13 @@ def build_styles(H):
         T, hl = style_short(H, V, F, S, N, d, p)
         if p.get("edge_up") is not None:                     # a razor-straight edge-up across the forehead with
             relv_ = V - H.centre                             # square corners above the outer brow ends
-            tail_x = abs(H.eyeL[0] - H.anchor[0]) + 0.085
-            front = (relv_[:, 1] < -0.3 * H.R) & (np.abs(V[:, 0] - H.anchor[0]) < tail_x)
+            tail = np.array([abs(H.eyeL[0] - H.anchor[0]) + 0.085, H.eyeL[1] - H.centre[1]])
+            a_t = math.atan2(tail[0], -tail[1]) + math.radians(4)
+            a_v = np.abs(np.arctan2(relv_[:, 0], -relv_[:, 1]))
+            # the forehead, plus a square skin notch cut back over the temple (hair_ref_2 M2/M3): the edge-up runs
+            # straight back from the forehead, drops straight down, then the short temple hair comes forward below
+            front = (relv_[:, 1] < 0) & ((a_v < a_t) | ((a_v < a_t + math.radians(p.get("notch_deg", 7))) &
+                                                       (V[:, 2] > p["edge_up"] - p.get("notch_drop", 0.05))))
             hl = np.where(front, V[:, 2] - p["edge_up"], hl)
         # coverage across the hairline (0 at the very edge -> 1 where the hair is full) and, for skin fades,
         # down the faded sides: the texture turns it into single hairs thinning out onto the skin
@@ -791,7 +796,7 @@ def build_styles(H):
         if p.get("hard_part") is not None:                  # a shaved line just under where the rows end
             below = p["hard_part"](V) - V[:, 2]
             behind = smoothstep(-0.6 * H.R, -0.45 * H.R, relv[:, 1])            # (from the temple corner back)
-            cov = np.minimum(cov, 1 - behind * (1 - smoothstep(0.005, 0.01, np.abs(below - 0.015))))
+            cov = np.minimum(cov, 1 - behind * (1 - smoothstep(0.004, 0.009, np.abs(below - 0.01))))
         if p.get("parts_y") is not None:                     # a centre part from the hairline to the crown
             dpart = np.abs(relv[:, 0])
             on_top = smoothstep(H.anchor[2] + 0.1, H.anchor[2] + 0.25, V[:, 2]) * (relv[:, 1] < 0.45 * H.R)
@@ -801,7 +806,8 @@ def build_styles(H):
             fc = smoothstep(fz - p.get("fade_len", 0.3), fz + 0.1, V[:, 2] + 0.03 * noise(V, 9))
             if p.get("hard_part") is not None:               # (the fade starts right under the part: dark there,
                 below = p["hard_part"](V) - V[:, 2]          # then a long thinning tail down to skin)
-                fc = np.clip(1 - (below - 0.026 + 0.012 * noise(V, 9)) / p["fade_len"], 0, 1) ** 1.7
+                flen = p["fade_len"] * (1 + 0.4 * smoothstep(0.0, 0.6 * H.R, V[:, 1] - H.centre[1]))   # (longer down the back)
+                fc = np.clip(1 - (below - 0.012 + 0.01 * noise(V, 9)) / flen, 0, 1) ** 1.9
             cov = np.minimum(cov, fc)
             field = np.minimum(field, fc - 0.02)
         hair = shell(f"Hair_{key}", V, F, N, T, field=field, lift=0.0035, uv=(cov, ev))
@@ -931,16 +937,17 @@ def build_styles(H):
         parts = np.interp(pitch * np.arange(1, n_rows), arc, g)
         return rows, parts, pitch
 
-    FT_CUT = 0.10                         # the hard part, from ear_z at the back; it rises by FT_FRONT to the temples
+    FT_CUT = 0.19                         # the hard part, from ear_z (mid-ear) at the back; it rises by FT_FRONT to
+    FT_FRONT_PART = 0.14                  # the edge-up's temple corner (hair_ref_2 M3: the rolls stay high on the head)
 
     def ft_cut(P):
         P = np.atleast_2d(P)
-        return H.ear_z + FT_CUT + FT_FRONT * smoothstep(0.1 * H.R, 0.6 * H.R, -(P[:, 1] - H.centre[1]))
+        return H.ear_z + FT_CUT + FT_FRONT_PART * smoothstep(-0.2 * H.R, 0.6 * H.R, -(P[:, 1] - H.centre[1]))
 
-    FT_LOW = 0.19
-    FT_BAND = 0.045                      # the strip of short hair between the edge-up line and the twists' ends
+    FT_LOW = 0.21
+    FT_BAND = 0.02                       # the strip of short hair between the edge-up line and the twists' ends
     ft_corner = H.anchor[2] + 0.1 + 0.55 * (H.top - H.anchor[2] - 0.1)    # (front_hairline's temple corner height)
-    FT_ROWS, FT_PARTS, FT_PITCH = ft_rows(12)
+    FT_ROWS, FT_PARTS, FT_PITCH = ft_rows(10)
 
     def flat_twists():
         """two-strand flat twists in rows from the hairline over the crown to the fade (references hair_ref_2): fat
@@ -1016,7 +1023,7 @@ def build_styles(H):
                     path, rw = [path[k] for k in run], rw[run]
                 m = len(path)
                 # the front end is a full knob, the back end thins into the fade
-                env = [(0.8 + 0.2 * smoothstep(-1, 1.5, j)) * (1 - 0.35 * smoothstep(m - 3, m - 1, j)) for j in range(m)]
+                env = [(0.45 + 0.55 * smoothstep(-0.5, 3.0, j)) * (1 - 0.35 * smoothstep(m - 3, m - 1, j)) for j in range(m)]
                 rad = [r_ * (0.35 + 0.65 * e_) for r_, e_ in zip(rw, env)]
                 # (sitting on top of the short base hair, never sunk under it)
                 P = [q + n_ * (0.008 + r_ * (0.1 + 0.45 * e_)) for (q, n_), r_, e_ in zip(path, rw, env)]
@@ -1033,7 +1040,7 @@ def build_styles(H):
         add_short("Twists", "Hanging Twists", dict(base, top=0.02, fade_z=0.2, feather=0.025, parts_y=True),
                   locs_extras(0.45, 14, 220, 0.022, 0.3, end_z=H.ear_z + 0.12, part=True, two_strand=True, gap=0.042, clear_k=0.8))
         ft_ex, ft_line = flat_twists()
-        add_short("FlatTwists", "Flat Twists", dict(top=0.012, side=0.012, fade_z=-0.03, fade_len=0.24, fade_line=ft_line, hard_part=ft_line, feather=0.01,
+        add_short("FlatTwists", "Flat Twists", dict(top=0.012, side=0.012, fade_z=-0.03, fade_len=0.27, fade_line=ft_line, hard_part=ft_line, feather=0.01,
                                                     edge_up=ft_corner, parts_band=FT_BAND, groove=0.05, freq=40,
                                                     parts_phi=np.degrees(FT_PARTS), parts_angle=ft_angle),
                   ft_ex)
