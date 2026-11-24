@@ -294,6 +294,29 @@ function Sim.Step(car, s, dt, input, noPose)
 		end
 	end
 
+	-- standstill hold: no pedals and nearly stopped, so the tyres grip the road where the car stopped. Damping alone
+	-- only balances a constant push (the springs' share along a slightly pitched body), so it crept; this latches
+	-- the stop point and pulls back to it, sideways too, capped by what the tyres can hold. Re-latches if shoved.
+	local idle = grounded >= 2 and not burnout and not hb and math.abs(input.throttle) <= 0.05 and gas <= 0.05 and brk <= 0.05
+	local vh = vel - up * vel:Dot(up)
+	if idle and (s.latch or vh.Magnitude < 1.5) and vh.Magnitude < 3 then
+		local here = ch.Position
+		if not s.latch or (here - s.latch).Magnitude > 1.5 then
+			s.latch = here
+		end
+		local off = here - s.latch
+		off -= up * off:Dot(up)
+		local hold = -off * mass * 30 - vh * mass * 9
+		local cap = mass * g * 0.9
+		if hold.Magnitude > cap then
+			hold = hold.Unit * cap
+		end
+		F += hold
+		T += -up * ch.AssemblyAngularVelocity:Dot(up) * mass * 80 -- and it doesn't slowly turn on the spot
+	else
+		s.latch = nil
+	end
+
 	-- three-wheel: hold the lifted corner up with a torque about the diagonal the car balances on
 	if s.threeWheel and grounded >= 2 then
 		local c = s.threeWheel

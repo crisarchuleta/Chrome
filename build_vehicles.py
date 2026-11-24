@@ -1336,6 +1336,10 @@ show()
 pose(1.0)
 shot("open_front34", (-Lr * 1.7, -Lr * 1.9, ROOF * 1.8 + 3), (0, -1.0, fz))
 shot("open_rear34", (Lr * 1.6, Lr * 2.0, ROOF * 1.8 + 3), (0, 1.5, fz))
+if os.environ.get("NC_DEBUG_SHOTS"):
+    shot("dbg_rear_right", (-Lr * 0.9, Lr * 1.3, ROOF * 0.9), (-W * 0.5, L1 - 1.5, TAIL - 0.6))
+    pose(1.0)
+    shot("dbg_hatch_open", (Lr * 0.5, Lr * 1.25, ROOF * 1.6), (0, C1, BELT))
 pose(0.0)
 if WINDOWS:
     pose(0.0, win=0.5)

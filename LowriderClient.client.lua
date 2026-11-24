@@ -1559,7 +1559,7 @@ do
 		end
 		return j.Attachment0 and j.Attachment0.WorldPosition
 	end
-	-- two-bone reach: puts the hand (palm about 0.2 past the wrist) on a world point, elbow dropping down and out.
+	-- two-bone reach: puts the hand (palm about 0.22 past the wrist) on a world point, elbow dropping down and out.
 	-- Rotations are the limb's own axes in its parent's frame (rest: arm hanging along -Y), as setJoint expects.
 	local function reach(shoulder, elbow, wrist, target, side)
 		if not (shoulder and elbow and wrist) then
@@ -1571,7 +1571,7 @@ do
 		if not (torso and ps and pe and pw) then
 			return false
 		end
-		local la, lf = (pe - ps).Magnitude, (pw - pe).Magnitude + 0.06
+		local la, lf = (pe - ps).Magnitude, (pw - pe).Magnitude + 0.22 -- wrist stops a palm short: the palm is on the grip
 		local v = torso.CFrame:VectorToObjectSpace(target - ps)
 		local d = math.clamp(v.Magnitude, math.abs(la - lf) + 0.05, la + lf - 0.02)
 		local dir = v.Unit
