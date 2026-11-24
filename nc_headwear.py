@@ -197,8 +197,8 @@ def _col_of(X, F, centre):
 def build_durag(o, name, color=(0.01, 0.01, 0.01), velvet=False):
     """Durag, matched to references/head/durag.jpg: snug crown with a centre seam; the hem runs level round the head
     from the upper forehead, just over the tops of the ears, to the base of the skull; a wide stitched tie band along
-    the hem; the ties knot at the base of the skull, and a wide tail flap hangs from under the knot down the back of
-    the neck with the two flat tie ends lying over it."""
+    the hem; the ties knot at the base of the skull, and a wide fabric tail flap hangs loose from under the knot (off
+    the neck, soft folds, rounded level end) with the two flat tie ends hanging over it."""
     b = o.b; k = b.k; h = Head(b)
     ez, c = h.eye_z, h.c
     P, F = h.faces(sub=1)
@@ -208,7 +208,7 @@ def build_durag(o, name, color=(0.01, 0.01, 0.01), velvet=False):
     X, F, E = _shell(o, P, F, 0.0045 * k, 3, 0.004 * k, smooth=3)
     ll = max(boundary_loops(F), key=len)
     X = _smooth_loop(X, ll, 10, o.col, 0.004 * k)
-    rough = 0.95 if velvet else 0.42
+    rough = 0.95 if velvet else 0.55
     m_main = _mat(name + "_Main", color, rough=rough)
     m_dark = _mat(name + "_Seam", np.array(color[:3]) * 0.6, rough=rough)
     centre = np.array([c[0], c[1], ez])
@@ -251,48 +251,57 @@ def build_durag(o, name, color=(0.01, 0.01, 0.01), velvet=False):
     Q = _taut(col, arc, 0.0012 * k, iters=150)
     Vt, Ft = make_tube(Q[1:-4], 0.0012 * k, nseg=6)
     parts.append((Vt, Ft, 1))
-    # tail flap: from the back of the hem, as wide as the neck, down onto the upper back
-    back = base[np.abs(h.ang(base)) > np.radians(104)]
+    # tail flap: a loose fabric panel that falls straight down from the back of the hem, like the reference back view.
+    # It is only pushed out by the body (never pulled onto it), so it hangs off the neck instead of clinging like hair,
+    # with soft vertical folds and a rounded, level bottom edge at the top of the shoulders.
+    back = base[np.abs(h.ang(base)) > np.radians(132)]
     back = back[np.argsort(back[:, 0])]
-    xs = np.linspace(back[0, 0], back[-1, 0], 17)
+    nc = 19
+    xs = np.linspace(back[0, 0], back[-1, 0], nc)
     top = np.stack([xs, np.interp(xs, back[:, 0], back[:, 1]), np.interp(xs, back[:, 0], back[:, 2])], 1)
+    top[:, 1] += 0.002 * k
     xm = top[:, 0].mean()
-    L = 0.21 * k
-    nr = 14
+    ymax = top[:, 1].max()
+    L = 0.19 * k
+    nr = 16
+    u = np.linspace(-1, 1, nc)
     G = []
     for t in np.linspace(0, 1, nr):
         r = top.copy()
-        r[:, 0] = xm + (r[:, 0] - xm) * (1 - 0.12 * t)
+        r[:, 0] = xm + (r[:, 0] - xm) * (1 + 0.25 * t)  # flares out as it falls
+        r[:, 1] = r[:, 1] + (ymax - r[:, 1]) * 0.55 * min(1.0, 2 * t) + 0.012 * k * t  # curve flattens, falls back
+        r[:, 1] += 0.006 * k * min(1.0, 1.5 * t) * np.sin(u * np.pi * 2.5 + 0.6)  # soft vertical folds
         r[:, 2] -= L * t
-        r[:, 1] += 0.004 * k
         G.append(r)
     G = np.array(G)
-    nc = G.shape[1]
-    for it in range(60):
-        flat = G[1:].reshape(-1, 3)
-        _, j = o.col.tree.query(flat)
-        hug = o.col.P[j] + o.col.N[j] * 0.006 * k  # the flap clings to the neck and upper back
-        flat = flat + 0.35 * (hug - flat)
-        G[1:] = o.col.push(flat, 0.005 * k).reshape(nr - 1, nc, 3)
-        G[1:-1] = 0.5 * G[1:-1] + 0.25 * (G[:-2] + G[2:])
-        G[:, 1:-1] = 0.6 * G[:, 1:-1] + 0.2 * (G[:, :-2] + G[:, 2:])
-    G[1:] = o.col.push(G[1:].reshape(-1, 3), 0.006 * k).reshape(nr - 1, nc, 3)
-    G[-1, :, 2] += 0.005 * k * (np.linspace(-1, 1, nc) ** 2)  # softly rounded end
+    G[-1, :, 2] += 0.02 * k * (u ** 4)  # rounded bottom corners
+    for it in range(40):
+        G[1:] = o.col.push(G[1:].reshape(-1, 3), 0.007 * k).reshape(nr - 1, nc, 3)
+        G[1:-1] = 0.6 * G[1:-1] + 0.2 * (G[:-2] + G[2:])
+        G[-1] = 0.7 * G[-1] + 0.3 * (G[-2] + (G[-2] - G[-3]))
+    G[1:] = o.col.push(G[1:].reshape(-1, 3), 0.007 * k).reshape(nr - 1, nc, 3)
     Vt = G.reshape(-1, 3)
     Ftl = [[i * nc + j, i * nc + j + 1, (i + 1) * nc + j + 1, (i + 1) * nc + j] for i in range(nr - 1) for j in range(nc - 1)]
     parts.append((Vt, _orient_out(Vt, Ftl, centre + np.array([0, -0.2 * k, 0])), 0))
+    # stitched hem round the sides and bottom, so it reads as a sewn fabric panel
+    edge = np.vstack([G[2:, 0], G[-1, 1:-1], G[::-1][:-2, -1]])
+    off = edge + (edge - np.array([xm, edge[:, 1].mean(), edge[:, 2].mean()])) * 0.0
+    Vt2, Ft2 = make_tube(edge + np.array([0, 0.0012 * k, 0]), 0.0014 * k, nseg=6)
+    parts.append((Vt2, Ft2, 1))
     flapcol = _col_of(Vt, Ftl, centre)
     # knot at the base of the skull and the two flat tie ends over the flap
     nape = G[1, nc // 2]
     kc = nape + np.array([0, 0.01 * k, 0.006 * k])
     Vk, Fk = _blob(kc, np.array([0.024, 0.011, 0.016]) * k, noise=0.25, seed=3)
     parts.append((Vk, Fk, 0))
-    for dx, Lt, sd in ((0.02 * k, 0.17 * k, 2), (-0.017 * k, 0.15 * k, 4)):
-        Q = np.array([kc + np.array([dx * t, 0, -Lt * t]) for t in np.linspace(0, 1, 14)])
-        Q[1:] = flapcol.push(Q[1:], 0.003 * k)
+    for dx, Lt, sd in ((0.022 * k, 0.16 * k, 2), (-0.019 * k, 0.13 * k, 4)):
+        Q = np.array([kc + np.array([dx * t, 0.004 * k * t, -Lt * t]) for t in np.linspace(0, 1, 14)])
+        Q[1:] = flapcol.push(Q[1:], 0.004 * k)
         for _ in range(6):
-            Q[1:-1] = 0.5 * Q[1:-1] + 0.25 * (Q[:-2] + Q[2:]); Q[1:] = flapcol.push(Q[1:], 0.003 * k)
-        V, Fr = _ribbon(Q, _surf_normals(flapcol, Q), np.linspace(0.03, 0.026, 14) * k)
+            Q[1:-1] = 0.5 * Q[1:-1] + 0.25 * (Q[:-2] + Q[2:]); Q[1:] = flapcol.push(Q[1:], 0.004 * k)
+        wd = np.linspace(0.03, 0.034, 14) * k
+        V, Fr = _ribbon(Q, _surf_normals(flapcol, Q), wd)
+        V[len(Q) - 1] += (Q[-3] - Q[-1]) * 0.9  # angled, cut tie end
         parts.append((V, _orient_out(V, Fr, centre + np.array([0, -0.2 * k, 0])), 0))
     Vd, Fd, md = merge_parts(parts)
     out.append(make_object(b, f"{b.obj.name}_{name}_Ties", Vd, Fd, [m_main, m_dark], md, None, thick=0.0012 * k, subsurf=1))
