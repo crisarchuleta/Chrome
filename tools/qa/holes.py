@@ -31,6 +31,16 @@ for i in ids:
                 if u in seen: continue
                 seen.add(u); comp.append(u); st += adj[u]
             loops.append(comp)
+        if i.startswith("top_") and loops and "Hood" not in ob.name and len(loops) >= 2 and not any(t in ob.name for t in ("_Legs", "_Skirt")):
+            # neckline: loop with the highest mean z; how far it opens out from the neck and how low it drops
+            nl = max(loops, key=lambda l: V[l, 2].mean())
+            nz = b.J["neck"][2]
+            hm = (b.reg == "Head") & (b.co[:, 2] > nz) & (b.co[:, 2] < nz + 0.03 * k)
+            yn = b.co[hm, 1].mean(); Rn = np.median(np.hypot(b.co[hm, 0] - b.cx, b.co[hm, 1] - yn))
+            dn = np.hypot(V[nl, 0] - b.cx, V[nl, 1] - yn)
+            back = V[nl, 1] > yn
+            print("NECK" + ("_WIDE" if (dn.max() - Rn) / k > 0.08 else ""), name, i, ob.name.split("_Whole_")[-1], "max_open_k", round(float((dn.max() - Rn) / k), 3),
+                  "side_drop_k", round(float((nz - V[nl][np.abs(V[nl, 0] - b.cx) > 0.6 * Rn, 2].min()) / k), 3) if (np.abs(V[nl, 0] - b.cx) > 0.6 * Rn).any() else None)
         for l in loops:
             P = V[l]; c = P.mean(0)
             per = sum(np.linalg.norm(V[x] - V[y]) for x in l for y in adj[x] if y > x) / k

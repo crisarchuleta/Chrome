@@ -585,8 +585,11 @@ def _start(b, f, sub=0, smooth=2):
     small = [l for l in loops if _hole(l)]
     if small:
         P = list(P); F = list(F); A = {kk: list(vv) for kk, vv in A.items()}
+        bt_ = cKDTree(b.co)
         for l in small:
-            c = len(P); P.append(np.mean([P[i] for i in l], axis=0))
+            c = len(P); m_ = np.mean([P[i] for i in l], axis=0)
+            m_ = b.co[bt_.query(m_)[1]]  # the cap sits on the body surface, not sunk inside it
+            P.append(m_)
             for kk in A:
                 A[kk].append(A[kk][l[0]])
             a0, a1 = l[0], l[1]  # orient the fan opposite to the face that already uses edge a0-a1
@@ -682,6 +685,8 @@ def _cover_tank(b, f, front_open=False, margin=0.014, armzone=None):
     return np.minimum(f, g)
 
 
+
+
 def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, sleeve_ease=0.13, color=(0.05, 0.05, 0.055),
               accent=None, camo_pal=None, print_fn=None, hood=True, pocket=True, zip_front=False, puffer=False,
               rib=True, thick=0.004, collar=None, neck_drop=0.0, front_open=False, flare=0.012, band=None):
@@ -714,9 +719,15 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
     # the ring may reach down to the shoulders at the sides and back, but at the front it stops at the scoop depth
     # (otherwise the cylinder eats into the upper chest when the neck joint sits behind the chest)
     floor_z = (neck_z - 0.16 * k) * (1 - front) + (zc - 0.012 * k) * front
-    ring = np.where(P0[:, 2] > floor_z, Rn + margin - dn, -1.0)
+    # the ring narrows below the base of the neck (a cone), so on high sloped trapezius muscles the neckline stays
+    # snug at the neck instead of opening wide across the tops of the shoulders
+    cone = 1.2 * np.maximum(0.0, (neck_z - 0.035 * k) - P0[:, 2]) * (1 - front)
+    ring = np.where(P0[:, 2] > floor_z, Rn + margin - dn - cone, -1.0)
     zc2 = zc - 0.05 * k  # only very deep cuts come from the plane now
-    f[tor] = np.maximum(f[tor], np.maximum(ring[tor], P0[tor, 2] - np.maximum(zc2[tor], zc[tor] + 0.012 * k)))
+    plane = P0[:, 2] - np.maximum(zc2, zc + 0.012 * k)
+    # the plane only shapes the neckline near the neck: high trapezius muscles out at the shoulders stay covered
+    plane = np.where(dn < Rn + margin + 0.035 * k, plane, np.minimum(plane, -0.001))
+    f[tor] = np.maximum(f[tor], np.maximum(ring[tor], plane[tor]))
     arm = _isin(reg, ARMS)
     f[arm] = s[arm] - s_end if s_end > 0 else 1.0
     near_all = np.zeros(len(P0), bool)
@@ -838,9 +849,19 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
             "lapel": [(0.012, -0.001), (0.018, 0.008), (0.0, 0.03), (-0.025, 0.045)],
             "none": []}[collar]
     col_rings = []
+    tup = None
+    if collar == "rib" and o.col.tree is not None:
+        # a rib collar lies along the body: on sloped (muscular) shoulders straight up would dig into the skin
+        _, jn_ = o.col.tree.query(L0)
+        nn_ = o.col.N[jn_]
+        tup = np.array([0, 0, 1.0]) - nn_[:, 2:3] * nn_
+        tup /= np.maximum(np.linalg.norm(tup, axis=1, keepdims=True), 1e-9)
     for dz, dr in prof:
         pts = L0.copy()
-        pts[:, 2] += dz * k
+        if tup is not None:
+            pts += tup * dz * k
+        else:
+            pts[:, 2] += dz * k
         pts[:, :2] += outd * dr * k
         col_rings.append(pts)
     if col_rings:
@@ -850,7 +871,7 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
     X = o.col.push(X, 0.006 * k)
     if front_open:  # open front (overshirts, coats): split the centre front, leave the collar ends apart
         neck_pts = X[nl].copy()
-        fo = np.where(X[:, 1] < b.yc, 0.006 * k - np.abs(X[:, 0] - b.cx), -1.0)
+        fo = np.where(X[:, 1] < b.yc, 0.0075 * k - np.abs(X[:, 0] - b.cx), -1.0)  # 0.006k sat exactly on mesh columns -> bridges
         X, F, A_ = clip(X, F, fo, {"reg": R})
         R = A_["reg"]
         X, F, A_ = keep_big(X, F, {"reg": R}, frac=0.3)
@@ -1335,8 +1356,10 @@ def build_pants(o, name, fit="baggy", color=(0.06, 0.065, 0.075), accent=None, s
     # waistband accent faces
     fc = np.array([X[f].mean(0) for f in F])
     mi = np.zeros(len(F), int)
-    zw = np.interp(fc[:, 0], [b.cx - 1, b.cx + 1], [0, 0])
-    mi[fc[:, 2] > pel + 0.0 * k] = 1
+    # a real waistband is a ~4 cm strip at the top (everything above the pelvis made a 13 cm band since the
+    # waist went up over the base shorts, and plaid / camo stopped at the hips)
+    front_f = np.clip((b.yc - fc[:, 1]) / (0.08 * k), 0, 1)
+    mi[fc[:, 2] > pel + (0.132 - 0.006 * front_f - 0.042) * k] = 1
     vcol = camo(X, camo_pal, 0.07 * k) if camo_pal is not None else None
     mats = [material(name + "_Main", tuple(color[:3]) + (1,), vcol=vcol is not None),
             material(name + "_Band", tuple((accent or color)[:3]) + (1,))]

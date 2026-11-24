@@ -298,5 +298,8 @@ def _build_item(o, it, f, p, c1, c2, nm, camo):
 
 def build_items(o, ids, path="/home/user/Chrome/NCLookCatalog.lua"):
     items = {it["id"]: it for it in load(path)}
-    for i in ids:
+    # inner layers first, like the looks: a later piece is pushed out over the earlier ones (pants built after a tee
+    # would be pushed out through it at the back waist)
+    order = {"Shoes": 0, "Bottom": 1, "Top": 2, "Outer": 3}
+    for i in sorted(ids, key=lambda i: order.get(items[i]["slot"], 4)):
         build_item(o, items[i])
