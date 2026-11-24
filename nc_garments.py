@@ -744,7 +744,7 @@ def _dbg(tag, X, F):
     import os
     d = os.environ.get("NC_DBG")
     if d:
-        np.savez(os.path.join(d, tag + ".npz"), X=np.asarray(X), F=np.asarray([list(f)[:3] for f in F]))
+        np.savez(os.path.join(d, tag + ".npz"), X=np.asarray(X), F=np.asarray([list(f)[:3] for f in F] + [[f[0], f[2], f[3]] for f in F if len(f) == 4]))
 
 
 def _chk(tag, b, X, R):
@@ -885,7 +885,7 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
                 Rt = r_up * (1 + sleeve_ease) * (1 + 0.12 * ss / max(s_end, 1e-3))
             if puffer:
                 Rt = Rt * (1 + 0.06 * np.abs(np.sin(np.pi * ss / 0.11)) ** 0.6)
-            if SLEEVE_ROOT_EASE > 0:
+            if SLEEVE_ROOT_EASE > 0 and sleeve == "long":  # (a short sleeve ballooned into a ring)
                 # room at the armpit (like a real armhole): with a skin-tight sleeve root the arm skin or the tank
                 # showed through whenever the arm swung forward or across
                 Rt = Rt * (1 + SLEEVE_ROOT_EASE * (1 - smoothstep(0.12, 0.42, ss)))
@@ -935,7 +935,7 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
     isarm = _isin(R, ARMS)
     E = edges_of(F)
     X = laplace(X, E, 3, taubin=True)
-    X = rehang(b, X, F, ~isarm, chest_z)
+    if REHANG_TOP: X = rehang(b, X, F, ~isarm, chest_z)
     _dbg('s6', X, F); _chk('s6', b, X, R)
     # collar: rib band (tee / hoodie), stand collar (puffer, track), turtleneck, shirt collar, lapel
     nl = neck_loop
@@ -946,7 +946,7 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
             "stand": [(0.02, -0.002), (0.04, -0.003), (0.06, -0.003), (0.064, 0.0)],
             "turtle": [(0.03, -0.002), (0.06, -0.003), (0.085, -0.002), (0.09, 0.002)],
             "shirt": [(0.012, -0.002), (0.024, -0.001), (0.026, 0.006), (0.01, 0.014), (-0.004, 0.018)],
-            "lapel": [(0.012, -0.001), (0.018, 0.008), (0.0, 0.03), (-0.025, 0.045)],
+            "lapel": LAPEL_PROF,
             "none": []}[collar]
     col_rings = []
     tup = None
@@ -976,7 +976,32 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
         for _ in range(6):
             X = laplace(X, E, 3, mask=armv_)
             X = o.col.push(X, 0.006 * k)
-    _chk('collar', b, X, R)
+    if FOLD_LIFT and collar in ("lapel", "shirt") and col_rings:
+        # the turned-down part of a fold-over collar lay at the same height off the body as the panel under it:
+        # the two surfaces fought through each other (a crinkled ruffle). Keep the fold a layer above the panel.
+        cm_ = _isin(R, ("Collar",))
+        r0 = np.linalg.norm(L0[:, :2] - c[:2], axis=1).mean()
+        fold = cm_ & (np.linalg.norm(X[:, :2] - c[:2], axis=1) > r0 + 0.015 * k)
+        if fold.any():
+            X[fold] = o.col.push(X[fold], (0.006 + FOLD_LIFT) * k)
+    if TORSO_SMOOTH and kind == "jacket":
+        # the push round the shoulder blades left small star-shaped pinches on a jacket's back: smooth the body
+        # panel (not the collar or sleeves) against the body a few times
+        tm_ = ~_isin(R, ARMS + ("Collar",))
+        for _ in range(TORSO_SMOOTH):
+            X = laplace(X, E, 2, mask=tm_)
+            X = o.col.push(X, 0.006 * k)
+    if COLLAR_SMOOTH and collar in ("lapel", "shirt") and col_rings:
+        # a fold-over collar's outer edge lands on the sloping shoulder: the push crumpled it into a ruffle.
+        # Smooth the collar (and the cloth just under it) against the body a few times.
+        cm_ = _isin(R, ("Collar",))
+        if cm_.any():
+            d_, _ = cKDTree(X[cm_]).query(X)
+            cm_ = cm_ | (d_ < 0.02 * k)
+            for _ in range(COLLAR_SMOOTH):
+                X = laplace(X, E, 3, mask=cm_)
+                X = o.col.push(X, 0.006 * k)
+    _dbg('collar', X, F); _chk('collar', b, X, R)
     if UNDERARM_SMOOTH:
         # the body panel under a hanging arm: pushing it off the arm crumpled it into flakes, hidden at rest but torn
         # open as soon as the arm moves. Smooth it against the body only (the sleeve covers it at rest).
@@ -1022,7 +1047,7 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
             E_ = edges_of(F)
             X = laplace(X, E_, 3, mask=fa > 0.01)
             X = o.col.push(X, 0.005 * k)
-    _chk('pre-obj', b, X, R)
+    _dbg('preobj', X, F); _chk('pre-obj', b, X, R)
     reg_out = R
     nf = len(F)
     fc = np.array([X[f].mean(0) for f in F])
@@ -1341,6 +1366,9 @@ def rehang(b, X, F, sel, hang_from, ease=0.0):
     _, r = torso_cyl(b, X)
     w = sel & (X[:, 2] < hang_from)
     sc = np.where(w & (r > 1e-6), rnew / np.maximum(r, 1e-6), 1)
+    if REHANG_BLEND:
+        # ease in below hang_from: a hard start creased the back into star-shaped pinches over the shoulder blades
+        sc = 1 + (sc - 1) * smoothstep(0.0, 1.0, (hang_from - X[:, 2]) / (REHANG_BLEND * b.k))
     X = X.copy()
     X[:, 0] = b.cx + (X[:, 0] - b.cx) * sc
     X[:, 1] = b.yc + (X[:, 1] - b.yc) * sc
@@ -2560,6 +2588,13 @@ def skin_to_rig(o):
             if P[:, 2].max() > upper_cut or any(t in ob.name for t in ("_Pocket", "_String", "_Hood", "_ZipPull")):
                 # tops never follow the thighs: hand leg influence over to the lower torso
                 Wg[:, lt] += Wg[:, leg_cols].sum(1); Wg[:, leg_cols] = 0
+            elif WAIST_TORSO > 0 and "Shoes" not in ob.name:
+                # a bottom's waistband moves with the pelvis only: seated, the thighs' share dragged the front
+                # waist down into the belly and the base layer showed above it
+                tz = np.clip((P[:, 2] - (b.J["l-upper-leg"][2] + WAIST_Z0 * b.k)) / (WAIST_RAMP * b.k), 0, 1)
+                tz = WAIST_TORSO * tz * tz * (3 - 2 * tz)
+                lw = Wg[:, leg_cols].sum(1) * tz
+                Wg[:, leg_cols] *= (1 - tz)[:, None]; Wg[:, lt] += lw
             # diffuse the weights over the garment surface so bone transitions are wide and the cloth
             # stretches evenly instead of tearing at a seam line (armpits, crotch, neck)
             Ed = np.array([e.vertices[:] for e in ob.data.edges])
@@ -2745,11 +2780,14 @@ def build_skirt(o, name, length=0.45, flare=0.25, color=(0.1, 0.1, 0.12), accent
 
 # ----------------------------------------------------------------------------------------------- game export
 PATTERN_HOOK = None  # set by nc_catalog3d: re-cuts a pattern on the decimated mesh
-PANTS_DIFFUSE = 2
+PANTS_DIFFUSE = 8
 UNDERARM_SMOOTH = True
 ARMCUT_Z0 = 0.18  # body cloth loses arm weights from this far below the shoulder joint (k) ...
 TOP_DIFFUSE = 10
 SLEEVE_DIFFUSE = 2  # diffusion steps on the forearm sleeve (None: same as the rest of the top)
+WAIST_TORSO = 0.0  # bottoms: share of leg weight moved to the pelvis at the waistband
+WAIST_Z0 = 0.06    # ... starting this far above the hip joint (k)
+WAIST_RAMP = 0.08  # ... full this much higher (k)
 HEM_LEG = 1.0  # share of body weights a top's hem takes near the hip joint (a lifted or striding thigh cut through it)
 HEM_Z0 = 0.0   # the blend starts at the hip joint height ...
 HEM_RAMP = 0.08  # ... and is full this far below it (k)
@@ -3344,8 +3382,14 @@ def build_boot_shaft(o, name, height=0.16, color=(0.04, 0.04, 0.045), lace=None,
 # the skin does, and when an animation lifts the arms it opens back to the clean modelled shape (building in the rest
 # pose crumpled that cloth between arm and side, and raised arms tore it open).
 BUILD_ARM_RAD = 0.7
-UNPOSE_PUSH = 0.010  # (x k) cloth kept this far off the rest torso in the armpit band after unposing
+UNPOSE_PUSH = 0.022  # (x k) cloth kept this far off the rest torso in the armpit band after unposing
 UNPOSE_PUSH_BODY_ONLY = True
+LAPEL_PROF = [(0.012, -0.001), (0.018, 0.008), (0.006, 0.028), (-0.008, 0.04)]  # (dz, dr) x k rings of a lapel collar
+FOLD_LIFT = 0.008  # build_top: a fold-over collar's turned-down part sits this much (x k) above the panel
+REHANG_BLEND = 0.0  # rehang: the straight fall eases in over this height (x k) below its start
+REHANG_TOP = True
+TORSO_SMOOTH = 0  # build_top: smooth+push passes over a jacket's body panel
+COLLAR_SMOOTH = 0  # build_top: smooth+push passes over a fold-over (lapel/shirt) collar
 SLEEVE_PUSH = 0.008  # (x k) sleeves kept this far off the rest arm after unposing
 SLEEVE_OFF_TANK = True  # _sleeve_flag: sleeve-root cloth over the tank is body panel
 HIP_CUT_CENTRE = 0.08  # hip_cut_z: rise of the cut at the centre front/back (x k)
@@ -3354,7 +3398,7 @@ SLEEVE_ROOT_EASE = 0.15  # build_top: extra sleeve radius at the root (x)
 ARMPIT_HUG = 0.0  # build_top: cloth near the armpit pulled onto the skin
 ARMPIT_BODY = 0.0  # cloth near the armpit takes the skin's own weights (see skin_to_rig)
 SHOULDER_SHARPEN = 2.0
-HIP_SHARPEN = 3.0
+HIP_SHARPEN = 1.0
 LEG_OUT_DEG = 0.0  # lower-body shell: legs spread this much before the remesh
 HIP_R0 = 0.10
 HIP_R1 = 0.18
