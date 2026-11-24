@@ -1313,10 +1313,12 @@ def build_styles(H):
                 # under a hat the locs rooted up on the crown lose most of their length to the band, which left a
                 # gap round the ears behind the front locs: more roots along the sides just under the band
                 cl_v = cap_line(H, V)
-                side = [i for i in cand if cl_v[i] - 0.14 < V[i][2] < cl_v[i] - 0.01 and abs(rel[i][0]) > 0.45 * H.R
-                        and -0.55 * H.R < rel[i][1] < 0.6 * H.R]
+                # (right round the ear too, in front of and behind it: the ear showed in an open strip under the cap)
+                side = [i for i in np.where(T > 0.012)[0] if cl_v[i] - 0.2 < V[i][2] < cl_v[i] - 0.01
+                        and abs(rel[i][0]) > 0.4 * H.R and -0.6 * H.R < rel[i][1] < 0.7 * H.R and kde.find(V[i])[2] > 0.04]
+                r2.shuffle(side)
                 for i in side:
-                    if all(np.linalg.norm(V[i] - V[j]) > gap * 0.7 for j in chosen):
+                    if all(np.linalg.norm(V[i] - V[j]) > gap * 0.65 for j in chosen):
                         chosen.append(i)
             if part:                                   # centre part: no roots on it
                 chosen = [i for i in chosen if abs(rel[i][0]) > (0.026 if two_strand else 0.035) or rel[i][1] > 0.45 * H.R]
@@ -1355,14 +1357,16 @@ def build_styles(H):
                     # in front of the ears, below the brows, the loc is pushed out beside the cheek: the face stays open
                     # and the front locs frame it (centre part, like the photos)
                     face_hw = 0.6 * H.R + radius * 1.2
+                    # one side for the whole loc, from its root: a loc whose drape crossed the middle was pushed to one
+                    # side over the face and fell back to the other below it, running diagonally across the chest
+                    sx = math.copysign(1.0, rel[i][0] if abs(rel[i][0]) > 1e-4 else (1.0 if k % 2 else -1.0))
                     for j in range(2, len(Pp)):
                         q = Pp[j]
                         fz = smoothstep(H.anchor[2] + 0.2, H.anchor[2] + 0.02, q[2])
                         fy = smoothstep(0.05 * H.R, -0.35 * H.R, q[1] - H.centre[1])
-                        dx = q[0] - H.centre[0]
-                        if fz * fy > 0 and abs(dx) < face_hw:
-                            sx = math.copysign(1.0, dx if abs(dx) > 1e-4 else rel[i][0] or 1.0)
-                            Pp[j, 0] = H.centre[0] + sx * (abs(dx) + (face_hw - abs(dx)) * fz * fy)
+                        sdx = sx * (q[0] - H.centre[0])
+                        if fz * fy > 0 and sdx < face_hw:
+                            Pp[j, 0] = H.centre[0] + sx * (sdx + (face_hw - sdx) * fz * fy)
                 for _ in range(6):
                     Pp[3:-1] = 0.25 * Pp[2:-2] + 0.5 * Pp[3:-1] + 0.25 * Pp[4:]
                 if hem is not None:
@@ -1406,7 +1410,7 @@ def build_styles(H):
                     # (a loc that runs sideways where it comes out under the band hooked out by the brows: start it
                     #  where it already falls downward)
                     j_end = j0 + (len(Pp) - j0) // 2
-                    while j0 < j_end:
+                    while j0 < j_end and Pp[j0][1] - H.centre[1] < 0.0:      # (front half only)
                         dv = Pp[j0 + 1] - Pp[j0]
                         if -dv[2] > 0.8 * math.hypot(dv[0], dv[1]):
                             break
@@ -1416,8 +1420,11 @@ def build_styles(H):
                     if frame_face and Pp[j0][1] - H.centre[1] < -0.3 * H.R and abs(Pp[j0][0] - H.centre[0]) < 0.6 * H.R + radius * 2.2:
                         continue                       # (starts beside the brow, where the face-framing push bent it)
                     # tucked in towards the head at its top end, so the cut end hides under the brim
-                    near = H.nearest(Pp[j0])[0]
-                    Pp = np.vstack([near + (Pp[j0] - near) * 0.4, Pp[j0:]])
+                    # it starts up under the band, pressed to the skin, so no rounded top shows below the hat
+                    near, nn_ = H.nearest(Pp[j0])[:2]
+                    up_ = H.nearest(near + np.array([0.0, 0.0, max(0.0, cl[j0] + 0.05 - near[2])]))
+                    top_ = up_[0] + up_[1] * (radius * 0.4)
+                    Pp = np.vstack([top_, near + (Pp[j0] - near) * 0.4, Pp[j0:]])
                     # the top of each loc lies in against the head under the band (it bulged out wider than the hat)
                     n_t = max(2, len(Pp) // 3)
                     for j in range(1, n_t):
@@ -1613,8 +1620,8 @@ def build_styles(H):
     if male:
         # thick two-strand rope-twist locs to the collarbone from a centre part, framing the face, tips curling;
         # under a hat they hang out from under the band all round (the person's photos, 2026-11-24)
-        add_short("Locs", "Rope Twist Locs", dict(base, parts_y=0.45), locs_extras(0.95, 12, 80, 0.05, 0.95, part=True, two_strand=True,
-                                                                     gap=0.085, clear_k=1.15, frame_face=True, hat_tail=True,
+        add_short("Locs", "Rope Twist Locs", dict(base, parts_y=0.45), locs_extras(0.95, 12, 100, 0.05, 0.95, part=True, two_strand=True,
+                                                                     gap=0.078, clear_k=1.15, frame_face=True, hat_tail=True,
                                                                      curl_tips=True, turns=22.0, hem=0.615))
         # hanging two-strand twists from a centre part, ending at the brows, the ear tops and the fade line, with a
         # squared edge-up and a high skin fade (references hair_ref_3)
@@ -1626,7 +1633,7 @@ def build_styles(H):
                                                     parts_phi=np.degrees(FT_PARTS), parts_angle=ft_angle),
                   ft_ex)
     else:
-        add_short("Locs", "Long Locs", base, locs_extras(1.8, 10, 80, 0.026, 1.8, frame_face=True, hat_tail=True))   # (face open, like the rope locs)
+        add_short("Locs", "Long Locs", base, locs_extras(1.8, 10, 125, 0.026, 1.8, gap=0.058, frame_face=True, hat_tail=True))   # (face open, like the rope locs)
 
     # --- women: slick centre part with a low bun (the reference), ponytail, long straight, bob
     if not male:
