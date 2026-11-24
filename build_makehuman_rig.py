@@ -496,6 +496,48 @@ def face_marks(name, eyes):
     return out
 
 
+def head_lock(body, P, FB):
+    """the whole face and skull follow the Head only. Heat weighting gives the jaw, mouth and chin a share of the
+    neck bones (NC_NeckMid hangs off UpperTorso), so when an animation turns the head the lower face lagged towards the
+    torso while the eyes, lips and hair (welded to the Head) turned: the face slid off them. Every vertex above the
+    line from under the chin to the base of the skull now goes to the Head, blending back over a short band."""
+    chin = FB["NC_FaceChin"][0] if FB and "NC_FaceChin" in FB else None
+    base = P["_Head"]
+    if chin is None:
+        chin = Vector((0.0, base.y - 0.3, base.z - 0.08))
+    cy, cz = chin.y, chin.z - 0.10                   # (just under the chin's bone, at the jaw's underside)
+    by, bz = base.y + 0.12, base.z - 0.02            # (the back of the skull where it meets the neck)
+    dy, dz = by - cy, bz - cz
+    L = math.hypot(dy, dz)
+    ny, nz = -dz / L, dy / L                          # normal of the line, pointing up
+    if nz < 0:
+        ny, nz = -ny, -nz
+    names = {g.index: g.name for g in body.vertex_groups}
+    head = body.vertex_groups["Head"]
+    locked = 0
+    for v in body.data.vertices:
+        above = (v.co.y - cy) * ny + (v.co.z - cz) * nz
+        t = max(0.0, min(1.0, (above + 0.01) / 0.05))
+        t = t * t * (3 - 2 * t)
+        if t <= 0:
+            continue
+        w = {names[ge.group]: ge.weight for ge in v.groups}
+        hw = w.get("Head", 0.0)
+        others = {b: x for b, x in w.items() if b != "Head"}
+        osum = sum(others.values())
+        if osum < 1e-4:
+            continue
+        new_h = hw + (1.0 - hw) * t
+        k = (1.0 - new_h) / osum
+        for b, x in others.items():
+            body.vertex_groups[b].add([v.index], x * k, "REPLACE")
+        head.add([v.index], new_h, "REPLACE")
+        locked += 1
+    activate(body)
+    bpy.ops.object.vertex_group_normalize_all(group_select_mode="ALL", lock_active=False)
+    return locked
+
+
 def face_weights(body, FB):
     """each face bone takes a smooth share of the Head's weight around it (at most two face bones per vertex)"""
     for b in FB:
@@ -878,6 +920,7 @@ for src in SOURCES:
     rig = make_armature("NC_" + name, Q)
     rig["NC_Body"] = name
     FB = face_marks(name, eyes)
+    print("NC_HEADLOCK", name, head_lock(body, P, FB), "vertices moved to the Head")
     if FB:
         add_face_bones(rig, FB)
         face_moved = face_weights(body, FB)

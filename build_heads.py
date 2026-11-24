@@ -706,8 +706,9 @@ def cap_version(H, V, T, p):
     rel = V - H.centre
     capline = H.anchor[2] + 0.28 + 0.25 * np.clip(rel[:, 1] / H.R, -1, 1) * 0.6
     T2 = T.copy()
-    over = V[:, 2] > capline - 0.04
-    T2[over] = np.minimum(T2[over], 0.012)
+    # (a cap's back strap and side band sit lower than its crown line: Curly Top came through a dad cap there)
+    over = V[:, 2] > capline - 0.10
+    T2[over] = np.minimum(T2[over], 0.008)
     return T2
 
 
@@ -853,8 +854,15 @@ def build_styles(H):
                                               lift_curve=lambda s_: min(1.0, s_ / 0.2) ** 0.7 * (1 - 0.35 * s_ * s_),
                                               v0=0.28 if len(layer) > 6 and layer[6] == "front" else 0.0)
                 builders["full"].add(vv, ff, uu, ww)
-                if root[2] < H.anchor[2] + 0.2:                  # (under a hat only the band below it shows)
-                    builders["cap"].add(vv, ff, uu, ww)
+                # under a hat only the band below it shows: a card goes in the cap set only if all of it stays well
+                # under the cap line (the same line cap_version uses) and close to the scalp, or it pokes through
+                vz = np.array(vv)
+                rb = (root - H.centre)[1]
+                capline = H.anchor[2] + 0.28 + 0.25 * float(np.clip(rb / H.R, -1, 1)) * 0.6
+                if vz[:, 2].max() < capline - 0.13 and hfrac < 0.95:
+                    lo_h = np.array([np.linalg.norm(q - H.nearest(q)[0]) for q in vz]).max()
+                    if lo_h < 0.02:
+                        builders["cap"].add(vv, ff, uu, ww)
         mk = lambda b_, n_: b_.make(n_, uv=False) if b_.v else None
         out_ = []
         for nm, b_ in ((f"Hair_{key}_Cards", builders["full"]), (f"Hair_{key}_CapCards", builders["cap"])):
@@ -979,10 +987,10 @@ def build_styles(H):
 
     if male:
         add_short("Buzz", "Buzz Cut", dict(top=0.016, side=0.012, feather=0.05, groove=0.06, freq=40))
-        def straight_cards(flow, len_top, len_side, base=0.42, dense=1.0):
+        def straight_cards(flow, len_top, len_side, base=0.3, dense=1.0, edge_ramp=0.14):
             """the card layers of a short straight cut (worked out on the TaperFade against hair_ref_1)"""
             k = 1.0 / math.sqrt(dense)
-            return dict(flow=flow, base=base, len_top=len_top, len_side=len_side, jitter=0.1, segs=6,
+            return dict(flow=flow, base=base, edge_ramp=edge_ramp, len_top=len_top, len_side=len_side, jitter=0.1, segs=6,
                         # (kind, root spacing, height share, width, length x, min coverage[, mask])
                         layers=[("STRAIGHT_DENSE", 0.025 * k, 0.86, 0.04, 1.0, 0.7),                  # on the base
                                 ("STRAIGHT_DENSE", 0.022 * k, 0.9, 0.036, 1.0, 0.1, "front"),         # the hairline
@@ -1002,7 +1010,7 @@ def build_styles(H):
                                                                                  ("STRAIGHT_DENSE", 0.022, 0.62, 0.03, 0.5, 0.45)])))
         add_short("HighFade", "High Skin Fade", dict(top=0.085, side=0.014, top_from=0.1, top_to=0.85, fade_z=0.36, fade_len=0.26,
                                                      fade_front=0.04, fade_len_front=0.12, feather=0.045,
-                                                     groove=0.03, freq=24, cards=straight_cards("back", 0.32, 0.1, base=0.35)))
+                                                     groove=0.03, freq=24, cards=straight_cards("back", 0.32, 0.1)))
         add_short("SidePart", "Side Part", dict(top=0.10, side=0.025, part=0.32, sweep=0.03, feather=0.07, groove=0.04,
                                                  cards=dict(straight_cards("part", 0.3, 0.07), part=0.32)))
         add_short("CurlyTop", "Curly Top", dict(top=0.12, side=0.018, fade_z=0.05, curls=260, curl_r=0.028, curl_amp=0.25, feather=0.06,
