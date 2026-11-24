@@ -16,7 +16,7 @@
 # a separate see-through band in the hair colour softens the hairline the way short hair shows skin through it,
 # and the surface is combed: grooves that run the way the hair grows, out from the crown or away from a part.
 # Locs, twists, buns, ponytails and long hair are real strands and tubes that hang and clear the head and shoulders.
-import bpy, bmesh, math, json, os, sys, random
+import bpy, bmesh, math, json, os, sys, random, zlib
 import numpy as np
 from mathutils import Vector, Matrix
 from mathutils.kdtree import KDTree
@@ -800,7 +800,7 @@ def build_styles(H):
 
     def make_cards(key, p, cov, T, fade_top=None):
         cp = p["cards"]
-        rng = np.random.default_rng(abs(hash(key)) % (2 ** 31))
+        rng = np.random.default_rng(zlib.crc32(key.encode()))     # (stable: str hash() changes every run)
         flow = FLOWS[cp.get("flow", "crown")]
         tmin, tmax = p["side"], max(p["top"], p["side"] + 1e-4)
         tw = np.clip((T - tmin) / (tmax - tmin), 0, 1)
@@ -827,9 +827,10 @@ def build_styles(H):
             for root, i in sample_roots_(rng, weight, spacing):
                 # (the back of a crop is short: the long top hair is the front and crown, so no bowl-shaped fringe)
                 backness = float(smoothstep(0.15 * H.R, 0.65 * H.R, relc[i, 1]))
-                length = (cp["len_side"] + (cp["len_top"] - cp["len_side"]) * tw[i] * (1 - 0.7 * backness)) * lmul * rng.uniform(0.8, 1.15)
+                length = (cp["len_side"] + (cp["len_top"] - cp["len_side"]) * tw[i] * (1 - 0.55 * backness)) * lmul * rng.uniform(0.8, 1.15)
                 # (shorter towards the fade, so hair combed down the back doesn't hang over the faded skin)
-                length *= 0.3 + 0.7 * smoothstep(0.5, 1.0, cov[i])
+                if not (len(layer) > 6 and layer[6] == "front"):   # (the hairline's own coverage is still feathering)
+                    length *= 0.3 + 0.7 * smoothstep(0.5, 1.0, cov[i])
                 if fade_top is not None:                         # and never down past where the fade begins
                     length = min(length, max(0.025, 1.3 * (root[2] - fade_top[i] + 0.08)))
                 # keep the card about as long as the strand texture is tall for its width (1:4 in the atlas): a short
@@ -838,7 +839,8 @@ def build_styles(H):
                 segs_i = max(3, int(round(cp.get("segs", 6) * min(1.0, length / (0.6 * cp["len_top"])))))
                 vv, ff, uu, ww = HC.grow_card(H, root, flow, length, height_at(hfrac * rng.uniform(0.85, 1.1)), w_i,
                                               segs_i, rng, kind, jitter=cp.get("jitter", 0.35),
-                                              lift_curve=lambda s_: min(1.0, s_ / 0.2) ** 0.7 * (1 - 0.35 * s_ * s_))
+                                              lift_curve=lambda s_: min(1.0, s_ / 0.2) ** 0.7 * (1 - 0.35 * s_ * s_),
+                                              v0=0.28 if len(layer) > 6 and layer[6] == "front" else 0.0)
                 builders["full"].add(vv, ff, uu, ww)
                 if root[2] < H.anchor[2] + 0.2:                  # (under a hat only the band below it shows)
                     builders["cap"].add(vv, ff, uu, ww)
@@ -948,14 +950,14 @@ def build_styles(H):
             # the solid base thins out over the last couple of cm to the hairline, so the front hair rises off the
             # forehead in cards instead of the base ending in a rolled edge
             T = T * (0.15 + 0.85 * smoothstep(0.0, p["cards"].get("edge_ramp", 0.07), hl))
-        hair = shell(f"Hair_{key}", V, F, N, T, field=field, lift=0.0035, uv=(cov, ev))
+        hair = shell(f"Hair_{key}", V, F, N, T, field=field, lift=0.007, uv=(cov, ev))
         if extras:
             b = Builder()
             b.add_obj(hair)
             extras(b, T)
             hair = b.make(f"Hair_{key}")
         Tc = cap_version(H, V, T, p)
-        cap = shell(f"Hair_{key}_Cap", V, F, N, Tc, field=field, lift=0.0035, uv=(cov, ev))
+        cap = shell(f"Hair_{key}_Cap", V, F, N, Tc, field=field, lift=0.007, uv=(cov, ev))
         if extras and p.get("cap_extras", True):
             b = Builder()
             b.add_obj(cap)
@@ -971,12 +973,12 @@ def build_styles(H):
         # the fade thins the same colour out to skin from just above the ear
         add_short("TaperFade", "Textured Crop, Mid Fade", dict(top=0.07, side=0.012, top_from=0.0, top_to=0.9, front_lift=0.04, fade_z=0.3, fade_len=0.26, fade_front=0.06, fade_len_front=0.12,
                                                               feather=0.035, groove=0.03, freq=60, texture=0.0,
-                                                              cards=dict(flow="back", base=0.55, len_top=0.3, len_side=0.07, jitter=0.1, segs=6,
+                                                              cards=dict(flow="back", base=0.42, len_top=0.3, len_side=0.1, jitter=0.1, segs=6,
                                                                          # (kind, root spacing, height share, width, length x, min coverage)
                                                                          layers=[("STRAIGHT_DENSE", 0.025, 0.86, 0.04, 1.0, 0.7),
                                                                                  ("STRAIGHT_DENSE", 0.022, 0.9, 0.036, 1.0, 0.1, "front"),   # lying on the base
                                                                                  ("STRAIGHT_DENSE", 0.027, 0.88, 0.036, 1.0, 0.8),  # the outer shape
-                                                                                 ("STRAIGHT_WISPY", 0.02, 0.72, 0.03, 0.4, 0.45)])))
+                                                                                 ("STRAIGHT_DENSE", 0.022, 0.62, 0.03, 0.5, 0.45)])))
         add_short("HighFade", "High Skin Fade", dict(top=0.10, side=0.02, fade_z=0.22, feather=0.06, groove=0.1, freq=24))
         add_short("SidePart", "Side Part", dict(top=0.10, side=0.025, part=0.32, sweep=0.03, feather=0.07, groove=0.12))
         add_short("CurlyTop", "Curly Top", dict(top=0.12, side=0.018, fade_z=0.05, curls=260, curl_r=0.028, curl_amp=0.25, feather=0.06))

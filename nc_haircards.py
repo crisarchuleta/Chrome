@@ -182,7 +182,7 @@ def sample_roots(rng, V, weight, spacing):
     return np.array(keep, int)
 
 
-def grow_card(H, p0, flow, length, height, width, segs, rng, kind, jitter=0.35, lift_curve=None, droop=0.0):
+def grow_card(H, p0, flow, length, height, width, segs, rng, kind, jitter=0.35, lift_curve=None, droop=0.0, v0=0.0):
     """height: a number, or a function of the scalp point (the style's volume there) so cards lie in layers over
     the hair's shape instead of standing off the head"""
     """one card: a ribbon from the root p0 along the flow over the head, rising to `height` off the scalp.
@@ -231,7 +231,8 @@ def grow_card(H, p0, flow, length, height, width, segs, rng, kind, jitter=0.35, 
         w = width * (1.0 - 0.65 * s ** 1.3) * 0.5
         verts += [q - b * w, q + b * w]
         us_ += [us, ue]
-        vs_ += [s * 0.985 + 0.01, s * 0.985 + 0.01]
+        vv = v0 + s * (0.995 - v0) if v0 else s * 0.985 + 0.01      # (v0: skip the soft root, so a card at the very
+        vs_ += [vv, vv]                                                 #  hairline shows hair right from its root)
     faces = [[2 * i, 2 * i + 1, 2 * i + 3, 2 * i + 2] for i in range(segs)]
     return verts, faces, us_, vs_
 
