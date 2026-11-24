@@ -16,7 +16,7 @@
 # a separate see-through band in the hair colour softens the hairline the way short hair shows skin through it,
 # and the surface is combed: grooves that run the way the hair grows, out from the crown or away from a part.
 # Locs, twists, buns, ponytails and long hair are real strands and tubes that hang and clear the head and shoulders.
-import bpy, bmesh, math, json, os, sys, random, zlib
+import bpy, bmesh, math, json, os, re, sys, random, zlib
 import numpy as np
 from mathutils import Vector, Matrix
 from mathutils.kdtree import KDTree
@@ -112,6 +112,7 @@ def make_textures():
     sid = (np.arange(n) * strands // n) % strands
     start = rng.uniform(0.02, 0.6, strands) ** 1.3
     start = 0.5 * start + 0.5 * np.convolve(np.r_[start[-3:], start, start[:3]], np.ones(7) / 7, "same")[3:-3]
+    start = np.maximum(start, 0.09)        # (a strand starting right at the edge printed a lone dash on the forehead)
     shade = rng.uniform(0.72, 1.0, strands)
     pos = (np.arange(n) * strands / n) % 1.0                             # across one strand
     core = 1 - np.abs(pos - 0.5) * 2                                      # 1 in the middle of a strand
@@ -399,6 +400,64 @@ def drop_islands(Fc, nv, min_faces=24):
     for r in roots:
         cnt[r] = cnt.get(r, 0) + 1
     return [f for f, r in zip(Fc, roots) if cnt[r] >= min_faces]
+
+
+def split_cards(ob, limit):
+    """split a card object into parts of at most `limit` triangles (cards are quads: 2 tris each), whole cards kept
+    together where possible (faces of one card are contiguous). Parts after the first are named <name>_2, _3 ..."""
+    me = ob.data
+    nf = len(me.polygons)
+    per = limit // 2
+    if nf <= per:
+        return [ob]
+    out = [ob]
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.faces.ensure_lookup_table()
+    # connected pieces (cards), in order
+    seen = set()
+    comps = []
+    for f in bm.faces:
+        if f.index in seen:
+            continue
+        stack, comp = [f], []
+        seen.add(f.index)
+        while stack:
+            g = stack.pop()
+            comp.append(g.index)
+            for e in g.edges:
+                for h in e.link_faces:
+                    if h.index not in seen:
+                        seen.add(h.index)
+                        stack.append(h)
+        comps.append(comp)
+    bm.free()
+    groups, cur = [], []
+    for c in comps:
+        if len(cur) + len(c) > per and cur:
+            groups.append(cur)
+            cur = []
+        cur += c
+    if cur:
+        groups.append(cur)
+    base = ob.name
+    for gi in range(len(groups) - 1, -1, -1):
+        keep = set(groups[gi])
+        tgt = ob if gi == 0 else ob.copy()
+        if gi > 0:
+            tgt.data = ob.data.copy()
+            tgt.name = f"{base}_{gi + 1}"
+            for c in ob.users_collection:
+                c.objects.link(tgt)
+        bm = bmesh.new()
+        bm.from_mesh(tgt.data)
+        bm.faces.ensure_lookup_table()
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.index not in keep], context="FACES")
+        bm.to_mesh(tgt.data)
+        bm.free()
+        if gi > 0:
+            out.insert(1, tgt)
+    return out
 
 
 def shell(name, V, F, N, T, field=None, lift=0.004, uv=None):
@@ -921,6 +980,8 @@ def build_styles(H):
                     lo_h = np.array([np.linalg.norm(q - H.nearest(q)[0]) for q in vz]).max()
                     if lo_h < 0.02:
                         builders["cap"].add(vv, ff, uu, ww)
+        if cp.get("defer"):                                # (long hair: its hanging strands are added later)
+            return builders["full"], builders["cap"]
         mk = lambda b_, n_: b_.make(n_, uv=False) if b_.v else None
         out_ = []
         for nm, b_ in ((f"Hair_{key}_Cards", builders["full"]), (f"Hair_{key}_CapCards", builders["cap"])):
@@ -1057,7 +1118,11 @@ def build_styles(H):
             b.add_obj(cap)
             extras(b, T, capped=True)
             cap = b.make(f"Hair_{key}_Cap")
-        if cards is None and SHEET_CARDS["full"]:
+        if p.get("cards", {}).get("defer"):               # scalp cards + the hanging strands, one set
+            bf, bc = cards, capcards
+            cards = cards_obj(f"Hair_{key}_Cards", [(bf.v, bf.f, bf.u, bf.w)] * bool(bf.v) + SHEET_CARDS["full"])
+            capcards = cards_obj(f"Hair_{key}_CapCards", [(bc.v, bc.f, bc.u, bc.w)] * bool(bc.v) + SHEET_CARDS["cap"])
+        elif cards is None and SHEET_CARDS["full"]:
             cards = cards_obj(f"Hair_{key}_Cards", SHEET_CARDS["full"])
             capcards = cards_obj(f"Hair_{key}_CapCards", SHEET_CARDS["cap"])
         SHEET_CARDS["full"], SHEET_CARDS["cap"] = [], []
@@ -1393,7 +1458,7 @@ def build_styles(H):
             b.add(vv, ff)                                              # the hair tie
         add_short("Ponytail", "High Ponytail", dict(slick, part=None), ponytail)
 
-        def curtain(length, flare, curl):
+        def curtain(length, flare, curl, part_x=None):
             def ex(b, T, capped=False):
                 # one continuous sheet of hair from the scalp past the ears, draped over the back and shoulders.
                 # Each column falls straight down from the widest point above it (like real hair over a head and
@@ -1446,9 +1511,15 @@ def build_styles(H):
                 for _ in range(3):                                     # smooth across the columns
                     R[1:-1] = 0.25 * R[:-2] + 0.5 * R[1:-1] + 0.25 * R[2:]
                 jj = np.arange(rows + 1)[None, :] / rows
-                R = R + 0.045 + flare * 0.12 * jj ** 1.5
+                R = R + (0.045 + flare * 0.12 * jj ** 1.5) * smoothstep(0.0, 0.3, jj)   # (tucked under the shell up top: no lid edge)
                 if curl:
                     R -= 0.06 * smoothstep(0.75, 1.0, jj)
+                # the sheet's two front ends thin onto the head over the last columns, so it ends in a soft edge
+                # beside the face instead of a flat plank
+                kk_ = np.arange(cols)[:, None]
+                fend = smoothstep(0.0, 9.0, np.minimum(kk_, cols - 1 - kk_).astype(float))
+                hacc = np.maximum.accumulate(head_r, axis=1) + 0.012
+                R = hacc + (R - hacc) * (0.25 + 0.75 * fend)
                 G = np.zeros((cols, rows + 1, 3))
                 for k, a in enumerate(angs):
                     G[k, :, 0] = axis[0] + math.sin(a) * R[k]
@@ -1460,6 +1531,7 @@ def build_styles(H):
                 k_idx = np.arange(cols)[:, None]
                 groove = 0.01 * np.sin(k_idx * 2.1) + 0.007 * np.sin(k_idx * 5.3 + 1.0)
                 taper = np.linspace(1.0, 0.45, rows + 1)[None, :]
+                taper = taper * (0.2 + 0.8 * fend)
                 outer = G + outn * ((groove + 0.03) * taper)[..., None]
                 inner = G - outn * 0.008
                 nv = cols * (rows + 1)
@@ -1484,55 +1556,109 @@ def build_styles(H):
                 uu = tip.ravel()                                  # (front edges stay solid: hair runs along them)
                 ww = (cc / (cols - 1) * 16 + 0.15 * np.sin(rr * 0.3)).ravel()
                 b.add(verts, faces, np.r_[uu, uu], np.r_[ww, ww])
-                # strand cards over the sheet: ribbons down each column (two layers, the outer one a little apart and
-                # shorter), so the hair reads as strands, not a painted sheet. Under a hat, only below the cap line.
-                rng_ = np.random.default_rng(zlib.crc32(f"sheet{length}{flare}".encode()))
-                surf = G + outn * ((groove + 0.03) * taper)[..., None]
-                for layer_k, (off, step, wmul, lmin) in enumerate(((0.004, 1.0, 1.25, 0.85), (0.011, 1.6, 1.0, 0.6))):
-                    cpos = 0.0
-                    while cpos < cols - 1:
-                        c0 = int(cpos)
-                        f_ = cpos - c0
-                        line = surf[c0] * (1 - f_) + surf[min(c0 + 1, cols - 1)] * f_
-                        nn = outn[c0]
-                        across = surf[min(c0 + 1, cols - 1)] - surf[max(c0 - 1, 0)]
-                        across = across / np.maximum(np.linalg.norm(across, axis=1), 1e-9)[:, None]
-                        spacing = np.linalg.norm(surf[min(c0 + 1, cols - 1)] - surf[c0], axis=1)
-                        endr = int(rows * rng_.uniform(lmin, 1.0))
-                        r0 = 0
-                        if capped:
-                            below = np.nonzero(line[:, 2] < cap_line(H, line) - 0.02)[0]
-                            if len(below) == 0:
-                                cpos += step * rng_.uniform(0.8, 1.2)
-                                continue
-                            r0 = int(below[0])
-                        # (overlapping shingles ~8 cm long, each the whole strand texture: one ribbon the full length
-                        #  stretched the strands into smooth streaks)
-                        seg = max(4, int(0.32 / max(col_len(angs[c0]) / rows, 1e-3)))
-                        sa_ = r0 - int(rng_.uniform(0, 0.5) * seg) if not capped else r0
-                        while sa_ < endr - 2:
-                            a_, e_ = max(sa_, r0), min(sa_ + seg, endr)
-                            if e_ - a_ >= 3:
-                                hw = (spacing * wmul * 0.5 + 0.004)[a_:e_ + 1]
-                                ctr = line[a_:e_ + 1] + nn[a_:e_ + 1] * (off + 0.002 * rng_.uniform(-1, 1))
-                                ac = across[a_:e_ + 1]
-                                ctr = ctr + ac * (rng_.uniform(-0.4, 0.4) * hw[:, None])
+                # strand cards: guide strands from roots all over the scalp, combed along the style's flow over the
+                # head until they turn down, then falling on the sheet's outer surface (which already drapes over the
+                # back and shoulders). Each strand is cut into overlapping ~9 cm cards (one full strand texture each,
+                # so tips taper and nothing is stretched or square-cut); ends are uneven. Under a hat, only the parts
+                # below the cap line.
+                surfR = R + ((groove + 0.03) * taper)                 # the sheet's outer radius (cols x rows+1)
+                a_lo, a_hi = math.radians(-110), math.radians(110)
+
+                def sheet_r(a, z):
+                    if not (a_lo <= a <= a_hi):
+                        return outline_head(a, z) + 0.03
+                    kf = (a - a_lo) / (a_hi - a_lo) * (cols - 1)
+                    k0 = int(min(cols - 2, kf))
+                    t_ = kf - k0
+                    out_ = 0.0
+                    for kk, wk in ((k0, 1 - t_), (k0 + 1, t_)):
+                        jf = (z0 - z) / max(col_len(angs[kk]), 1e-3) * rows
+                        jf = min(max(jf, 0.0), rows)
+                        out_ += wk * np.interp(jf, np.arange(rows + 1), surfR[kk])
+                    return out_
+
+                flow_ = flow_part(part_x * H.R) if part_x is not None else flow_back
+                rng_ = np.random.default_rng(zlib.crc32(f"strands{length}{flare}".encode()))
+                kdT = KDTree(len(V))
+                for ii_, vv_ in enumerate(V):
+                    kdT.insert(vv_, ii_)
+                kdT.balance()
+                wroot = smoothstep(0.004, 0.02, T)
+                step_s, step_h = 0.03, 0.05
+                for layer_k, (spacing, h_off, wcard) in enumerate(((0.04, 0.010, 0.05), (0.055, 0.020, 0.045))):
+                    for root, ri in sample_roots_(rng_, wroot, spacing):
+                        total = length * rng_.uniform(0.86, 1.0) * (1.0 if layer_k == 0 else rng_.uniform(0.7, 1.0))
+                        pts, outs = [], []
+                        p_, L = np.array(root, float), 0.0
+                        q = None
+                        for _ in range(60):                       # over the head
+                            loc, nrm, _f, _d = H.nearest(p_)
+                            d = flow_(loc, nrm)
+                            d = d - nrm * (d @ nrm)
+                            d = d / max(np.linalg.norm(d), 1e-9)
+                            q = loc + nrm * (max(T[kdT.find(loc)[1]], 0) + 0.007 + h_off)
+                            pts.append(q)
+                            outs.append(nrm)
+                            if d[2] < -0.8 or loc[2] < H.ear_z + 0.04 or L >= total:
+                                break
+                            p_ = loc + d * step_s
+                            L += step_s
+                        n_surf = len(pts)
+                        ang = math.atan2(q[0] - axis[0], q[1] - axis[1])
+                        r_ = math.hypot(q[0] - axis[0], q[1] - axis[1])
+                        z_ = q[2]
+                        floor_z = (shoulder_z + rng_.uniform(-0.02, 0.06)) if abs(ang) > math.radians(55) else -9.0
+                        while L < total and z_ - step_h > floor_z:   # then down, onto the sheet
+                            z_ -= step_h
+                            L += step_h
+                            tgt = sheet_r(ang, z_) + h_off - 0.004
+                            r_ = r_ + float(np.clip(tgt - r_, -0.03, 0.04))
+                            pts.append(np.array([axis[0] + math.sin(ang) * r_, axis[1] + math.cos(ang) * r_, z_]))
+                            outs.append(np.array([math.sin(ang), math.cos(ang), 0.0]))
+                        if len(pts) < 3:
+                            continue
+                        P_ = np.array(pts)
+                        O_ = np.array(outs)
+                        tan = np.gradient(P_, axis=0)
+                        tan /= np.maximum(np.linalg.norm(tan, axis=1), 1e-9)[:, None]
+                        acr = np.cross(tan, O_)
+                        acr /= np.maximum(np.linalg.norm(acr, axis=1), 1e-9)[:, None]
+                        # arc length along the strand, and overlapping cards ~0.36 long
+                        sarc = np.r_[0, np.cumsum(np.linalg.norm(np.diff(P_, axis=0), axis=1))]
+                        seg_len = 0.55
+                        # (on the head the scalp cards do the combing; strands only from just above where they drop)
+                        s0 = max(0.0, sarc[n_surf - 1] - 0.15) - rng_.uniform(0, 0.3) * seg_len
+                        s_floor = max(0.0, sarc[n_surf - 1] - 0.15)
+                        while s0 < sarc[-1] - 0.05:
+                            a_s, e_s = max(s0, s_floor), min(s0 + seg_len, sarc[-1])
+                            idx = np.nonzero((sarc >= a_s) & (sarc <= e_s))[0]
+                            if len(idx) >= 2:
+                                seg_p = P_[idx]
+                                if capped:
+                                    keep = seg_p[:, 2] < cap_line(H, seg_p) - 0.02
+                                    if not keep.all():
+                                        s0 += seg_len * rng_.uniform(0.5, 0.65)
+                                        continue
+                                hw = wcard * 0.5 * np.clip(0.6 + 0.4 * (sarc[idx] / 0.25), 0.6, 1.0)[:, None]
+                                ac = acr[idx]
                                 u0, u1 = HC.kind_u("STRAIGHT_DENSE")
                                 sp = (u1 - u0) * rng_.uniform(0.9, 1.0)
                                 us = u0 + rng_.uniform(0, (u1 - u0) - sp)
                                 if rng_.random() < 0.5:
                                     us, sp = us + sp, -sp
-                                m = len(ctr)
-                                vv = list(map(tuple, ctr - ac * hw[:, None])) + list(map(tuple, ctr + ac * hw[:, None]))
+                                m = len(idx)
+                                vv = list(map(tuple, seg_p - ac * hw)) + list(map(tuple, seg_p + ac * hw))
                                 ff = [[j, j + 1, m + j + 1, m + j] for j in range(m - 1)]
-                                vcoord = list(np.linspace((a_ - sa_) / seg * 0.98 + 0.01, (e_ - sa_) / seg * 0.98 + 0.01, m))
+                                vcoord = list(np.clip((sarc[idx] - s0) / seg_len * 0.98 + 0.01, 0.01, 0.995))
                                 SHEET_CARDS["cap" if capped else "full"].append((vv, ff, [us] * m + [us + sp] * m, vcoord + vcoord))
-                            sa_ += int(seg * rng_.uniform(0.5, 0.65))
-                        cpos += step * rng_.uniform(0.8, 1.2)
+                            s0 += seg_len * rng_.uniform(0.5, 0.65)
             return ex
-        add_short("LongStraight", "Long Straight", dict(slick, top=0.05, side=0.04, groove=0.3),
+        add_short("LongStraight", "Long Straight", dict(slick, top=0.05, side=0.04, groove=0.3,
+                                                        cards=dict(straight_cards("back", 0.35, 0.25), defer=True)),
                   curtain(1.9, 0.25, False))
-        add_short("Bob", "Chin Bob", dict(slick, top=0.06, side=0.045, part=0.2, groove=0.3), curtain(1.0, 0.45, True))
+        add_short("Bob", "Chin Bob", dict(slick, top=0.06, side=0.045, part=0.2, groove=0.3,
+                                          cards=dict(straight_cards("part", 0.3, 0.22), part=0.2, defer=True)),
+                  curtain(1.0, 0.45, True, part_x=0.2))
     return out, (V, F, S, N, d)
 
 
@@ -1798,7 +1924,11 @@ for gender in ("Male", "Female"):
             ob = st.get(kind)
             if ob is not None:
                 ob.data.materials.append(card_col)
-                pieces[ob.name] = (ob, {"cards": "HairCards", "capcards": "HairCapCards"}[kind], key, st["label"])
+                knd = {"cards": "HairCards", "capcards": "HairCapCards"}[kind]
+                # (Roblox takes 20k triangles a MeshPart: big card sets are split into _2, _3 ... parts instead of
+                #  decimated, which collapsed card ends into blunt chunks)
+                for ob_ in split_cards(ob, 18000):
+                    pieces[ob_.name] = (ob_, knd, key, st["label"])
     for name, ob in face.items():
         kind = name.split("_")[0]
         col = {"Brows": tex_material("NC_Brows", TEX["NC_Brow"]), "LashLine": material("Lash", (0.03, 0.025, 0.02, 1)),
@@ -1853,8 +1983,9 @@ for gender in ("Male", "Female"):
     for name, (ob, *_r) in pieces.items():
         olds[ob] = ob.name
         ob.name = name
-    base = [n for n in pieces if not n.endswith("Cards")]
-    cards = [n for n in pieces if n.endswith("Cards")]
+    is_card = lambda n: bool(re.search(r"Cards(_\d+)?$", n))
+    base = [n for n in pieces if not is_card(n)]
+    cards = [n for n in pieces if is_card(n)]
     groups = [("", base)]
     CARD_TRIS_PER_FILE = 60000
     cur, tri_sum = [], 0
@@ -1957,7 +2088,7 @@ for _, model in ipairs(Selection:Get()) do
 \t\t\t\tsa.Parent = part
 \t\t\tend
 \t\t\tpart.TextureID = ""
-\t\t\tlocal isCards = part.Name:match("_Cards$") or part.Name:match("_CapCards$")
+\t\t\tlocal isCards = part.Name:match("_Cards$") or part.Name:match("_CapCards$") or part.Name:match("_Cards_%d+$") or part.Name:match("_CapCards_%d+$")
 \t\t\tif sa then
 \t\t\t\tsa.AlphaMode = Enum.AlphaMode.Transparency
 \t\t\t\tif isCards then

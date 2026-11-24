@@ -6,7 +6,8 @@
 --   Hair_<Style>        the hair (Male: Buzz, Crop, TaperFade, HighFade, SidePart, CurlyTop, Locs, Twists, FlatTwists;
 --                       Female: Pixie, Locs, LowBun, Ponytail, LongStraight, Bob)
 --   Hair_<Style>_Cap    the same style pressed flat and trimmed, worn under a hat
---   Hair_<Style>_Cards / _CapCards   hair-card styles: strand cards over the painted scalp (and their under-hat cut)
+--   Hair_<Style>_Cards / _CapCards   hair-card styles: strand cards over the painted scalp (and their under-hat cut);
+--                                    big sets add _Cards_2, _Cards_3 ...
 --   Brows_<Shape>       Natural, Thick, Arched, Straight, Thin
 --   LashLine, Lips      on every face (the lips are tinted from the skin colour)
 --   Stubble, StubbleHeavy   (Male)
@@ -235,6 +236,12 @@ function H.WearHair(fr, pp, parent, hair, skin, hatOn)
 	end
 	if hasCards then
 		H.put(fr, cards, parent, { Color = hair, Material = Enum.Material.SmoothPlastic })
+		-- big card sets come in several parts (Roblox's 20k triangles a MeshPart): <name>_2, _3 ...
+		local k = 2
+		while H.has(fr, cards .. "_" .. k) do
+			H.put(fr, cards .. "_" .. k, parent, { Color = hair, Material = Enum.Material.SmoothPlastic })
+			k += 1
+		end
 	end
 	return true
 end

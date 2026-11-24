@@ -43,7 +43,7 @@ for _, model in ipairs(Selection:Get()) do
 				sa.Parent = part
 			end
 			part.TextureID = ""
-			local isCards = part.Name:match("_Cards$") or part.Name:match("_CapCards$")
+			local isCards = part.Name:match("_Cards$") or part.Name:match("_CapCards$") or part.Name:match("_Cards_%d+$") or part.Name:match("_CapCards_%d+$")
 			if sa then
 				sa.AlphaMode = Enum.AlphaMode.Transparency
 				if isCards then
