@@ -1,5 +1,3 @@
-# Reference outfits for the 3D garment maker (nc_garments.py), styled after the SevenM / Tha Bronx 3 / realistic
-# hood screenshots. Each look builds outer layers last: shoes, then pants, then the top, then accessories.
 import nc_garments as NG
 BLACK = (0.03, 0.03, 0.035)
 
@@ -35,3 +33,31 @@ def puffer_sweats(o):
     NG.build_shades(o, "Shades")
 
 LOOKS.update({"tee_cargo": tee_cargo, "puffer_sweats": puffer_sweats})
+
+def capshades(o):  # matches the person's cap + shades + hoodie reference sheet
+    NG.build_top(o, "Hoodie", color=(0.22, 0.22, 0.23), accent=(0.2, 0.2, 0.21))
+    NG.build_cap(o, "Cap", color=(0.25, 0.25, 0.26))
+    NG.build_shades(o, "Shades")
+
+LOOKS["capshades"] = capshades
+
+def hoodup(o):  # cap first, then the hood pulled up over it
+    NG.build_cap(o, "Cap", color=(0.25, 0.25, 0.26))
+    NG.build_top(o, "Hoodie", color=(0.22, 0.22, 0.23), accent=(0.2, 0.2, 0.21), hood="up")
+    NG.build_shades(o, "Shades")
+
+LOOKS["hoodup"] = hoodup
+
+def chains(o):  # chain reference: tee + cap + shades + choker and rope stack
+    NG.build_top(o, "Tee", kind="tee", sleeve="short", color=(0.22, 0.22, 0.23), hood=False, pocket=False, rib=False, ease=0.07, sleeve_ease=0.3, thick=0.003)
+    NG.build_chain_stack(o)
+    NG.build_cap(o, "Cap", color=(0.25, 0.25, 0.26))
+    NG.build_shades(o, "Shades")
+
+LOOKS["chains"] = chains
+
+def shoes_test(o, style="court_high"):
+    NG.build_shoe(o, "Shoe", style=style, color=(0.9, 0.9, 0.88), accent=(0.55, 0.08, 0.1), sole=(0.95, 0.95, 0.93), lace=(0.95, 0.95, 0.95))
+
+for _st in ("court_high", "retro_bball", "skate_low", "slip_on", "canvas_high", "runner_retro"):
+    LOOKS["shoe_" + _st] = (lambda st: (lambda o: shoes_test(o, st)))(_st)

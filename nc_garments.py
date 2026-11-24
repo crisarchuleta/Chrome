@@ -6,6 +6,7 @@
 # Everything stays on top of the permanent base layer (white tank + shorts + NC_Modesty key): NO NUDITY, EVER.
 # Pure bpy + numpy + scipy. Original designs only: no brands, logos or real-world likenesses.
 import bpy
+import os
 import numpy as np
 from scipy.spatial import cKDTree
 import nc_baselayer as BL
@@ -122,7 +123,24 @@ class RigBody(Body):
         self.whole_co = cw
         self.whole_reg = regw
         self.whole_faces = [list(p.vertices) for p in me.polygons if p.material_index == 0]
+        # base-layer tank: every garment that covers the chest must hide it completely (person's rule, 2026-11-23)
+        tmi = [i for i, m_ in enumerate(me.materials) if m_ and "TankTop" in m_.name]
+        tv = np.zeros(len(cw), bool)
+        for p in me.polygons:
+            if p.material_index in tmi:
+                tv[list(p.vertices)] = True
+        # dense samples on the tank faces, so distances to it are smooth (clean hem lines, no holes)
+        smp = []
+        for p in me.polygons:
+            if p.material_index in tmi:
+                vs = cw[list(p.vertices)]
+                for i_ in range(1, len(vs) - 1):
+                    tri = vs[[0, i_, i_ + 1]]
+                    for (u_, v_) in ((1/3, 1/3), (0.1, 0.1), (0.8, 0.1), (0.1, 0.8), (0.45, 0.1), (0.1, 0.45), (0.45, 0.45)):
+                        smp.append(tri[0] + u_ * (tri[1] - tri[0]) + v_ * (tri[2] - tri[0]))
+        self.tank_co = np.vstack([cw[tv], np.array(smp)]) if smp else cw[tv]
         self.co, self.G, self.J, self.reg = co, {}, J, reg
+        self.tank = (cKDTree(self.tank_co).query(co)[0] < 1.5 * voxel) if len(self.tank_co) else np.zeros(len(co), bool)
         self.inb = np.ones(len(co), bool)
         self.faces = faces
         self.N = vnormals(co, faces)
@@ -521,6 +539,20 @@ def _isin(reg, names):
 def _start(b, f, sub=0, smooth=2):
     P, F, A = clip(b.co, b.faces, f, {"reg": b.reg})
     P, F, A = keep_big(P, F, A)
+    # pinholes (a few cells where the cut field flickers, e.g. arm resting on the side): close them
+    loops = boundary_loops(F)
+    small = [l for l in loops if len(l) <= 24]
+    if small:
+        P = list(P); F = list(F); A = {kk: list(vv) for kk, vv in A.items()}
+        for l in small:
+            c = len(P); P.append(np.mean([P[i] for i in l], axis=0))
+            for kk in A:
+                A[kk].append(A[kk][l[0]])
+            a0, a1 = l[0], l[1]  # orient the fan opposite to the face that already uses edge a0-a1
+            fwd = any(f_[(t + 1) % len(f_)] == a1 and f_[t] == a0 for f_ in F if a0 in f_ and a1 in f_ for t in range(len(f_)))
+            for i in range(len(l)):
+                F.append([l[(i + 1) % len(l)], l[i], c] if fwd else [l[i], l[(i + 1) % len(l)], c])
+        P = np.array(P); A = {kk: np.array(vv, dtype=object) for kk, vv in A.items()}
     if smooth:  # iron out the steps where the base layer meets the skin
         P = laplace(P, edges_of(F), smooth, taubin=True)
     if DEBUG:
@@ -577,6 +609,37 @@ class Outfit:
         return N
 
 
+def _tank_field(b, front_open=False, margin=0.014):
+    tc = getattr(b, "tank_co", None)
+    if tc is None or not len(tc):
+        return None
+    d, _ = cKDTree(tc).query(b.co)
+    g = d - margin * b.k
+    if front_open:
+        g = np.where(b.co[:, 1] > b.J["neck"][1] - 0.02 * b.k, g, 1.0)
+    return np.where(_isin(b.reg, ("Head",)) & (b.co[:, 2] > b.J["neck"][2]), 1.0, g)
+
+
+def _cover_tank(b, f, front_open=False, margin=0.014, armzone=None):
+    """Never cut the garment where it would leave the base-layer tank showing: keep everything on or within
+    `margin` of the tank (necklines and armholes end up at least as high and as narrow as the tank's).
+    armzone (sleeveless tops): there the armhole simply follows the tank's own armhole, offset by the margin."""
+    tc = getattr(b, "tank_co", None)
+    if tc is None or not len(tc):
+        return f
+    if armzone is not None:
+        g = _tank_field(b, front_open, margin)
+        f = f.copy()
+        f[armzone] = g[armzone]
+        return f
+    d, _ = cKDTree(tc).query(b.co)
+    g = d - margin * b.k                     # smooth: negative on the tank and within the margin around it
+    if front_open:  # open jackets: only the back and shoulders (the front is meant to show what is under)
+        g = np.where(b.co[:, 1] > b.J["neck"][1] - 0.02 * b.k, g, 1.0)
+    g = np.where(_isin(b.reg, ("Head",)) & (b.co[:, 2] > b.J["neck"][2]), 1.0, g)
+    return np.minimum(f, g)
+
+
 def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, sleeve_ease=0.13, color=(0.05, 0.05, 0.055),
               accent=None, camo_pal=None, print_fn=None, hood=True, pocket=True, zip_front=False, puffer=False,
               rib=True, thick=0.004, collar=None, neck_drop=0.0, front_open=False, flare=0.012, band=None):
@@ -592,7 +655,7 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
     tor = _isin(reg, TORSOISH)
     f[tor] = z_clip - P0[tor, 2]
     front = np.clip((J["neck"][1] - P0[:, 1]) / (0.07 * k), 0, 1)
-    zc = neck_z - (0.012 + (0.05 if kind == "tee" else 0.035) * front) * k
+    zc = neck_z - ((0.02 + 0.05 * front) if kind == "tee" else (0.012 + 0.035 * front)) * k
     if collar in ("stand", "turtle", "shirt"):
         zc = neck_z - (0.004 + 0.02 * front) * k
     if neck_drop:
@@ -602,27 +665,35 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
     yn = P0[hm_, 1].mean() if hm_.any() else J["neck"][1]
     dn = np.hypot(P0[:, 0] - b.cx, (P0[:, 1] - yn) * 1.08)
     Rn = np.median(np.hypot(P0[hm_, 0] - b.cx, (P0[hm_, 1] - yn) * 1.08)) if hm_.any() else 0.06 * k
-    margin = {"rib": 0.016, "stand": 0.008, "turtle": 0.004, "shirt": 0.008, "lapel": 0.012, "none": 0.022}.get(collar, 0.016) * k
-    margin = margin + (0.03 if kind == "tee" else 0.012) * k * front ** 1.5
+    margin = {"rib": 0.016 + (0.008 if kind == "tee" else 0.0), "stand": 0.008, "turtle": 0.004, "shirt": 0.008, "lapel": 0.012, "none": 0.022}.get(collar, 0.016) * k
+    margin = margin + (0.014 if kind == "tee" else 0.008) * k * front ** 1.5
     if neck_drop:
         margin = margin + neck_drop * k * 0.5 * front
-    ring = np.where(P0[:, 2] > neck_z - 0.16 * k, Rn + margin - dn, -1.0)
+    # the ring may reach down to the shoulders at the sides and back, but at the front it stops at the scoop depth
+    # (otherwise the cylinder eats into the upper chest when the neck joint sits behind the chest)
+    floor_z = (neck_z - 0.16 * k) * (1 - front) + (zc - 0.012 * k) * front
+    ring = np.where(P0[:, 2] > floor_z, Rn + margin - dn, -1.0)
     zc2 = zc - 0.05 * k  # only very deep cuts come from the plane now
-    f[tor] = np.maximum(f[tor], np.maximum(ring[tor], P0[tor, 2] - np.maximum(zc2[tor], zc[tor] + 0.04 * k)))
+    f[tor] = np.maximum(f[tor], np.maximum(ring[tor], P0[tor, 2] - np.maximum(zc2[tor], zc[tor] + 0.012 * k)))
     arm = _isin(reg, ARMS)
     f[arm] = s[arm] - s_end if s_end > 0 else 1.0
-    if sleeve == "none":  # clean round armholes: a cylinder around each upper arm
-        _, _, Ra0 = arm_param(b, P0)
+    near_all = np.zeros(len(P0), bool)
+    if sleeve == "none":
+        # armholes follow the base-layer tank's own armhole, offset outward by a margin, so the garment always
+        # sits over the tank's edge (clean curve, and the tank can't show)
+        zone = arm.copy()
         for side in ("l", "r"):
-            ms = (b.side(P0) == side) & _isin(reg, ARMS) & (s > 0.1) & (s < 0.3)
-            r_up = np.percentile(Ra0[ms], 90) if ms.any() else 0.05 * k
-            armpit = J[side + "-shoulder"][2] - 0.085 * k
-            near = (b.side(P0) == side) & (s > -0.06) & (s < 0.2) & ~(reg == "Head") & (P0[:, 2] > armpit)
-            hole = r_up * 1.35 + 0.01 * k - Ra0
-            hole = np.where(s < 0.02, hole - (0.02 - s) * 2.5 * k, hole)  # round the top of the armhole
-            f[near] = np.maximum(f[near], hole[near])
-            f[near & arm] = np.maximum(f[near & arm], 0.01)
+            zone |= (b.side(P0) == side) & (s > -0.12) & ~(reg == "Head") & (P0[:, 2] > J[side + "-shoulder"][2] - 0.16 * k)
+        near_all = zone
+    f2 = _cover_tank(b, f, front_open)
+    if sleeve == "none":
+        g_ = _tank_field(b, front_open, 0.03)
+        f = np.where(near_all, g_ if g_ is not None else f, f2)
+    else:
+        f = f2
     P, F, R = _start(b, f)
+    if sleeve == "none":  # no sleeves: any arm-labelled cloth left is the armhole edge of the body panel
+        R = np.where(_isin(R, ARMS), "Torso", R).astype(object)
     E = edges_of(F)
     Nb = vnormals(P, F)
     off = 0.010 * k + (0.012 * k if puffer else 0)
@@ -634,6 +705,11 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
     rnew, th = drape_envelope(b, X0, ~isarm, neck_z, ease, 0.004 * k, chest_z, flare=0.0015)
     _, r = torso_cyl(b, X0)
     wt = (1 - smoothstep(chest_z + 0.03 * k, chest_z + 0.11 * k, X0[:, 2])) * (~isarm)
+    if sleeve == "none":  # armholes hug the body (a lifted edge would let you see under it)
+        lp_ = [l for l in boundary_loops(F) if np.abs(P[l, 0] - b.cx).mean() > 0.06 * k and P[l, 2].mean() > chest_z - 0.1 * k]
+        if lp_:
+            dA, _ = cKDTree(P[np.concatenate(lp_)]).query(P)
+            wt = wt * smoothstep(0.0, 0.07 * k, dA)
     scale = np.where(r > 1e-6, (r + (rnew - r) * wt) / np.maximum(r, 1e-6), 1)
     X[:, 0] = b.cx + (X0[:, 0] - b.cx) * scale
     X[:, 1] = b.yc + (X0[:, 1] - b.yc) * scale
@@ -740,6 +816,8 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
         _, nl_ = cKDTree(X).query(neck_pts)
         nl = list(nl_)
         hood = False; pocket = False
+    if hasattr(b, "whole_co"):
+        X, F, R = _crevice_liner(b, X, F, R)
     # 6. colours: main / accent (rib, zip) / print or camo through vertex colours
     reg_out = R
     nf = len(F)
@@ -777,7 +855,9 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
     o.objs.append(ob)
     N = o.layer(X, F, thick)
     o.top = (X, N, F, nl, z_hem)
-    if hood:
+    if hood == "up":
+        o.objs.append(build_hood_up(o, name, X, N, nl, color, vcol is not None and camo_pal, camo_pal))
+    elif hood:
         o.objs.append(build_hood(o, name, X, N, nl, color, vcol is not None and camo_pal, camo_pal))
     if pocket:
         o.objs.append(build_pocket(o, name, X, F, z_hem, color, camo_pal))
@@ -805,6 +885,98 @@ def make_box(b, name, X, N, nl, rgba):
     for col in b.obj.users_collection:
         col.objects.link(ob)
     ob.parent = b.obj; ob.matrix_parent_inverse = b.obj.matrix_world.inverted(); ob.matrix_world = b.obj.matrix_world.copy()
+    return ob
+
+
+def build_hood_up(o, name, X, N, nl, color, use_camo, pal):
+    """A hood pulled up over the head (and over a cap if one was built first): grows from the hoodie neckline,
+    follows the skull with a loose fabric gap and a soft peak at the back, and leaves an oval face opening whose
+    sides come down into the neckline V. The cap brim sticks out through the opening."""
+    b = o.b; k = b.k
+    hm, top, eye_z, c = head_frame(b)
+    eyes = _bodydata_eyes(b)
+    ez = (eyes[0][2] + eyes[1][2]) / 2 if eyes else eye_z
+    C = np.array([c[0], c[1] + 0.008 * k, ez - 0.01 * k])
+    pts = b.co[hm]
+    cp = o.col.P
+    near = (cp[:, 2] > ez - 0.05 * k) & (np.hypot(cp[:, 0] - C[0], cp[:, 1] - C[1]) < 0.16 * k)
+    pts = np.vstack([pts, cp[near]])
+    R = pts - C; rn = np.linalg.norm(R, axis=1); U = R / rn[:, None]
+    nth, nph = 72, 30
+    ths = np.linspace(-np.pi, np.pi, nth, endpoint=False)
+    phs = np.radians(np.linspace(-38, 86, nph))
+    D = np.stack([np.cos(phs)[:, None] * np.cos(ths)[None], np.cos(phs)[:, None] * np.sin(ths)[None],
+                  np.sin(phs)[:, None] * np.ones_like(ths)[None]], -1)  # (nph, nth, 3)
+    dots = D.reshape(-1, 3) @ U.T
+    cone = dots > np.cos(np.radians(9))
+    rr = np.where(cone, rn[None], 0).max(1).reshape(nph, nth)
+    rr = np.where(rr > 0, rr, np.nan)
+    for _ in range(6):  # fill directions with no points from their neighbours
+        m = np.isnan(rr)
+        if not m.any():
+            break
+        nb = np.nanmean(np.stack([np.roll(rr, 1, 1), np.roll(rr, -1, 1), np.roll(rr, 1, 0), np.roll(rr, -1, 0)]), 0)
+        rr[m] = nb[m]
+    rr = np.where(np.isnan(rr), np.nanmedian(rr), rr)
+    back = np.clip(np.sin(ths), 0, 1)[None]  # +y is the back of the head
+    up = np.clip(np.sin(phs), 0, 1)[:, None]
+    clr = (0.016 + 0.016 * up + 0.034 * back * np.exp(-((phs[:, None] - np.radians(25)) / np.radians(45)) ** 2)
+           + 0.016 * back * np.exp(-((phs[:, None] - np.radians(58)) / np.radians(20)) ** 2)) * k
+    raw = rr.copy()
+    for _ in range(12):  # smooth the skull envelope so the fabric bridges ears and hairline
+        rr = np.maximum(rr, 0.5 * rr + 0.125 * (np.roll(rr, 1, 1) + np.roll(rr, -1, 1)) +
+                        0.125 * (np.vstack([rr[:1], rr[:-1]]) + np.vstack([rr[1:], rr[-1:]])))
+    rr = np.maximum(rr, raw) + clr
+    V_up = C + D * rr[..., None]
+    # lower rings: blend from the lowest skull ring down to the hoodie neckline
+    L = X[nl]; Lc = L.mean(0)
+    phL = np.arctan2(L[:, 1] - Lc[1], L[:, 0] - Lc[0])
+    order = np.argsort(phL)
+    neck_ring = np.stack([np.interp(ths, phL[order], L[order, j], period=2 * np.pi) for j in range(3)], 1)
+    neck_ring -= np.stack([np.cos(ths), np.sin(ths), np.zeros_like(ths)], 1) * 0.002 * k  # tucks inside the neckline
+    low = []
+    for t in np.linspace(0, 1, 7)[:-1]:
+        bul = np.sin(np.pi * t) ** 0.7 * (0.026 + 0.01 * np.clip(np.sin(ths), 0, 1)) * k
+        ring = neck_ring * (1 - t) + V_up[0] * t
+        ring += np.stack([np.cos(ths), np.sin(ths), np.zeros_like(ths)], 1) * bul[:, None]
+        low.append(ring)
+    rings = low + list(V_up)
+    V = np.vstack(rings + [rings[-1].mean(0) + np.array([0, 0, 0.004 * k])])
+    nr = len(rings); pole = len(V) - 1
+    F = [[i * nth + j, i * nth + (j + 1) % nth, (i + 1) * nth + (j + 1) % nth, (i + 1) * nth + j] for i in range(nr - 1) for j in range(nth)]
+    F += [[(nr - 1) * nth + j, (nr - 1) * nth + (j + 1) % nth, pole] for j in range(nth)]
+    E = edges_of(F)
+    V = laplace(V, E, 10, taubin=True)
+    # face opening
+    th_v = np.arctan2(V[:, 1] - C[1], V[:, 0] - C[0])
+    dth = np.abs(np.angle(np.exp(1j * (th_v + np.pi / 2))))
+    z_mid, z_top = ez - 0.02 * k, ez + 0.085 * k
+    zn = Lc[2]
+    w = np.radians(46) - np.radians(38) * np.clip((z_mid - V[:, 2]) / (z_mid - zn), 0, 1) ** 0.8
+    f = 1 - (dth / w) ** 2 - (np.clip(V[:, 2] - z_mid, 0, None) / (z_top - z_mid)) ** 2
+    Pq, Fq, _ = clip(V, F, f, {})
+    Pq, Fq, _ = keep_big(Pq, Fq, {}, frac=0.5)
+    E = edges_of(Fq)
+    # the skull envelope already clears the head and cap; only keep the lower hood off the shoulders and hoodie
+    # (ear backs and cap edges have inward-facing normals that would dent the fabric)
+    lowc = Collider(); mk = o.col.P[:, 2] < ez - 0.07 * k
+    lowc.add(o.col.P[mk], o.col.N[mk])
+    for _ in range(3):
+        Pq = lowc.push(Pq, 0.004 * k)
+        Pq = laplace(Pq, E, 2, taubin=True)
+    Pq = lowc.push(Pq, 0.004 * k)
+    # soft rolled edge round the face opening
+    loops = boundary_loops(Fq)
+    lp = max(loops, key=lambda l: np.ptp(Pq[l, 2]) if len(l) > 3 else 0)
+    Rg = np.array(["Hood"] * len(Pq), dtype=object)
+    base = Pq[lp]
+    inward = np.array([C[0], C[1] + 0.04 * k, base[:, 2].mean()]) - base
+    inward[:, 2] = 0; inward /= np.linalg.norm(inward, axis=1, keepdims=True) + 1e-9
+    Pq, Fq, Rg, _ = _extend_loop(Pq, Fq, lp, None, [base - inward * 0.004 * k, base + inward * 0.006 * k], Rg, "Hem")
+    vcol = camo(Pq, pal, 0.07 * k) if use_camo else None
+    ob = make_object(b, b.obj.name + "_" + name + "_Hood", Pq, Fq, [material(name + "_Main", tuple(color[:3]) + (1,), vcol=vcol is not None)],
+                     None, vcol, thick=0.004 * k, subsurf=1)
+    o.layer(Pq, Fq, 0.004 * k)
     return ob
 
 
@@ -917,6 +1089,48 @@ def build_strings(o, name, X, N, nl, rgba):
     return out
 
 
+def _crevice_liner(b, X, F, R, gap=0.045, lift=0.0045):
+    """Heavy builds: where an arm rests against the side, the gap between arm and body is only a centimetre or two
+    and no draped panel fits in it. Line the base-layer tank in that crevice with a skin-tight strip of the
+    garment's own fabric (joined to the garment), so the tank can never show between arm and shirt."""
+    me = b.obj.data; k = b.k
+    cw = b.whole_co; reg = np.asarray(b.whole_reg)
+    tmi = [i for i, m_ in enumerate(me.materials) if m_ and "TankTop" in m_.name]
+    if not tmi:
+        return X, F, R
+    am = np.isin(reg, ["UArm", "LArm", "Hand"])
+    if not am.any():
+        return X, F, R
+    tf = [list(p.vertices) for p in me.polygons if p.material_index in tmi]
+    tv = np.unique(np.concatenate(tf))
+    da, _ = cKDTree(cw[am]).query(cw[tv])
+    near = np.zeros(len(cw), bool)
+    sh_z = min(b.J["l-shoulder"][2], b.J["r-shoulder"][2])
+    shx = abs(b.J["l-shoulder"][0] - b.cx)
+    near[tv] = (da < gap * k) | (np.abs(cw[tv, 0] - b.cx) > 0.55 * shx)   # the crevice and the whole flank / strap edge
+    sel = [f for f in tf if near[f].all()]
+    if len(sel) < 3:
+        return X, F, R
+    # grow by one ring so the strip tucks under the garment's own side panel
+    used = np.zeros(len(cw), bool)
+    for f in sel:
+        used[f] = True
+    sel = [f for f in tf if used[f].any()]
+    vid = np.unique(np.concatenate(sel))
+    remap = -np.ones(len(cw), int); remap[vid] = np.arange(len(vid))
+    Fl = [[int(remap[v]) for v in f] for f in sel]
+    Pl = cw[vid]
+    Nw_ = np.array([v.normal[:] for v in me.vertices])[vid]   # the body's own normals (outward)
+    Nl = vnormals(Pl, Fl)
+    Nl = np.where((np.einsum("ij,ij->i", Nl, Nw_) < 0)[:, None], -Nl, Nl)
+    Pl = Pl + Nw_ * lift * k
+    off = len(X)
+    X = np.vstack([X, Pl])
+    F = list(F) + [[v + off for v in f] for f in Fl]
+    R = np.concatenate([np.asarray(R, dtype=object), np.array(["Torso"] * len(Pl), dtype=object)])
+    return X, F, R
+
+
 def rehang(b, X, F, sel, hang_from, ease=0.0):
     """Final straight fall: below hang_from the cloth radius never shrinks going down (removes ledges)."""
     rnew, _ = drape_envelope(b, X, sel, X[sel, 2].max(), ease, 0.0, hang_from, flare=0.0005)
@@ -965,7 +1179,9 @@ def build_pants(o, name, fit="baggy", color=(0.06, 0.065, 0.075), accent=None, s
         q = Rl[mm & (sl > 0.08) & (sl < 0.22)]
         r_th = np.percentile(q, 92) if len(q) else Rl[mm].max()
         ss = sl[mm]
-        Rt = np.interp(ss, [0, 0.25, 1.0], [r_th * (1 + ease), r_th * (1 + ease) * 0.97, max(hem_r, r_th * 0.55)])
+        # the top of each leg flares out to meet the seat so there is no step at the crotch line
+        Rt = np.interp(ss, [0, 0.1, 0.3, 1.0], [r_th * (1 + ease * 1.6), r_th * (1 + ease * 1.25), r_th * (1 + ease) * 0.97,
+                                                max(hem_r, r_th * 0.55)])
         if cuffed:
             qa = Rl[mm & (sl > 0.85)]
             r_an = np.percentile(qa, 90) if len(qa) else hem_r * 0.6
@@ -976,16 +1192,17 @@ def build_pants(o, name, fit="baggy", color=(0.06, 0.065, 0.075), accent=None, s
         w = smoothstep(0.0, 0.14, ss)
         A_ = J[side + "-upper-leg"]; d = J[side + "-ankle"] - A_; L = np.linalg.norm(d); d /= L
         axis = A_ + (ss * L)[:, None] * d
-        X[mm] = X0[mm] + w[:, None] * (axis + rad[mm] * Rn[:, None] - X0[mm])
+        Xb = X[mm].copy()  # seat envelope where the leg starts (avoids a tight band at the crotch line)
+        X[mm] = Xb + w[:, None] * (axis + rad[mm] * Rn[:, None] - Xb)
     # inner legs never cross the centre line
     gap = 0.008 * k
     for sgn, side in ((1, "l"), (-1, "r")):
         mm = legs & (b.side(X0) == side)
         bad = mm & ((X[:, 0] - b.cx) * sgn < gap)
         X[bad, 0] = b.cx + sgn * gap
-    D = laplace(X - X0, E, 20)
+    D = laplace(X - X0, E, 45)
     X = X0 + D
-    X = laplace(X, E, 4, taubin=True)
+    X = laplace(X, E, 6, taubin=True)
     X = o.col_noarm.push(X, 0.006 * k)
     # pant legs: hang straight down past the cut and stack on top of the shoes
     loops = boundary_loops(F)
@@ -1263,245 +1480,668 @@ def build_gloves(o, name, color=(0.03, 0.03, 0.035)):
     return ob
 
 
-def build_chain(o, name, gold=True, droop=0.11, link=0.0085, thick=0.0042, pendant=True):
+def _neck_path(o, drop, spread=1.0, gap=0.006, n=72, iters=500):
+    """A closed chain path found by a small hanging-chain simulation: a loop slightly longer than the collar
+    (by about 2 x drop) is dropped around the neck and settles under gravity on whatever is underneath (body,
+    tops, hood), so it rests on the shoulders and upper back and hangs in a natural U at the front."""
     b = o.b; k = b.k
-    if o.top is None:
-        return []
-    X, N, F, nl, _ = o.top
-    L = X[nl]
+    if o.top is not None:
+        X, N, F, nl, _ = o.top
+        L = X[nl]
+    else:
+        zN = b.J["neck"][2] - 0.035 * k
+        m = (np.abs(b.co[:, 2] - zN) < 0.006 * k) & np.isin(b.reg, ["Head", "Torso"])
+        L = b.co[m]
+        L = L[np.hypot(L[:, 0] - L[:, 0].mean(), L[:, 1] - L[:, 1].mean()) < 0.09 * k]
     c = L.mean(0)
     phi = np.arctan2(L[:, 1] - c[1], L[:, 0] - c[0])
-    order = np.argsort(phi)
-    phi = phi[order]; L = L[order]
-    # resample evenly around the neck, sitting a little lower than the collar
-    ph = np.linspace(-np.pi, np.pi, 200, endpoint=False)
-    rx = np.interp(ph, phi, L[:, 0] - c[0], period=2 * np.pi)
-    ry = np.interp(ph, phi, L[:, 1] - c[1], period=2 * np.pi)
-    zz = np.interp(ph, phi, L[:, 2], period=2 * np.pi)
-    front = np.clip(-np.sin(ph), 0, 1) ** 2  # -y is the front
-    path = np.stack([c[0] + rx * 1.15, c[1] + ry * 1.15, zz - 0.012 * k - droop * k * front], 1)
-    tree = cKDTree(X)
-    for _ in range(4):  # lay it onto the garment
-        d, j = tree.query(path)
-        q = X[j] + N[j] * (thick * k * 1.6)
-        path = path * 0.3 + q * 0.7
-        path = np.vstack([path[-1:], path, path[:1]])
-        path = 0.25 * path[:-2] + 0.5 * path[1:-1] + 0.25 * path[2:]
-    # cuban-style links: alternating flat ovals along the path
-    seg = np.linalg.norm(np.diff(np.vstack([path, path[:1]]), axis=0), axis=1)
-    cum = np.concatenate([[0], np.cumsum(seg)])
-    total = cum[-1]
-    nlink = int(total / (link * k))
-    V, Fc = [], []
-    for i in range(nlink):
-        t = i * total / nlink
-        p = np.array([np.interp(t, cum, np.append(path[:, a], path[0, a])) for a in range(3)])
-        t2 = ((i + 1) % nlink) * total / nlink if i + 1 < nlink else total
-        p2 = np.array([np.interp(t2 % total, cum, np.append(path[:, a], path[0, a])) for a in range(3)])
-        tg = p2 - p; tg /= np.linalg.norm(tg) + 1e-12
-        _, j = tree.query(p)
-        nrm = N[j] - (N[j] @ tg) * tg; nrm /= np.linalg.norm(nrm) + 1e-12
-        sd = np.cross(tg, nrm)
-        ax2 = sd if i % 2 == 0 else (sd * 0.5 + nrm * 0.87)
-        R1, R2 = 0.75 * link * k, thick * k * 0.5
-        base = len(V)
-        nu, nv = 12, 6
-        for a in range(nu):
-            A = 2 * np.pi * a / nu
-            cen = p + (np.cos(A) * tg * R1 + np.sin(A) * ax2 * R1 * 0.62)
-            rd = np.cos(A) * tg + np.sin(A) * ax2; rd /= np.linalg.norm(rd)
-            up = np.cross(rd, np.cross(tg, ax2))
-            up /= np.linalg.norm(up) + 1e-12
-            for bb in range(nv):
-                B = 2 * np.pi * bb / nv
-                V.append(cen + R2 * (np.cos(B) * rd + np.sin(B) * up))
-        for a in range(nu):
-            for bb in range(nv):
-                a2, b2 = (a + 1) % nu, (bb + 1) % nv
-                Fc.append([base + a * nv + bb, base + a2 * nv + bb, base + a2 * nv + b2, base + a * nv + b2])
+    order = np.argsort(phi); phi = phi[order]; L = L[order]
+    ph = np.linspace(-np.pi, np.pi, n, endpoint=False)
+    rad = np.hypot(L[:, 0] - c[0], L[:, 1] - c[1])
+    rr = np.interp(ph, phi, rad, period=2 * np.pi)
+    for _ in range(20):
+        rr = 0.5 * rr + 0.25 * (np.roll(rr, 1) + np.roll(rr, -1))
+    ring = np.stack([np.cos(ph) * rr, np.sin(ph) * rr], 1)
+    perim = np.linalg.norm(np.roll(ring, -1, 0) - ring, axis=1).sum()
+    length = perim * spread + 2.0 * drop * k + 0.01 * k
+    scale = length / perim
+    z0 = L[:, 2].max() + 0.03 * k  # start in free air above the shoulders, around the neck
+    P = np.c_[c[0] + ring[:, 0] * scale, c[1] + ring[:, 1] * scale, np.full(n, z0)]
+    l0 = length / n
+    g = 0.0008 * k
+    CP, CN, tree = o.col.P, o.col.N, o.col.tree
+
+    def collide(P):
+        d, j = tree.query(P, k=4)
+        for cc in range(4):
+            jj = j[:, cc]
+            depth = np.einsum("ij,ij->i", P - CP[jj], CN[jj])
+            m = (depth < gap * k) & (depth > -0.02 * k) & (d[:, cc] < 0.03 * k)
+            P[m] += (gap * k - depth[m])[:, None] * CN[jj[m]]
+        return P
+
+    for it in range(iters):
+        P[:, 2] -= g
+        P = collide(P)
+        for _ in range(40):  # inextensible links (Gauss-Seidel on even then odd segments, closed loop)
+            for par in (0, 1):
+                i0 = np.arange(par, n - (n % 2 if par else 0), 2)
+                i1 = (i0 + 1) % n
+                d = P[i1] - P[i0]
+                ln = np.linalg.norm(d, axis=1, keepdims=True) + 1e-12
+                corr = 0.5 * (ln - l0) / ln * d
+                P[i0] += corr; P[i1] -= corr
+    P = collide(P)
+    for _ in range(3):  # resample finer and smooth for the link builders
+        P = np.repeat(P, 2, 0); P[1::2] = 0.5 * (P[1::2] + np.roll(P, -2, 0)[1::2])
+        P = 0.5 * P + 0.25 * (np.roll(P, 1, 0) + np.roll(P, -1, 0))
+    P = collide(P)
+    return P
+
+
+def _resample_closed(path, step):
+    seg = np.linalg.norm(np.roll(path, -1, 0) - path, axis=1)
+    cum = np.concatenate([[0], np.cumsum(seg)]); total = cum[-1]
+    m = max(8, int(round(total / step)))
+    t = np.linspace(0, total, m, endpoint=False)
+    P = np.stack([np.interp(t, cum, np.append(path[:, a], path[0, a])) for a in range(3)], 1)
+    T = np.roll(P, -1, 0) - np.roll(P, 1, 0); T /= np.linalg.norm(T, axis=1, keepdims=True)
+    return P, T
+
+
+def _surface_normals(o, P):
+    d, j = o.col.tree.query(P)
+    return o.col.N[j]
+
+
+def build_chain(o, name, style="cuban", gold=True, droop=0.11, link=0.0085, thick=0.0042, pendant=True,
+                color=None, iced=False):
+    """Neck chains that rest on the layers under them. style: cuban (flat interlocking twisted ovals), rope (two
+    twisted strands), tennis (a row of set stones), box, figaro. pendant: True/'medallion', 'cross' or False."""
+    b = o.b; k = b.k
     out = []
-    col = (1.0, 0.77, 0.34) if gold else (0.85, 0.86, 0.9)
-    met = material("NC_Chain_" + ("Gold" if gold else "Silver"), col + (1,), rough=0.22)
+    col = color or ((1.0, 0.77, 0.34) if gold else (0.85, 0.86, 0.9))
+    if iced:
+        col = tuple(0.55 * np.array(col[:3]) + 0.45 * np.array((0.93, 0.97, 1.0)))
+    met = material(f"NC_Chain_{name}", tuple(col[:3]) + (1,), rough=0.24)
     met.node_tree.nodes["Principled BSDF"].inputs["Metallic"].default_value = 1.0
-    out.append(make_object(b, b.obj.name + "_" + name, np.array(V), Fc, [met], None, None, thick=0, subsurf=0))
+    w = link * k  # link width
+    path = _neck_path(o, droop, gap=(thick * 0.6 + 0.002))
+    parts = []
+    if style == "rope":
+        P, T = _resample_closed(path, w * 0.12)
+        Nn = _surface_normals(o, P)
+        U = Nn - np.einsum("ij,ij->i", Nn, T)[:, None] * T; U /= np.linalg.norm(U, axis=1, keepdims=True)
+        W_ = np.cross(T, U)
+        seg = np.linalg.norm(np.roll(P, -1, 0) - P, axis=1); s_ = np.concatenate([[0], np.cumsum(seg)[:-1]])
+        pitch = w * 1.6
+        total = s_[-1] + seg[-1]
+        turns = max(1, int(round(total / pitch)))
+        for strand in range(2):
+            ang = 2 * np.pi * turns * s_ / total + np.pi * strand
+            Q = P + (np.cos(ang)[:, None] * U + np.sin(ang)[:, None] * W_) * w * 0.24
+            Vt, Ft = make_tube(Q, w * 0.27, nseg=8, closed=True)
+            parts.append((Vt, Ft, 0))
+    elif style == "tennis":
+        P, T = _resample_closed(path, w * 1.05)
+        Nn = _surface_normals(o, P)
+        for i in range(len(P)):
+            u = np.cross(Nn[i], T[i]); u /= np.linalg.norm(u) + 1e-9
+            ring = [P[i] + 0.45 * w * (np.cos(q) * T[i] + np.sin(q) * u) for q in np.linspace(0, 2 * np.pi, 10, endpoint=False)]
+            ring = np.array(ring)
+            V = np.vstack([ring - Nn[i] * 0.15 * w, ring + Nn[i] * 0.2 * w, [P[i] + Nn[i] * 0.42 * w]])
+            F = [[j, (j + 1) % 10, 10 + (j + 1) % 10, 10 + j] for j in range(10)] + [[10 + j, 10 + (j + 1) % 10, 20] for j in range(10)]
+            parts.append((V, F, 0))
+    else:  # cuban / box / figaro: interlocking flat links
+        P, T = _resample_closed(path, w * 0.5)
+        Nn = _surface_normals(o, P)
+        nu, nv = 14, 6
+        for i in range(len(P)):
+            nrm = Nn[i] - (Nn[i] @ T[i]) * T[i]; nrm /= np.linalg.norm(nrm) + 1e-12
+            sd = np.cross(T[i], nrm)
+            tw = 0.3 if i % 2 == 0 else -0.3  # alternating twist gives the cuban pattern
+            ax2 = sd * np.cos(tw) + nrm * np.sin(tw)
+            longl = style == "figaro" and i % 4 == 3
+            R1 = (0.62 if not longl else 1.0) * w
+            R2 = (0.4 if style != "box" else 0.36) * w
+            wire = (0.23 if style == "cuban" else 0.13) * w
+            pw = 2.2 if style != "box" else 5.0
+            base = []
+            for a_ in range(nu):
+                A = 2 * np.pi * a_ / nu
+                ca, sa = np.cos(A), np.sin(A)
+                cxy = (np.sign(ca) * np.abs(ca) ** (2 / pw), np.sign(sa) * np.abs(sa) ** (2 / pw))
+                cen = P[i] + cxy[0] * T[i] * R1 + cxy[1] * ax2 * R2
+                rd = cxy[0] * T[i] * R1 + cxy[1] * ax2 * R2; rd /= np.linalg.norm(rd) + 1e-12
+                upv = np.cross(rd, np.cross(T[i], ax2)); upv /= np.linalg.norm(upv) + 1e-12
+                for bb in range(nv):
+                    B = 2 * np.pi * bb / nv
+                    base.append(cen + wire * (np.cos(B) * rd + np.sin(B) * upv * 0.8))
+            F = [[a_ * nv + (bb + 1) % nv, ((a_ + 1) % nu) * nv + (bb + 1) % nv, ((a_ + 1) % nu) * nv + bb, a_ * nv + bb]
+                 for a_ in range(nu) for bb in range(nv)]
+            parts.append((np.array(base), F, 0))
+    V, F, mi = merge_parts(parts)
+    out.append(make_object(b, b.obj.name + "_" + name, V, F, [met], None, None, thick=0, subsurf=0))
     if pendant:
-        # an original round "sun" medallion: a domed disc with an iced rim
-        i = int(np.argmin(path[:, 1] + 0 * path[:, 2]))
-        i = int(np.argmin(path[:, 2]))
-        p = path[i]
-        _, j = tree.query(p)
-        n = N[j]
-        r = 0.028 * k
-        p = p + n * 0.006 * k - np.array([0, 0, r * 0.95])
-        u = np.cross(n, [0, 0, 1.0]); u /= np.linalg.norm(u); v = np.cross(n, u)
-        Vp, Fp = [], []
-        nr, na = 5, 28
-        Vp.append(p + n * 0.006 * k)
-        for ri in range(1, nr + 1):
-            rr = r * ri / nr
-            h = 0.006 * k * (1 - (ri / nr) ** 2) + 0.002 * k
-            for a in range(na):
-                A = 2 * np.pi * a / na
-                bump = 0.0015 * k * (ri == nr) * (a % 2)
-                Vp.append(p + (u * np.cos(A) + v * np.sin(A)) * rr + n * (h + bump))
-        for a in range(na):
-            Fp.append([0, 1 + a, 1 + (a + 1) % na])
-        Vp_ = np.array(Vp)
-        if np.cross(Vp_[1] - Vp_[0], Vp_[2] - Vp_[0]) @ n < 0:
-            flip = True
-        else:
-            flip = False
-        for ri in range(nr - 1):
-            for a in range(na):
-                a2 = (a + 1) % na
-                Fp.append([1 + ri * na + a, 1 + (ri + 1) * na + a, 1 + (ri + 1) * na + a2, 1 + ri * na + a2])
-        if flip:
-            Fp = [f[::-1] for f in Fp]
-        out.append(make_object(b, b.obj.name + "_" + name + "_Pendant", np.array(Vp), Fp, [met], None, None, thick=0.004 * k / k, subsurf=1))
+        out.append(_build_pendant(o, name, path, met, "cross" if pendant == "cross" else "medallion", w))
     o.objs.extend(out)
     return out
+
+
+def _build_pendant(o, name, path, met, kind, w):
+    """An original pendant hanging from the lowest front point: a domed medallion with a raised star and an
+    iced rim, or a simple iced cross; each with a bail ring around the chain."""
+    b = o.b; k = b.k
+    i = int(np.argmin(path[:, 2] + 0.3 * path[:, 1]))
+    p = path[i]
+    cax = path.mean(0)
+    n_ = p - cax; n_[2] = 0; n_ /= np.linalg.norm(n_) + 1e-9  # faces straight out from the chest
+    u = np.cross(n_, [0, 0, 1.0]); u /= np.linalg.norm(u); v = np.array([0, 0, 1.0])
+    parts = []
+    # bail
+    bail_c = p - v * 0.006 * k
+    ring = [bail_c + 0.0065 * k * (np.cos(q) * v + np.sin(q) * n_) for q in np.linspace(0, 2 * np.pi, 14, endpoint=False)]
+    Vt, Ft = make_tube(np.array(ring), 0.0018 * k, nseg=6, closed=True)
+    parts.append((Vt, Ft, 0))
+    if kind == "cross":
+        top = bail_c - v * 0.008 * k
+        h, wd, t = 0.05 * k, 0.032 * k, 0.0055 * k
+        cen = top - v * h * 0.32
+        boxes = [(top - v * h / 2, wd * 0.0 + t, h / 2), (cen, wd / 2, t)]
+        for c_, hx, hz in boxes:
+            corners = [c_ + sx_ * hx * u + sz_ * hz * v + sy_ * 0.003 * k * n_ for sx_ in (-1, 1) for sz_ in (-1, 1) for sy_ in (-1, 1)]
+            Vb = np.array(corners)
+            Fb = [[0, 1, 3, 2], [4, 6, 7, 5], [0, 4, 5, 1], [2, 3, 7, 6], [0, 2, 6, 4], [1, 5, 7, 3]]
+            parts.append((Vb, Fb, 0))
+    else:
+        r = 0.026 * k
+        cen = bail_c - v * (0.008 * k + r)
+        na, nr = 40, 6
+        Vp = [cen + n_ * 0.0055 * k]
+        for ri in range(1, nr + 1):
+            rr = r * ri / nr
+            for a_ in range(na):
+                A = 2 * np.pi * a_ / na
+                star = 1.0
+                if ri <= 4:  # raised five-point star in the middle
+                    star_r = (0.55 + 0.45 * np.cos(5 * (A - np.pi / 2))) * r * 0.62
+                    hgt = 0.0055 * k if rr < star_r else 0.0028 * k
+                else:
+                    hgt = 0.0035 * k if ri == nr - 1 else 0.0022 * k
+                Vp.append(cen + (u * np.cos(A) + v * np.sin(A)) * rr + n_ * hgt)
+        Fp = [[0, 1 + a_, 1 + (a_ + 1) % na] for a_ in range(na)]
+        for ri in range(nr - 1):
+            for a_ in range(na):
+                a2 = (a_ + 1) % na
+                Fp.append([1 + ri * na + a_, 1 + (ri + 1) * na + a_, 1 + (ri + 1) * na + a2, 1 + ri * na + a2])
+        Vp = np.array(Vp)
+        fn = np.cross(Vp[Fp[0][1]] - Vp[Fp[0][0]], Vp[Fp[0][2]] - Vp[Fp[0][0]])
+        if fn @ n_ < 0:
+            Fp = [f[::-1] for f in Fp]
+        # back plate so it reads solid from the side
+        back = cen - n_ * 0.001 * k
+        Vk = [back] + [back + (u * np.cos(A) + v * np.sin(A)) * r for A in np.linspace(0, 2 * np.pi, na, endpoint=False)]
+        Fk = [[0, 1 + (a_ + 1) % na, 1 + a_] for a_ in range(na)]
+        if np.cross(Vk[Fk[0][1]] - Vk[0], Vk[Fk[0][2]] - Vk[0]) @ n_ > 0:
+            Fk = [f[::-1] for f in Fk]
+        parts.append((Vp, Fp, 0)); parts.append((np.array(Vk), Fk, 0))
+        # rim
+        rim = [cen + n_ * 0.0012 * k + (u * np.cos(A) + v * np.sin(A)) * r for A in np.linspace(0, 2 * np.pi, na, endpoint=False)]
+        Vt, Ft = make_tube(np.array(rim), 0.0022 * k, nseg=6, closed=True)
+        parts.append((Vt, Ft, 0))
+    V, F, _ = merge_parts(parts)
+    # rest it on the chest: move it out along its facing direction until no vertex is inside a layer
+    for _ in range(4):
+        d, j = o.col.tree.query(V, k=4)
+        depth = np.einsum("ijk,ijk->ij", V[:, None, :] - o.col.P[j], o.col.N[j])
+        need = np.where(d < 0.04 * k, 0.002 * k - depth, -1).max()
+        if need <= 0:
+            break
+        V = V + n_ * need
+    return make_object(b, b.obj.name + "_" + name + "_Pendant", V, F, [met], None, None, thick=0, subsurf=0)
+
+
+def build_chain_stack(o, name="Chains", gold=True, iced=True):
+    """The reference stack: a thick iced cuban choker plus a longer rope chain with a medallion."""
+    out = build_chain(o, name + "_Choker", style="cuban", gold=gold, droop=0.012, link=0.016, thick=0.007, pendant=False, iced=False)
+    out += build_chain(o, name + "_Rope", style="rope", gold=gold, droop=0.1, link=0.0075, thick=0.004, pendant=True)
+    return out
+
+
+def _bodydata_eyes(b):
+    """Eye centres from NCBodyData.lua (written next to the rig .blend by build_makehuman_rig.py), in Blender axes."""
+    import os, re
+    path = os.path.join(os.path.dirname(bpy.data.filepath or ""), "NCBodyData.lua")
+    if not os.path.exists(path):
+        return None
+    name = b.obj.name.replace("_Whole", "")
+    txt = open(path, encoding="utf-8").read()
+    i = txt.find("\t" + name + " = {")
+    if i < 0:
+        return None
+    block = txt[i:txt.find("\n\t},", i)]
+    out = []
+    for side in ("Left", "Right"):
+        m = re.search(r'NC_' + side + r'EyeAttachment", Vector3\.new\(([-\d.]+), ([-\d.]+), ([-\d.]+)\)', block)
+        if not m:
+            return None
+        x, y, z = map(float, m.groups())
+        out.append(np.array([-x, z, y]))  # Roblox (x, y, z) -> Blender (-x, z, y)
+    return out
+
+
+def merge_parts(parts):
+    """parts: list of (V, F, material_index) -> one (V, F, mat_idx) mesh, so small trims ship as a single object."""
+    Vs, Fs, mi, off = [], [], [], 0
+    for V, F, m in parts:
+        Vs.append(np.asarray(V)); Fs += [[i + off for i in f] for f in F]
+        mi += list(m) if hasattr(m, "__len__") else [m] * len(F)
+        off += len(V)
+    return np.vstack(Vs), Fs, mi
+
+
+def make_tube(pts, r, nseg=8, closed=False):
+    """Round tube along a polyline (parallel-transport frames). r: scalar or per-point radius. Open tubes get
+    domed ends. Returns (V, F) for make_object."""
+    pts = np.asarray(pts, float); n = len(pts)
+    r = np.broadcast_to(np.asarray(r, float), (n,))
+    T = np.gradient(pts, axis=0)
+    if closed:
+        T = np.roll(pts, -1, 0) - np.roll(pts, 1, 0)
+    T /= np.linalg.norm(T, axis=1, keepdims=True) + 1e-12
+    a = np.array([0, 0, 1.0]) if abs(T[0, 2]) < 0.9 else np.array([1.0, 0, 0])
+    U = np.cross(T[0], a); U /= np.linalg.norm(U)
+    V = []
+    for i in range(n):
+        if i:
+            U = U - T[i] * np.dot(U, T[i]); U /= np.linalg.norm(U) + 1e-12
+        W = np.cross(T[i], U)
+        for j in range(nseg):
+            t = 2 * np.pi * j / nseg
+            V.append(pts[i] + r[i] * (np.cos(t) * U + np.sin(t) * W))
+    F = [[i * nseg + j, i * nseg + (j + 1) % nseg, (i + 1) % n * nseg + (j + 1) % nseg, (i + 1) % n * nseg + j]
+         for i in range(n if closed else n - 1) for j in range(nseg)]
+    if not closed:
+        for end, sgn, ring in ((pts[0], -1, 0), (pts[-1], 1, n - 1)):
+            ci = len(V); V.append(end + sgn * T[ring] * r[ring] * 0.6)
+            for j in range(nseg):
+                a_, b_ = ring * nseg + j, ring * nseg + (j + 1) % nseg
+                F.append([a_, b_, ci] if sgn < 0 else [b_, a_, ci])
+    return np.array(V), F
 
 
 def head_frame(b):
     k = b.k
     hm = b.reg == "Head"
     top = b.co[hm, 2].max()
-    eye_z = top - 0.118 * k
+    eyes = _bodydata_eyes(b)
+    eye_z = eyes[0][2] if eyes else top - 0.118 * k
     hc = b.co[hm & (b.co[:, 2] > eye_z - 0.02 * k)]
     c = np.array([hc[:, 0].mean(), hc[:, 1].mean() + 0.01 * k])
     return hm, top, eye_z, c
 
 
+def _cap_details(o, name, X, F, c, eye_z, top, zl_back, color, accent, w_open):
+    """Six-panel seams (raised piping from the band to the button), stitched eyelets on the side panels,
+    and the snapback strap across the back opening."""
+    from mathutils.bvhtree import BVHTree
+    from mathutils import Vector
+    b = o.b; k = b.k
+    bvh = BVHTree.FromPolygons([tuple(x) for x in X], [tuple(f) for f in F])
+    O = np.array([c[0], c[1], eye_z + 0.005 * k])
+    seam_mat = material(name + "_Seam", tuple(np.array(color[:3]) * 0.55) + (1,), rough=0.9)
+    hole_mat = material(name + "_Eyelet", (0.01, 0.01, 0.012, 1), rough=0.9)
+
+    def cast(a, phi):
+        ph = a - np.pi / 2
+        d = np.array([np.cos(ph) * np.cos(phi), np.sin(ph) * np.cos(phi), np.sin(phi)])
+        hit, nrm, _, dist = bvh.ray_cast(Vector(O), Vector(d), 0.4 * k)
+        if hit is None:
+            return None, None
+        n_ = np.array(nrm)
+        if np.dot(n_, d) < 0:
+            n_ = -n_
+        return np.array(hit), n_
+
+    out, parts = [], []
+    for i in range(6):
+        a = np.radians(60 * i)
+        if abs(np.angle(np.exp(1j * (a - np.pi)))) < w_open * 1.2:
+            # the back seam starts above the opening
+            pass
+        pts = []
+        for phi in np.radians(np.linspace(-10, 88, 56)):
+            h, n_ = cast(a, phi)
+            if h is None:
+                pts = [] if len(pts) < 3 else pts
+                continue
+            pts.append(h + n_ * (0.0022 * k))
+        if len(pts) < 4:
+            continue
+        pts = np.array(pts)
+        zb = eye_z + (0.03 + 0.014 * np.cos(a)) * k + 0.007 * k  # start just above the band (and the brim root)
+        pts = pts[pts[:, 2] > zb]
+        if len(pts) < 4:
+            continue
+        for _ in range(3):
+            pts[1:-1] = 0.5 * pts[1:-1] + 0.25 * (pts[:-2] + pts[2:])
+        Vt, Ft = make_tube(pts, 0.0012 * k, nseg=6)
+        parts.append((Vt, Ft, 0))
+    # eyelets: one high on each panel
+    zt = eye_z + 0.78 * (top - eye_z)
+    for i in range(6):
+        a = np.radians(30 + 60 * i)
+        best = None
+        for phi in np.radians(np.linspace(20, 80, 61)):
+            h, n_ = cast(a, phi)
+            if h is not None and (best is None or abs(h[2] - zt) < abs(best[0][2] - zt)):
+                best = (h, n_)
+        if best is None or abs(best[0][2] - zt) > 0.012 * k:
+            continue
+        h, n_ = best
+        u = np.cross(n_, [0, 0, 1.0]); u /= np.linalg.norm(u) + 1e-9; v = np.cross(n_, u)
+        ring = [h + n_ * 0.0032 * k + 0.0042 * k * (np.cos(t) * u + np.sin(t) * v) for t in np.linspace(0, 2 * np.pi, 12, endpoint=False)]
+        Vt, Ft = make_tube(np.array(ring), 0.0011 * k, nseg=5, closed=True)
+        Vh = np.vstack([Vt, [h + n_ * 0.0028 * k]]); ci = len(Vh) - 1
+        Fh = list(Ft) + [[ci, (j + 1) % 12 * 5, j * 5] for j in range(12)]
+        parts.append((Vh, Fh, [0] * len(Ft) + [1] * 12))
+    # snapback strap across the bottom of the back opening
+    H = b.co[b.reg == "Head"]
+    zs = zl_back + 0.013 * k
+    band = H[np.abs(H[:, 2] - zs) < 0.012 * k]
+    phH = np.arctan2(band[:, 1] - c[1], band[:, 0] - c[0])
+    rH = np.hypot(band[:, 0] - c[0], band[:, 1] - c[1])
+    angs = np.linspace(np.pi / 2 - w_open * 1.0, np.pi / 2 + w_open * 1.0, 24)  # +Y is the back
+    rows = []
+    for dz in (-0.0065 * k, 0.0065 * k):
+        row = []
+        for t in angs:
+            m = np.abs(np.angle(np.exp(1j * (phH - t)))) < 0.12
+            tuck = np.clip((abs(t - np.pi / 2) / w_open - 0.7) / 0.3, 0, 1)
+            rr = (np.median(rH[m]) if m.any() else np.median(rH)) + (0.009 - 0.009 * tuck) * k
+            row.append([c[0] + np.cos(t) * rr, c[1] + np.sin(t) * rr, zs + dz])
+        rows.append(np.array(row))
+    for r_ in rows:
+        for _ in range(4):
+            r_[1:-1] = 0.5 * r_[1:-1] + 0.25 * (r_[:-2] + r_[2:])
+    nS = len(angs); Vs = np.vstack(rows)
+    Fs = [[i, nS + i, nS + i + 1, i + 1] for i in range(nS - 1)]
+    fc = Vs[np.array(Fs)].mean(1); fn = np.cross(Vs[[f[1] for f in Fs]] - Vs[[f[0] for f in Fs]], Vs[[f[2] for f in Fs]] - Vs[[f[0] for f in Fs]])
+    if np.mean(np.einsum("ij,ij->i", fn, fc - np.array([c[0], c[1], zs]))) < 0:
+        Fs = [f[::-1] for f in Fs]
+    strap_mat = material(name + "_Strap", tuple(np.array((accent or color)[:3]) * 0.8) + (1,), rough=0.6)
+    out.append(make_object(b, f"{b.obj.name}_{name}_Strap", Vs, Fs, [strap_mat], None, None, thick=0.004 * k, subsurf=1))
+    # snap studs along the strap
+    for t in np.linspace(-0.5, 0.5, 5):
+        j = int(round((t + 1) / 2 * (nS - 1)))
+        p = (rows[0][j] + rows[1][j]) / 2
+        n_ = np.array([p[0] - c[0], p[1] - c[1], 0]); n_ /= np.linalg.norm(n_)
+        u = np.array([0, 0, 1.0]); v = np.cross(n_, u)
+        ring = [p + n_ * 0.0045 * k + 0.0018 * k * (np.cos(q) * u + np.sin(q) * v) for q in np.linspace(0, 2 * np.pi, 8, endpoint=False)]
+        Vt, Ft = make_tube(np.array(ring), 0.0009 * k, nseg=4, closed=True)
+        parts.append((Vt, Ft, 1))
+    Vd, Fd, md = merge_parts(parts)
+    out.append(make_object(b, f"{b.obj.name}_{name}_Trim", Vd, Fd, [seam_mat, hole_mat], md, None, thick=0, subsurf=0))
+    return out
+
+
 def build_cap(o, name, kind="fitted", color=(0.04, 0.04, 0.045), accent=None):
+    """Fitted cap (snug six-panel crown, structured front, D-shaped front brim, top button) or a cuffed beanie."""
     b = o.b; k = b.k
     hm, top, eye_z, c = head_frame(b)
     P0 = b.co
-    front = np.clip((c[1] - P0[:, 1]) / (0.06 * k), -1, 1)
+    Rh = np.hypot(P0[hm, 0] - c[0], P0[hm, 1] - c[1]).max()
+    front = np.clip((c[1] - P0[:, 1]) / Rh, -1, 1)  # +1 forehead, -1 back of the head
     if kind == "beanie":
-        zl = eye_z + (0.035 - 0.05 * np.clip(-front, 0, 1) + 0.0 * front) * k
+        zl = eye_z + (0.04 + 0.012 * front - 0.0 * np.clip(-front, 0, 1)) * k
     else:
-        zl = eye_z + (0.045 - 0.035 * np.clip(-front, 0, 1)) * k
+        zl = eye_z + (0.03 + 0.014 * front) * k  # tilted band: high on the forehead, lower at the back
     f = np.ones(len(P0))
     f[hm] = zl[hm] - P0[hm, 2]
+    ph0 = np.arctan2(P0[:, 1] - c[1], P0[:, 0] - c[0])
+    dback = np.pi - np.abs(np.angle(np.exp(1j * (ph0 + np.pi / 2))))  # 0 at the back of the head
+    w_open, h_open = 0.36, 0.042 * k
+    if kind != "beanie":  # snapback opening above the strap
+        op = 1 - (dback / w_open) ** 2 - ((P0[:, 2] - zl) / h_open) ** 2
+        f[hm] = np.maximum(f[hm], op[hm] * 0.05 * k)
     P, F, _ = clip(P0, b.faces, f, {})
     P, F, _ = keep_big(P, F, {}, frac=0.5)
     E = edges_of(F)
-    X = P + vnormals(P, F) * (0.012 if kind != "beanie" else 0.01) * k
-    for _ in range(4):
-        X = laplace(X, E, 6, taubin=True)
-        X = o.col.push(X, 0.01 * k)
+    X = P + vnormals(P, F) * 0.008 * k
+    for _ in range(5):
+        X = laplace(X, E, 5, taubin=True)
+        X = o.col.push(X, 0.007 * k)
+    up = np.clip((X[:, 2] - eye_z) / (top - eye_z), 0, 1)
+    fr = np.clip((c[1] - X[:, 1]) / Rh, 0, 1)
+    Nx = vnormals(X, F)
     if kind == "beanie":
-        X[:, 2] += 0.01 * k * np.clip((X[:, 2] - eye_z) / (top - eye_z), 0, 1) ** 2
+        X += Nx * (0.004 * k * up)[:, None]  # a little slouch at the top
+        X[:, 2] += 0.006 * k * up ** 3
+    else:
+        X += Nx * (0.006 * k * fr ** 1.5 * np.sin(np.pi * np.clip(up * 1.1, 0, 1)))[:, None]  # structured front panels
+    X = laplace(X, E, 2, taubin=True)
     loops = boundary_loops(F)
     ll = max(loops, key=len)
+    ncrown = len(X)
     R = np.array(["Cap"] * len(X), dtype=object)
+    extra = []
     if kind == "beanie":  # folded cuff
         base = X[ll].copy(); cc = base.mean(0)
         rings = []
-        for dz, sc in ((-0.004, 1.05), (0.03, 1.06), (0.034, 1.03)):
+        for dz, sc in ((-0.003, 1.04), (0.028, 1.05), (0.031, 1.0)):
             pts = base.copy(); pts[:, 2] += dz * k
             pts[:, :2] = cc[:2] + (pts[:, :2] - cc[:2]) * sc
             rings.append(pts)
         X, F, R, _ = _extend_loop(X, F, ll, None, rings, R, "Cuff")
-        brim = None
     else:
-        # brim out the front
-        Lp = X[ll]
+        # sweatband edge: a tiny tuck under so the crown has a finished hem
+        base = X[ll].copy(); cc = base.mean(0)
+        X, F, R, _ = _extend_loop(X, F, ll, None, [cc + (base - cc) * 0.985 + np.array([0, 0, 0.004 * k])], R, "Band")
+        # D-shaped front brim, built as its own piece from the front of the band
+        Lp = base
         ph = np.arctan2(Lp[:, 1] - c[1], Lp[:, 0] - c[0])
-        fr = np.clip((np.cos(ph + np.pi / 2) - 0.55) / 0.45, 0, 1) ** 0.5  # 1 straight ahead (-y), none at the sides
-        dirs = np.stack([np.cos(ph), np.sin(ph), np.zeros_like(ph)], 1)
-        rings = []
-        for t in (0.35, 0.7, 1.0):
-            ln = 0.075 * k * (fr ** 0.8) * t
-            pts = Lp + dirs * ln[:, None] + np.array([0, 0, -0.012 * k]) * (t ** 2) * fr[:, None] ** 1.0
-            pts[:, 2] -= 0.006 * k * (1 - (np.abs(np.sin(ph + np.pi / 2)))) * t
-            rings.append(pts)
-        X, F, R, _ = _extend_loop(X, F, ll, None, rings, R, "Brim")
-    fc = np.array([X[f].mean(0) for f in F])
-    mi = np.array([1 if R[f[0]] in ("Brim", "Cuff") and R[f[1]] in ("Brim", "Cuff") else 0 for f in F])
+        ang = np.angle(np.exp(1j * (ph + np.pi / 2)))  # 0 straight ahead
+        amax = np.radians(62)
+        sel = np.where(np.abs(ang) < amax)[0]
+        sel = sel[np.argsort(ang[sel])]
+        inner = Lp[sel].copy()
+        inner[:, :2] = c[:2] + (inner[:, :2] - c[:2]) * 0.985  # tuck the brim root under the crown edge
+        inner[:, 2] -= 0.002 * k
+        for _ in range(6):  # even out the root line so the brim edge is clean
+            inner[1:-1] = 0.5 * inner[1:-1] + 0.25 * (inner[:-2] + inner[2:])
+        u = ang[sel] / amax
+        Lb = 0.078 * k
+        d2 = inner[:, :2] - c[:2]; d2 /= np.linalg.norm(d2, axis=1, keepdims=True)
+        dirs = 0.25 * d2 + 0.75 * np.array([0.0, -1.0]); dirs /= np.linalg.norm(dirs, axis=1, keepdims=True)
+        reach = Lb * np.clip(1 - np.abs(u) ** 2.2, 0, 1) ** 0.6
+        rows = []
+        for t in np.linspace(0, 1, 6):
+            row = inner.copy()
+            row[:, :2] += dirs * (reach * t)[:, None]
+            row[:, 2] -= reach * t * (0.2 + 0.4 * u ** 2) + 0.01 * k * t ** 2 * (1 - u ** 2)  # tilt down, curved sides
+            rows.append(row)
+        nb_ = len(sel)
+        Vb = np.vstack(rows)
+        Fb = [[r * nb_ + i, r * nb_ + i + 1, (r + 1) * nb_ + i + 1, (r + 1) * nb_ + i] for r in range(len(rows) - 1) for i in range(nb_ - 1)]
+        fcb = Vb[np.array(Fb)].mean(1)
+        fnb = np.cross(Vb[[f[1] for f in Fb]] - Vb[[f[0] for f in Fb]], Vb[[f[2] for f in Fb]] - Vb[[f[0] for f in Fb]])
+        if fnb[:, 2].mean() < 0:
+            Fb = [f[::-1] for f in Fb]
+        mb = material(name + "_Brim", tuple((accent or color)[:3]) + (1,), rough=0.8)
+        extra.append(make_object(b, b.obj.name + "_" + name + "_Brim", Vb, Fb, [mb], None, None, thick=0.007 * k, subsurf=1))
+        # top button
+        tp = X[np.argmax(X[:, 2])] + np.array([0, 0, 0.002 * k])
+        Vt, Ft = [], []
+        for i in range(5):
+            for j in range(10):
+                th_ = np.pi / 2 * i / 4; ph_ = 2 * np.pi * j / 10
+                Vt.append(tp + 0.009 * k * np.array([np.cos(th_) * np.cos(ph_), np.cos(th_) * np.sin(ph_), 0.5 * np.sin(th_)]))
+        Ft = [[i * 10 + j, i * 10 + (j + 1) % 10, (i + 1) * 10 + (j + 1) % 10, (i + 1) * 10 + j] for i in range(4) for j in range(10)]
+        extra.append(make_object(b, b.obj.name + "_" + name + "_Button", np.array(Vt), Ft, [material(name + "_Main", tuple(color[:3]) + (1,), rough=0.85)], None, None, thick=0, subsurf=1))
+        extra.extend(_cap_details(o, name, X, F, c, eye_z, top, zl_back=eye_z + 0.016 * k, color=color, accent=accent,
+                                  w_open=w_open))
+    mi = np.array([1 if all(R[v] in ("Cuff", "Band") for v in f) else 0 for f in F])
     mats = [material(name + "_Main", tuple(color[:3]) + (1,), rough=0.85), material(name + "_Accent", tuple((accent or color)[:3]) + (1,), rough=0.85)]
     ob = make_object(b, b.obj.name + "_" + name, X, F, mats, mi, None, thick=0.004, subsurf=1)
     o.objs.append(ob)
-    o.layer(X, F, 0.004)
+    o.objs.extend(extra)
+    # collider for later layers (hood up): crown only, normals forced to face away from the head
+    Xc = X[:ncrown]; Nc = vnormals(X, F)[:ncrown]
+    flip = np.einsum("ij,ij->i", Nc, Xc - np.array([c[0], c[1], eye_z])) < 0
+    Nc[flip] *= -1
+    o.col.add(Xc + Nc * 0.004 * k, Nc); o.col_noarm.add(Xc + Nc * 0.004 * k, Nc)
     return ob
 
 
-def build_shades(o, name, lens=(0.02, 0.02, 0.025), frame=(0.03, 0.03, 0.035)):
-    """Wraparound shades: a smooth shield following the brow line, cut into two rounded lenses and a bridge,
-    with thin temple arms that follow the side of the head back to the ears."""
+def build_shades(o, name, lens=(0.03, 0.035, 0.035), frame=(0.018, 0.018, 0.02)):
+    """Classic thick-rim sunglasses (squared lenses, heavier brow line, keyhole bridge), sized to the head's
+    width at the temples and the eye spacing from NCBodyData, pushed clear of the brow, cheeks and nose, with
+    straight temple arms back to the ears that hook down behind them."""
     b = o.b; k = b.k
     hm, top, eye_z, c = head_frame(b)
     H = b.co[hm]
-    th = np.arctan2(H[:, 1] - c[1], H[:, 0] - c[0])
-    r = np.hypot(H[:, 0] - c[0], H[:, 1] - c[1])
-    span = 1.25
-    phs = np.linspace(-np.pi / 2 - span, -np.pi / 2 + span, 72)
-    zs = np.linspace(eye_z - 0.026 * k, eye_z + 0.02 * k, 14)
-    Rg = np.full((len(zs), len(phs)), np.nan)
-    for i, z in enumerate(zs):
-        sel = np.abs(H[:, 2] - z) < 0.01 * k
-        for j, p in enumerate(phs):
-            s2 = sel & (np.abs(np.angle(np.exp(1j * (th - p)))) < 0.06)
-            if s2.any():
-                Rg[i, j] = r[s2].max()
-    Rg = np.where(np.isnan(Rg), np.nanmax(Rg), Rg)
-    x = phs + np.pi / 2
-    Rm = Rg.max(0)
-    cf = np.polyfit(x, Rm, 4)
-    Rm = np.maximum(np.polyval(cf, x), Rm)
-    Rm = np.polyval(np.polyfit(x, Rm, 4), x) + 0.012 * k
-    V = []
-    for i, z in enumerate(zs):
-        for j, p in enumerate(phs):
-            rr = Rm[j] + 0.004 * k * ((z - eye_z) / (0.02 * k))  # slight forward tilt at the top
-            V.append([c[0] + np.cos(p) * rr, c[1] + np.sin(p) * rr, z])
-    V = np.array(V)
-    nz, nph = len(zs), len(phs)
-    F = [[i * nph + j, i * nph + j + 1, (i + 1) * nph + j + 1, (i + 1) * nph + j] for i in range(nz - 1) for j in range(nph - 1)]
-    # lens outline: two rounded shapes either side of a bridge, measured along the wrap
-    arc = x * Rm.mean()
-    uu = np.tile(arc, nz); vv = np.repeat(zs - eye_z, nph)
-    ax_ = np.abs(uu)
-    lc, lw, lh = 0.032 * k, 0.027 * k, 0.018 * k
-    du = (ax_ - lc) / lw
-    dv = (vv + 0.002 * k + 0.004 * k * np.clip(du, 0, 1)) / lh
-    lensf = (np.abs(du) ** 3 + np.abs(dv) ** 3) ** (1 / 3) - 1
-    bridge = np.maximum(ax_ - 0.012 * k, np.abs(vv - 0.012 * k) - 0.004 * k) / (0.01 * k)
-    fld = np.minimum(lensf, bridge)
-    Vc, Fc, _ = clip(V, F, fld, {})
-    fc = np.array([Vc[f].mean(0) for f in Fc]); fn = np.array([np.cross(Vc[f[1]] - Vc[f[0]], Vc[f[2]] - Vc[f[0]]) for f in Fc])
-    if np.mean(np.einsum("ij,ij->i", fn, fc - np.array([c[0], c[1], eye_z]))) < 0:
-        Fc = [f[::-1] for f in Fc]
-    # frame rim faces (close to the outline) get the frame material
-    fl2 = np.minimum(lensf, bridge)
-    m_l = material(name + "_Lens", tuple(lens[:3]) + (1,), rough=0.06)
-    m_l.node_tree.nodes["Principled BSDF"].inputs["Metallic"].default_value = 0.7
-    m_f = material(name + "_Frame", tuple(frame[:3]) + (1,), rough=0.35)
-    ob = make_object(b, b.obj.name + "_" + name, Vc, Fc, [m_l, m_f], None, None, thick=0.003, subsurf=1)
-    out = [ob]
-    # temple arms: from the outer lens edge, along the side of the head to the ear
-    tree = cKDTree(H)
-    Nh = b.N[hm]
-    for sgn in (-1, 1):
-        u_end = sgn * (lc + lw * 0.98)
-        j = int(np.argmin(np.abs(arc - u_end)))
-        p0 = np.array([c[0] + np.cos(phs[j]) * Rm[j], c[1] + np.sin(phs[j]) * Rm[j], eye_z + 0.006 * k])
-        pts = [p0]
-        p = p0.copy()
-        for t in range(10):
-            p = p + np.array([0, 0.012 * k, 0.0])
-            d, jj = tree.query(p)
-            q = H[jj] + Nh[jj] * 0.006 * k
-            p = np.array([q[0], p[1], p0[2] - 0.003 * k * t / 10])
-            pts.append(p.copy())
-        pts = np.array(pts)
-        Vt, Ft = tube(pts, 0.0032 * k, 6)
-        out.append(make_object(b, b.obj.name + "_" + name + "_Arm" + ("L" if sgn > 0 else "R"), Vt, Ft, [m_f], None, None, thick=0, subsurf=0))
+    eyes = _bodydata_eyes(b)
+    ez = (eyes[0][2] + eyes[1][2]) / 2 if eyes else eye_z
+    cx = (eyes[0][0] + eyes[1][0]) / 2 if eyes else c[0]
+    zt = ez + 0.012 * k
+    band = H[(np.abs(H[:, 2] - zt) < 0.01 * k) & (H[:, 1] < c[1])]
+    hw = np.abs(band[:, 0] - cx).max()
+    lw, lh, rs, rt, rb, gap = 0.0255, 0.0185, 0.0045, 0.0068, 0.0038, 0.0105
+    lc = gap + rs + lw
+    half = lc + lw + rs
+    sx = float(np.clip((hw + 0.003 * k) / (half * k), 0.88, 1.2)) * k
+    sz = k * float(np.sqrt(sx / k))
+    n = 56
+    th = np.linspace(0, 2 * np.pi, n, endpoint=False)
+    cu, sv = np.cos(th), np.sin(th)
+    p = np.where(sv > 0, 5.0, 2.7)  # flat brow line on top, rounder lower corners
+    u = lw * np.sign(cu) * np.abs(cu) ** (2 / p)
+    v = lh * np.sign(sv) * np.abs(sv) ** (2 / p)
+    ft = (1 - v / lh) / 2
+    u = u * (1 - 0.14 * ft) + 0.0025 * ft  # trapezoid: narrower at the bottom
+    v = v + 0.14 * lh * np.clip(u / lw, 0, 1) ** 2 * np.clip(v / lh, 0, 1)  # outer top corner lifts
+    # outer rim outline: offset along the 2D outward normal, heavier on top
+    du_, dv_ = np.gradient(np.r_[u[-1], u, u[0]])[1:-1], np.gradient(np.r_[v[-1], v, v[0]])[1:-1]
+    nu, nv = dv_, -du_
+    ln = np.hypot(nu, nv) + 1e-12; nu /= ln; nv /= ln
+    if np.mean(nu * u + nv * v) < 0:
+        nu, nv = -nu, -nv
+    wid = rs + (rt - rs) * np.clip(sv, 0, 1) ** 2 + (rb - rs) * np.clip(-sv, 0, 1) ** 2
+    uo, vo = u + nu * wid, v + nv * wid
+
+    def place(U, Vv, side):  # U measured outward from the lens centre
+        X = cx + side * (lc + U) * sx
+        Z = ez + 0.002 * k + Vv * sz
+        r = np.clip(np.abs(X - cx) / (half * sx), 0, 1.2)
+        Y = 0.011 * k * r ** 2.4 - (Z - ez) * 0.14
+        return np.c_[X, Y, Z]
+
+    rims, lenses = [], []
+    for side in (-1, 1):
+        A, B = place(u, v, side), place(uo, vo, side)
+        rims.append((A, B, side))
+        cen = place(np.array([0.0]), np.array([0.0]), side)[0]
+        lenses.append((A, cen, side))
+    # bridge: an arched bar between the two rims' inner tops
+    bx = np.linspace(-1, 1, 14)
+    bu = (lc - lw * 0.8) * bx
+    bridge = []
+    for zz in (lh * 0.52 + 0.0045 * (1 - bx ** 2), np.full_like(bx, lh + rt * 0.85)):  # keyhole arch below, flat brow line on top
+        Xb = cx + bu * sx; Zb = ez + 0.002 * k + zz * sz
+        Yb = -(Zb - ez) * 0.14 + 0.011 * k * np.clip(np.abs(Xb - cx) / (half * sx), 0, 1) ** 2.4
+        bridge.append(np.c_[Xb, Yb, Zb])
+    allp = np.vstack([np.vstack([A, B]) for A, B, _ in rims] + bridge)
+    # push the whole front forward until every point clears the face (lens/rim clearance 4.5 mm)
+    tree2 = cKDTree(H[:, [0, 2]])
+    need = -np.inf
+    for q in allp:
+        idx = tree2.query_ball_point([q[0], q[2]], 0.007 * k)
+        if idx:
+            need = max(need, q[1] - (H[idx, 1].min() - 0.0045 * k))
+    y0 = -need if np.isfinite(need) else c[1] - 0.1 * k
+    sh = np.array([0, y0, 0])
+
+    def ring_faces(nn, side, base=0):
+        F = [[base + i, base + (i + 1) % nn, base + nn + (i + 1) % nn, base + nn + i] for i in range(nn)]
+        return F
+
+    m_f = material(name + "_Frame", tuple(frame[:3]) + (1,), rough=0.42)
+    m_l = material(name + "_Lens", tuple(lens[:3]) + (1,), rough=0.05)
+    try:
+        m_l.node_tree.nodes["Principled BSDF"].inputs["Metallic"].default_value = 0.35
+    except Exception:
+        pass
+
+    def facing(V, F, want):  # orient faces so their normals point along `want`
+        fn = np.cross(V[[f[1] for f in F]] - V[[f[0] for f in F]], V[[f[2] for f in F]] - V[[f[0] for f in F]])
+        return F if np.mean(fn @ want) >= 0 else [f[::-1] for f in F]
+
+    fwd = np.array([0, -1.0, 0])
+    parts = []
+    for A, B, side in rims:
+        V = np.vstack([A, B]) + sh
+        parts.append((V, facing(V, ring_faces(n, side), fwd), 0))
+    Vb = np.vstack(bridge) + sh
+    Fb = [[i, i + 1, 14 + i + 1, 14 + i] for i in range(13)]
+    parts.append((Vb, facing(Vb, Fb, fwd), 0))
+    Vf, Ff, mf = merge_parts(parts)
+    out = [make_object(b, b.obj.name + "_" + name, Vf, Ff, [m_f], None, None, thick=0.0055 * k, subsurf=0)]
+    bv = out[0].modifiers.new("Bevel", "BEVEL"); bv.width = 0.0011 * k; bv.segments = 2; bv.harden_normals = False
+    out[0].modifiers.new("Smooth", "WEIGHTED_NORMAL").keep_sharp = True
+    lparts = []
+    for A, cen, side in lenses:
+        A2 = A + sh + np.array([0, 0.0025 * k, 0])  # lenses sit inside the rim, a little behind its face
+        V = np.vstack([A2, cen + sh + np.array([0, 0.0015 * k, 0])])
+        F = [[i, (i + 1) % n, n] for i in range(n)]
+        lparts.append((V, facing(V, F, fwd), 0))
+    Vl, Fl, ml = merge_parts(lparts)
+    out.append(make_object(b, b.obj.name + "_" + name + "_Lenses", Vl, Fl, [m_l], None, None, thick=0.0015 * k, subsurf=0))
+    # temple arms
+    side_pts = H[np.abs(H[:, 2] - zt) < 0.009 * k]
+    ear = H[(H[:, 2] > ez - 0.045 * k) & (H[:, 2] < ez + 0.012 * k)]
+    for side in (-1, 1):
+        x_out = cx + side * (half - 0.0025) * sx
+        z0 = ez + 0.002 * k + lh * 0.5 * sz
+        y_start = (0.011 * k * 1.0 - (z0 - ez) * 0.14) + y0 + 0.006 * k
+        es = ear[(ear[:, 0] - cx) * side > 0]
+        top_ear = es[np.argsort(-np.abs(es[:, 0] - cx))[:40]]
+        y_ear = top_ear[:, 1].mean()
+        z_ear = top_ear[:, 2].max() - 0.001 * k  # the arm rests on the root of the ear
+        ys = np.linspace(y_start, y_ear + 0.012 * k, 26)
+        path, xm = [], abs(x_out - cx)
+        for yy in ys:
+            m = (np.abs(side_pts[:, 1] - yy) < 0.006 * k) & ((side_pts[:, 0] - cx) * side > 0)
+            if m.any():
+                xm = max(xm, np.abs(side_pts[m, 0] - cx).max() + 0.0035 * k)
+            path.append([cx + side * xm, yy, z0 + (min(z_ear, z0) - z0) * (yy - y_start) / (ys[-1] - y_start)])
+        path = np.array(path)
+        # hook down behind the ear
+        for t in np.linspace(0.15, 1, 7):
+            ang = t * np.radians(55)
+            r_ = 0.03 * k
+            path = np.vstack([path, [cx + side * (xm - 0.004 * k * t), ys[-1] + r_ * np.sin(ang), path[25, 2] - r_ * (1 - np.cos(ang))]])
+        for _ in range(2):
+            path[1:-1] = 0.5 * path[1:-1] + 0.25 * (path[:-2] + path[2:])
+        T = np.gradient(path, axis=0); T /= np.linalg.norm(T, axis=1, keepdims=True)
+        outv = np.array([side, 0, 0.0])
+        Up = np.cross(outv, T) * side; Up /= np.linalg.norm(Up, axis=1, keepdims=True)
+        Up *= np.sign(Up[:, 2:3] + 1e-9)
+        s_ = np.linspace(0, 1, len(path))
+        hgt = (0.0105 - 0.004 * s_) * k
+        Vt = np.vstack([path + Up * (hgt / 2)[:, None], path - Up * (hgt / 2)[:, None]])
+        m_ = len(path)
+        Ft = [[i, i + 1, m_ + i + 1, m_ + i] for i in range(m_ - 1)]
+        Ft = facing(Vt, Ft, outv)
+        out.append(make_object(b, b.obj.name + "_" + name + ("_TempleL" if side > 0 else "_TempleR"), Vt, Ft, [m_f], None, None,
+                               thick=0.0038 * k, subsurf=1))
     o.objs.extend(out)
     return out
 
 
 # ----------------------------------------------------------------------------------------------- skinning
+RIGID_HEAD = ("_Cap", "Beanie", "Shades", "Mask", "Durag", "_Hat", "Glasses")
+
+
 def skin_to_rig(o):
     """Give every garment the body's bone weights (inverse-distance blend of the nearest body vertices) and an
     Armature modifier first in the stack, so the clothes move with the R15 rig and its animations."""
@@ -1522,6 +2162,17 @@ def skin_to_rig(o):
     for sd in ("l", "r"):
         idx_ = np.where(~armish & (b.whole_reg != "X") & ~(legish & (wside != sd)))[0]
         trees_na[sd] = (idx_, cKDTree(cw[idx_]))
+    # sleeves only follow their own arm (plus the shoulder cap of the torso), never the hips or the other arm
+    trees_arm = {}
+    shz = b.J["l-shoulder"][2] - 0.06 * b.k
+    for sd in ("l", "r"):
+        idx_ = np.where((armish & (wside == sd)) | ((b.whole_reg == "Torso") & (cw[:, 2] > shz) & (wside == sd)))[0]
+        trees_arm[sd] = (idx_, cKDTree(cw[idx_]))
+    import scipy.sparse as sp
+    leg_cols = [names.index(g) for g in names if g in ("LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg",
+                                                         "LeftFoot", "RightFoot", "NC_ToesL", "NC_ToesR")]
+    lt = names.index("LowerTorso")
+    upper_cut = b.J["l-shoulder"][2] - 0.15 * b.k
     for ob in o.objs:
         P = np.array([v.co[:] for v in ob.data.vertices])
         P = (np.array(ob.matrix_world) @ np.c_[P, np.ones(len(P))].T).T[:, :3]
@@ -1539,10 +2190,33 @@ def skin_to_rig(o):
                     idx_, tr_ = trees_na[sd]
                     d2, j2 = tr_.query(P[mm], k=6)
                     d[mm] = d2; j[mm] = idx_[j2]
+                mm = flag & (gside == sd)
+                if mm.any():
+                    idx_, tr_ = trees_arm[sd]
+                    d2, j2 = tr_.query(P[mm], k=6)
+                    d[mm] = d2; j[mm] = idx_[j2]
         w = 1 / np.maximum(d, 1e-4) ** 2
         w /= w.sum(1, keepdims=True)
         Wg = np.einsum("nk,nkg->ng", w, W[j])
         Wg /= np.maximum(Wg.sum(1, keepdims=True), 1e-9)
+        if any(t in ob.name for t in RIGID_HEAD):  # caps, beanies, shades, masks move as one piece with the head
+            Wg[:] = 0; Wg[:, names.index("Head")] = 1.0
+        else:
+            if P[:, 2].max() > upper_cut or any(t in ob.name for t in ("_Pocket", "_String", "_Hood", "_ZipPull")):
+                # tops never follow the thighs: hand leg influence over to the lower torso
+                Wg[:, lt] += Wg[:, leg_cols].sum(1); Wg[:, leg_cols] = 0
+            # diffuse the weights over the garment surface so bone transitions are wide and the cloth
+            # stretches evenly instead of tearing at a seam line (armpits, crotch, neck)
+            Ed = np.array([e.vertices[:] for e in ob.data.edges])
+            if len(Ed):
+                A = sp.coo_matrix((np.ones(2 * len(Ed)), (np.r_[Ed[:, 0], Ed[:, 1]], np.r_[Ed[:, 1], Ed[:, 0]])),
+                                  shape=(len(P), len(P))).tocsr()
+                deg = np.asarray(A.sum(1)).ravel(); deg[deg == 0] = 1
+                upper = P[:, 2].max() > upper_cut
+                its = 0 if "Gloves" in ob.name else (10 if upper else 2)  # pants: keep the two legs apart
+                for _ in range(its):
+                    Wg = 0.5 * Wg + 0.5 * (A @ Wg) / deg[:, None]
+                Wg /= np.maximum(Wg.sum(1, keepdims=True), 1e-9)
         for gi, gname in enumerate(names):
             col = Wg[:, gi]
             idx = np.where(col > 0.01)[0]
@@ -1622,3 +2296,384 @@ def game_ready(ob):
             with bpy.context.temp_override(object=ob):
                 bpy.ops.object.modifier_move_up(modifier=d.name)
     return ob
+
+
+# ----------------------------------------------------------------------------------------------- shoes (v2)
+# Original, logo-free shoe styles. The construction follows real sneakers: a separate sole unit (cupsole,
+# vulcanised or wedge), an upper lofted around the foot with a cut collar and throat, a padded collar roll,
+# a tongue, eyelets and criss-cross laces, and overlay panels coloured on the upper.
+SHOE_STYLES = {
+    # basketball high-top: tall padded collar, cupsole, toe cap, heel counter and eyestay overlays
+    "court_high": dict(collar=0.075, sole=0.026, kind="cup", laces=7, toe=True, heel=True, eyestay=True, tongue_up=0.02),
+    # court low-top: same cupsole and overlays as the high-top, collar just under the ankle bone
+    "court_low": dict(collar=0.014, sole=0.026, kind="cup", laces=6, toe=True, heel=True, eyestay=True, tongue_up=0.016),
+    # retro basketball mid: thick cupsole with a cushion window, cracked-texture overlays on toe and heel
+    "retro_bball": dict(collar=0.048, sole=0.034, kind="cup", laces=6, toe=True, heel=True, eyestay=True, crackle=True,
+                        window=True, tongue_up=0.032),
+    # skate low-top: flat vulcanised sole with a foxing line, toe cap, our own wave side stripe
+    "skate_low": dict(collar=0.012, sole=0.022, kind="vulc", laces=6, toe=True, heel=True, stripe=True, tongue_up=0.012),
+    # slip-on: low vulcanised, elastic side gores, no laces
+    "slip_on": dict(collar=0.002, sole=0.022, kind="vulc", laces=0, gores=True, tongue_up=0.0),
+    # canvas high-top: rubber toe cap and foxing stripe on a vulcanised sole, metal eyelets
+    "canvas_high": dict(collar=0.085, sole=0.024, kind="vulc", laces=8, rubber_toe=True, tongue_up=0.012),
+    # retro runner: wedge midsole, slimmer toe, mudguard and heel overlays
+    "runner_retro": dict(collar=0.008, sole=0.03, kind="wedge", laces=6, heel=True, mudguard=True, pointy=True,
+                         tongue_up=0.014),
+}
+
+
+def _crackle(P, scale, seed=7):
+    """0..1 'crack line' strength from a Voronoi pattern (1 on the cracks)."""
+    rng = np.random.default_rng(seed)
+    lo, hi = P.min(0) - scale, P.max(0) + scale
+    n = int(np.prod((hi - lo) / scale)) + 8
+    S = lo + rng.random((min(n, 20000), 3)) * (hi - lo)
+    d, _ = cKDTree(S).query(P, k=2)
+    gap = (d[:, 1] - d[:, 0]) / scale
+    return np.clip(1 - gap / 0.16, 0, 1)
+
+
+def build_shoe(o, name, style="court_high", color=(0.95, 0.95, 0.94), accent=None, sole=(0.96, 0.96, 0.94),
+               outsole=None, lace=None, lining=None, nu=60, na=56):
+    S = SHOE_STYLES[style]
+    b = o.low; k = b.k; J = b.J
+    fl = b.floor
+    acc = accent or color
+    outsole = outsole or tuple(np.array(sole[:3]) * 0.8)
+    lace = lace or color
+    lining = lining or tuple(np.array(acc[:3]) * 0.85)
+    up_parts, up_cols, sole_parts, lace_parts = [], [], [], []
+    for side in ("l", "r"):
+        ank = J[side + "-ankle"]
+        m = (b.reg == "Foot") & (b.side(b.co) == side)
+        m |= (b.reg == "LLeg") & (b.side(b.co) == side) & (b.co[:, 2] < ank[2] + 0.02 * k)
+        Pf = b.co[m]
+        legm = (b.reg == "LLeg") & (b.side(b.co) == side) & (b.co[:, 2] < ank[2] + max(S["collar"], 0) * k + 0.03 * k)
+        Pl = b.co[legm]
+        xy = Pf[:, :2] - Pf[:, :2].mean(0)
+        _, _, vt = np.linalg.svd(xy, full_matrices=False)
+        d = vt[0] if vt[0][1] < 0 else -vt[0]
+        lat = np.array([-d[1], d[0]])
+        if (lat @ np.array([1.0, 0])) * (1 if side == "l" else -1) < 0:
+            lat = -lat  # +lat always points to the outside of the foot
+        c0 = Pf[:, :2].mean(0)
+        u = (Pf[:, :2] - c0) @ d
+        v = (Pf[:, :2] - c0) @ lat
+        u0, u1 = u.min() - 0.012 * k, u.max() + (0.024 if S.get("pointy") else 0.018) * k
+        us = np.linspace(u0, u1, nu)
+        t = (us - u0) / (u1 - u0)  # 0 heel .. 1 toe
+        W, T, V0, Zm = np.zeros(nu), np.zeros(nu), np.zeros(nu), np.full(nu, 1e9)
+        for i, uu in enumerate(us):
+            sl = np.abs(u - uu) < 0.02 * k
+            if sl.sum() < 3:
+                W[i] = np.nan; continue
+            vv = v[sl]; zz = Pf[sl, 2]
+            W[i] = (vv.max() - vv.min()) / 2 + 0.012 * k
+            V0[i] = (vv.max() + vv.min()) / 2
+            T[i] = zz.max() + 0.012 * k
+            Zm[i] = zz.min()
+        ok = ~np.isnan(W)
+        Zm = np.where(Zm > 1e8, np.inf, Zm)
+        W = np.interp(us, us[ok], W[ok]); T = np.interp(us, us[ok], T[ok]); V0 = np.interp(us, us[ok], V0[ok])
+        for _ in range(4):
+            for A in (W, T, V0):
+                A[1:-1] = 0.25 * A[:-2] + 0.5 * A[1:-1] + 0.25 * A[2:]
+        Wfoot, Tfoot = W.copy(), T.copy()   # foot half-width / top incl. 12 mm margin (never cut into the toes)
+        # leg clearance for high collars
+        if len(Pl):
+            ul = (Pl[:, :2] - c0) @ d; vl = (Pl[:, :2] - c0) @ lat
+            for i, uu in enumerate(us):
+                sl = np.abs(ul - uu) < 0.015 * k
+                if sl.sum() > 3:
+                    W[i] = max(W[i], (vl[sl].max() - vl[sl].min()) / 2 + 0.01 * k)
+        tq = 2 * t - 1
+        pw = 4.0 if S.get("pointy") else 5.0
+        rnd = (1 - np.abs(tq) ** pw) ** (1 / pw)
+        W = W * np.maximum(np.where(tq > 0, rnd ** (1.0 if S.get("pointy") else 0.75), rnd ** 0.5), 0.5) + 0.002 * k
+        W = np.maximum(W, Wfoot - 0.004 * k)
+        # sole heights
+        kind = S["kind"]
+        prof = {"cup": 1.15 - 0.3 * t, "vulc": np.ones(nu), "wedge": 1.55 - 1.0 * t}[kind]
+        spring = 0.016 * k * np.clip((t - 0.7) / 0.3, 0, 1) ** 2
+        # toe spring only where the toes leave room: the sole bottom never rises above the lowest skin in that slice
+        zmin_s = np.minimum.reduce([np.roll(Zm, r) for r in (-2, -1, 0, 1, 2)])
+        z_bot = np.minimum(fl + spring, zmin_s - 0.004 * k) - 0.002 * k
+        z_bot = np.minimum(z_bot, fl - 0.002 * k + spring)
+        z_top = z_bot + S["sole"] * k * prof
+        Ws = W * (1.05 if kind != "vulc" else 1.03) + 0.003 * k
+        z_col_base = ank[2] + S["collar"] * k
+
+        def P2(i, off):  # plan point of slice i at lateral offset off
+            q = c0 + d * us[i] + lat * (V0[i] + off)
+            return q
+
+        # ---- sole unit: rings around the footprint outline, lofted bottom -> top
+        idx_l = list(range(nu)); idx_r = list(range(nu - 1, -1, -1))
+        outline = [(i, +1) for i in idx_l] + [(i, -1) for i in idx_r[1:-1]]
+        no = len(outline)
+        levels = [(-0.004, 0.0), (0.0, 0.0), (0.0, 0.42 if kind != "vulc" else 0.3), (0.0, 1.0), (-0.004, 1.0)]
+        Vs = []
+        for inset, hf in levels:
+            for (i, sg) in outline:
+                q = P2(i, sg * max(Ws[i] + inset * k, 0.001 * k))
+                zz = z_bot[i] + (z_top[i] - z_bot[i]) * hf
+                Vs.append([q[0], q[1], zz])
+        Vs = np.array(Vs)
+        Fs, ms = [], []
+        for L in range(len(levels) - 1):
+            for j in range(no):
+                j2 = (j + 1) % no
+                Fs.append([L * no + j, L * no + j2, (L + 1) * no + j2, (L + 1) * no + j])
+                ms.append(0 if L <= 1 else 1)  # outsole band below the split, midsole above
+        cb = len(Vs); Vs = np.vstack([Vs, Vs[:no].mean(0), Vs[-no:].mean(0)])
+        for j in range(no):
+            j2 = (j + 1) % no
+            Fs.append([j2, j, cb]); ms.append(0)
+            Fs.append([(len(levels) - 1) * no + j, (len(levels) - 1) * no + j2, cb + 1]); ms.append(1)
+        fc = Vs[np.array([f[:3] for f in Fs])].mean(1)
+        cen = Vs.mean(0)
+        fn = np.cross(Vs[[f[1] for f in Fs]] - Vs[[f[0] for f in Fs]], Vs[[f[2] for f in Fs]] - Vs[[f[0] for f in Fs]])
+        if np.mean(np.einsum("ij,ij->i", fn, fc - cen)) < 0:
+            Fs = [f[::-1] for f in Fs]
+        ms = np.array(ms)
+        if kind == "vulc":  # thin foxing line round the sidewall
+            hf_f = (fc[:, 2] - np.interp(0, [0], [0]))
+            for fi, f in enumerate(Fs):
+                pass
+        if S.get("window"):  # cushion window on the outer heel
+            for fi, f in enumerate(Fs):
+                pc = Vs[f].mean(0)
+                tt = ((pc[:2] - c0) @ d - u0) / (u1 - u0)
+                outer = ((pc[:2] - c0) @ lat) > 0
+                if outer and 0.1 < tt < 0.32 and ms[fi] == 1 and len(f) == 4:
+                    ms[fi] = 2
+        sole_parts.append((Vs, Fs, ms))
+
+        # ---- upper: superellipse sections sitting on the sole, cut at the collar and throat
+        Vu, prm = [], []
+        a = np.linspace(0, 2 * np.pi, na, endpoint=False)
+        T2 = np.maximum(T, z_top + 0.03 * k)
+        heelzone = t < 0.42
+        T2 = np.where(heelzone, np.maximum(T2, z_col_base + 0.03 * k), T2)
+        for i in range(nu):
+            zb = z_top[i] - 0.004 * k
+            hz = (T2[i] - zb) / 2
+            # ends round off in height so heel and toe close smoothly
+            hz *= max(0.35 + 0.65 * rnd[i] ** 0.5, 0.75)
+            hz = max(hz, (Tfoot[i] - 0.004 * k - zb) / 2)
+            zc = zb + hz
+            for aj in a:
+                ca, sa = np.cos(aj), np.sin(aj)
+                p = 2.5 if sa > 0 else 8.0
+                vv = W[i] * np.sign(ca) * np.abs(ca) ** (2 / p)
+                zz = zc + hz * np.sign(sa) * np.abs(sa) ** (2 / p)
+                q = P2(i, vv)
+                Vu.append([q[0], q[1], zz])
+                prm.append([t[i], ca, (zz - zb) / max(T2[i] - zb, 1e-6), vv])
+        Vu = np.array(Vu); prm = np.array(prm)
+        Fu = [[i * na + j, i * na + (j + 1) % na, (i + 1) * na + (j + 1) % na, (i + 1) * na + j] for i in range(nu - 1) for j in range(na)]
+        # domed ends: a few shrinking rings past the last section, then a tiny cap (no pinch at toe or heel)
+        for i, rev, sgn in ((0, True, -1), (nu - 1, False, 1)):
+            ring = Vu[i * na:(i + 1) * na]; cc = ring.mean(0); prev = list(range(i * na, (i + 1) * na))
+            for step, sc in enumerate((0.82, 0.55, 0.25)):
+                nr = cc + (ring - cc) * sc
+                nr[:, :2] += np.r_[d] * sgn * 0.016 * k * np.sqrt(1 - sc ** 2) / 0.97
+                nr[:, 2] = cc[2] + (ring[:, 2] - cc[2]) * sc + (1 - sc) * 0.002 * k
+                base = len(Vu); Vu = np.vstack([Vu, nr]); prm = np.vstack([prm, prm[prev]])
+                cur = list(range(base, base + na))
+                for j in range(na):
+                    q = [prev[j], prev[(j + 1) % na], cur[(j + 1) % na], cur[j]]
+                    Fu.append(q[::-1] if rev else q)
+                prev = cur
+            ci = len(Vu); Vu = np.vstack([Vu, Vu[prev].mean(0)]); prm = np.vstack([prm, prm[prev[0]]])
+            for j in range(na):
+                tri = [prev[j], prev[(j + 1) % na], ci]
+                Fu.append(tri[::-1] if rev else tri)
+        # collar + throat opening
+        tt, latoff, zz = prm[:, 0], prm[:, 3], Vu[:, 2]
+        t_th0, t_th1 = (0.4, 0.72) if S["laces"] else (0.4, 0.55)
+        zcol = z_col_base + 0.012 * k * np.clip(1 - tt / 0.42, 0, 1) ** 1.5  # heel tab a little higher
+        g1 = np.minimum(zz - zcol, t_th0 + 0.02 - tt)
+        wth = (0.02 if S["laces"] else 0.03) * k * (1 - 0.35 * np.clip((tt - t_th0) / (t_th1 - t_th0), 0, 1))
+        topside = prm[:, 2] > 0.55
+        g2 = np.minimum.reduce([wth - np.abs(latoff), tt - t_th0 + 0.04, t_th1 - tt, np.where(topside, 1.0, -1.0) * 0.05 * k])
+        g = np.maximum(g1, g2)
+        Pq, Fq, A = clip(Vu, Fu, g, {"prm": prm})
+        Pq, Fq, A = keep_big(Pq, Fq, A, frac=0.5)
+        prq = A["prm"]
+        E = edges_of(Fq)
+        Pq = laplace(Pq, E, 2, taubin=True)
+        # clear the foot with a SMOOTH push: the raw push follows every toe and crumples the toe box, so the
+        # push offsets are blurred over the shoe surface and re-applied a few rounds (stays clear, stays smooth)
+        for _ in range(int(os.environ.get('NC_SHOEPUSH', 4))):
+            Dp = o.col.push(Pq, 0.006 * k) - Pq
+            mag = np.linalg.norm(Dp, axis=1)
+            if mag.max() < 1e-5 * k:
+                break
+            Dp *= np.clip((0.6 - prq[:, 0]) / 0.15, 0, 1)[:, None]   # toe box is sized from the foot itself; push only the heel/collar
+            Ds = laplace(Dp, E, 12, lam=0.6)
+            ms_ = np.linalg.norm(Ds, axis=1)
+            # keep the blurred direction but never less than the blurred peak around it
+            mag = np.linalg.norm(Dp, axis=1)
+            Pq = Pq + Ds * (np.maximum(ms_, laplace(mag[:, None], E, 6, lam=0.6)[:, 0] * 1.2) / np.maximum(ms_, 1e-9))[:, None]
+        Pq = laplace(Pq, E, 2, taubin=True)
+        # overlay panels: the upper is split along each panel outline (exact iso-lines, so edges are crisp)
+        # and the panels sit a hair proud of the base like stitched leather overlays
+        tt, ca, hn = prq[:, 0], prq[:, 1], prq[:, 2]
+        BIG = 1.0
+        fz = np.full(len(Pq), BIG)
+        if S.get("toe"):
+            fz = np.minimum(fz, np.maximum(0.8 - tt, hn - 0.85))
+        if S.get("heel"):
+            fz = np.minimum(fz, np.maximum(tt - (0.13 + 0.13 * (1 - hn) ** 1.5), hn - 0.78))
+        if S.get("eyestay"):
+            fz = np.minimum(fz, np.maximum.reduce([0.36 - tt, tt - 0.76, 0.62 - hn]))
+        if S.get("mudguard"):
+            fz = np.minimum(fz, np.maximum(hn - 0.3, 0.5 - tt))
+        if S.get("stripe"):  # our own wave: rises from the toe box toward the heel collar
+            hc = 0.22 + 0.5 * smoothstep(0.62, 0.12, tt) + 0.05 * np.sin(tt * 9.0)
+            fz = np.minimum(fz, np.maximum.reduce([np.abs(hn - hc) - 0.07, 0.12 - tt, tt - 0.66, 0.35 - np.abs(ca)]))
+        if S.get("gores"):
+            fz = np.minimum(fz, np.maximum.reduce([np.abs(tt - 0.5) - 0.04, 0.5 - hn, 0.3 - np.abs(ca)]))
+        fr = np.full(len(Pq), BIG)  # rubber (sole-coloured) parts of the upper
+        if S.get("rubber_toe"):
+            fr = np.minimum(np.maximum(0.86 - tt, hn - 0.55), hn - 0.07)
+        pieces = []
+        A0 = {"prm": prq}
+        if (fz < 0).any():
+            Po, Fo, Ao = clip(Pq, Fq, fz, A0)
+            Pb, Fb, Ab = clip(Pq, Fq, -fz, A0)
+            if len(Fo):
+                Po = Po + vnormals(Po, Fo) * 0.0015 * k
+                pieces.append((Po, Fo, Ao["prm"], "acc"))
+        else:
+            Pb, Fb, Ab = Pq, Fq, A0
+        if (fr < 0).any():
+            Pr_, Fr_, Ar = clip(Pb, Fb, fr, {"prm": Ab["prm"]})
+            Pb, Fb, Ab = clip(Pb, Fb, -fr, {"prm": Ab["prm"]})
+            if len(Fr_):
+                pieces.append((Pr_, Fr_, Ar["prm"], "rubber"))
+        pieces.insert(0, (Pb, Fb, Ab["prm"], "base"))
+        for Pp, Fp, prp, kind_ in pieces:
+            if kind_ == "base":
+                col = np.tile(np.array(color[:3], float), (len(Pp), 1)); mi_ = 0
+            elif kind_ == "acc":
+                col = np.tile(np.array(acc[:3], float), (len(Pp), 1)); mi_ = 2
+                if S.get("crackle"):
+                    cr = _crackle(Pp, 0.016 * k)
+                    base_c = np.array([0.74, 0.74, 0.72]) if np.mean(color[:3]) > 0.4 else np.array([0.25, 0.25, 0.27])
+                    zt_, zh_ = prp[:, 0], prp[:, 2]
+                    cz = (zt_ > 0.75) | (zt_ < 0.3)
+                    col[cz] = base_c * (1 - 0.8 * cr[cz, None])
+            else:
+                col = np.tile(np.array(sole[:3], float), (len(Pp), 1)); mi_ = 3
+            up_parts.append((Pp, Fp, mi_)); up_cols.append(col)
+        Pq_all = Pq
+        # ---- padded collar roll along the opening edge
+        loops = boundary_loops(Fq)
+        if loops:
+            lp = max(loops, key=len)
+            Lp = Pq[lp]
+            ltt = prq[lp, 0]
+            rr = np.where(ltt < t_th0, 0.0055 * k, 0.003 * k)
+            inward = np.array([*(c0 + d * (u0 + (u1 - u0) * 0.3) + lat * V0[nu // 3]), 0.0])
+            Lp2 = Lp.copy()
+            for _ in range(6):
+                Lp2 = 0.5 * Lp2 + 0.25 * (np.roll(Lp2, 1, 0) + np.roll(Lp2, -1, 0))
+            for _ in range(6):
+                rr = 0.5 * rr + 0.25 * (np.roll(rr, 1) + np.roll(rr, -1))
+            Vt, Ft = make_tube(Lp2, rr, nseg=8, closed=True)
+            up_parts.append((Vt, Ft, 1)); up_cols.append(np.tile(np.array(lining[:3]), (len(Vt), 1)))
+
+        # ---- tongue (sits under the throat edges, sticks up above the collar at the front)
+        if S["laces"] or S.get("tongue_up", 0) > 0:
+            rows = []
+            tts = np.linspace(t_th1 + 0.02, t_th0 - 0.03, 12)
+            for ti, t_ in enumerate(tts):
+                i = int(np.clip(round(t_ * (nu - 1)), 0, nu - 1))
+                zb = z_top[i] - 0.004 * k
+                hz = (T2[i] - zb) / 2 * (0.35 + 0.65 * rnd[i] ** 0.5)
+                ztop = zb + 2 * hz - 0.003 * k
+                if t_ < t_th0 + 0.02:
+                    ztop = max(ztop, z_col_base + (S.get("tongue_up", 0.012) * k) * (t_th0 + 0.02 - t_) / 0.05)
+                row = []
+                for x_ in np.linspace(-1, 1, 9):
+                    ww = (wth.max() * 1.35) * x_
+                    q = P2(i, ww)
+                    row.append([q[0], q[1], ztop - 0.006 * k * x_ ** 2])
+                rows.append(row)
+            Vt = np.array(rows).reshape(-1, 3)
+            Ft = [[r * 9 + c, r * 9 + c + 1, (r + 1) * 9 + c + 1, (r + 1) * 9 + c] for r in range(len(tts) - 1) for c in range(8)]
+            fn = np.cross(Vt[Ft[0][1]] - Vt[Ft[0][0]], Vt[Ft[0][2]] - Vt[Ft[0][0]])
+            if fn[2] < 0:
+                Ft = [f[::-1] for f in Ft]
+            # give it thickness by doubling (thin padded tongue)
+            Vb_ = Vt - np.array([0, 0, 0.004 * k]); nT = len(Vt)
+            Ft2 = Ft + [[x + nT for x in f[::-1]] for f in Ft]
+            up_parts.append((np.vstack([Vt, Vb_]), Ft2, 0)); up_cols.append(np.tile(np.array(color[:3]), (2 * nT, 1)))
+
+        # ---- eyelets + laces
+        if S["laces"]:
+            ne = S["laces"]
+            te = np.linspace(t_th0 + 0.03, t_th1 - 0.02, ne)
+            pts = {}
+            for sg in (-1, 1):
+                pts[sg] = []
+                for t_ in te:
+                    i = int(np.clip(round(t_ * (nu - 1)), 0, nu - 1))
+                    zb = z_top[i] - 0.004 * k
+                    hz = (T2[i] - zb) / 2 * (0.35 + 0.65 * rnd[i] ** 0.5)
+                    wt = (0.02 * k) * (1 - 0.35 * np.clip((t_ - t_th0) / (t_th1 - t_th0), 0, 1)) + 0.006 * k
+                    # surface height at that lateral offset
+                    ca_ = wt / max(W[i], 1e-6)
+                    sa_ = np.sqrt(max(0.0, 1 - ca_ ** 2.5)) if ca_ < 1 else 0
+                    zt_ = zb + hz + hz * sa_ ** (2 / 2.5)
+                    q = P2(i, sg * wt)
+                    pts[sg].append(np.array([q[0], q[1], zt_ + 0.002 * k]))
+            for sg in (-1, 1):
+                for p_ in pts[sg]:
+                    nrm = np.array([0, 0, 1.0])
+                    uu_ = np.r_[d, 0]; vv_ = np.cross(nrm, uu_)
+                    ring = [p_ + 0.0032 * k * (np.cos(q) * uu_ + np.sin(q) * vv_) for q in np.linspace(0, 2 * np.pi, 8, endpoint=False)]
+                    Vt, Ft = make_tube(np.array(ring), 0.0012 * k, nseg=4, closed=True)
+                    lace_parts.append((Vt, Ft, 1))
+            for i in range(ne - 1):
+                for sg in (-1, 1):
+                    p0, p1 = pts[sg][i], pts[-sg][i + 1]
+                    mid = 0.5 * (p0 + p1) + np.array([0, 0, 0.004 * k])
+                    path = np.array([p0, 0.5 * (p0 + mid), mid, 0.5 * (mid + p1), p1])
+                    Vt, Ft = make_tube(path, 0.0021 * k, nseg=6)
+                    lace_parts.append((Vt, Ft, 0))
+            # top bar + short bow loops
+            p0, p1 = pts[-1][0], pts[1][0]
+            mid = 0.5 * (p0 + p1) + np.array([0, 0, 0.006 * k])
+            Vt, Ft = make_tube(np.array([p0, mid, p1]), 0.0021 * k, nseg=6)
+            lace_parts.append((Vt, Ft, 0))
+            for sg in (-1, 1):
+                loop = [mid + np.array([0, 0, 0.002 * k]) + 0.012 * k * (np.cos(q) * sg * np.r_[lat, 0] * 0.9 + np.sin(q) * np.r_[d, 0] * 0.5)
+                        + np.array([0, 0, 0.004 * k]) * np.sin(q) for q in np.linspace(0, 2 * np.pi, 10, endpoint=False)]
+                loop = np.array(loop) + sg * np.r_[lat, 0] * 0.008 * k
+                Vt, Ft = make_tube(loop, 0.0019 * k, nseg=5, closed=True)
+                lace_parts.append((Vt, Ft, 0))
+    out = []
+    Vu, Fu, mu = merge_parts(up_parts)
+    vc = np.vstack(up_cols)
+    mats_u = [material(name + "_Upper", tuple(color[:3]) + (1,), vcol=True, rough=0.62),
+              material(name + "_Lining", tuple(lining[:3]) + (1,), vcol=True, rough=0.8),
+              material(name + "_Overlay", tuple(acc[:3]) + (1,), vcol=True, rough=0.55),
+              material(name + "_Rubber", tuple(sole[:3]) + (1,), vcol=True, rough=0.8)]
+    out.append(make_object(b, b.obj.name + "_" + name, Vu, Fu, mats_u, mu, vc, thick=0.0025 * k, subsurf=1))
+    Vs, Fs, ms = merge_parts(sole_parts)
+    mats_s = [material(name + "_Outsole", tuple(outsole[:3]) + (1,), rough=0.85), material(name + "_Midsole", tuple(sole[:3]) + (1,), rough=0.7),
+              material(name + "_Window", (0.15, 0.17, 0.2, 1), rough=0.1)]
+    out.append(make_object(b, b.obj.name + "_" + name + "_Sole", Vs, Fs, mats_s, ms, None, thick=0, subsurf=1))
+    if lace_parts:
+        Vl, Fl, ml = merge_parts(lace_parts)
+        met = material(name + "_Eyelet", (0.75, 0.75, 0.78, 1) if style == "canvas_high" else tuple(np.array(acc[:3]) * 0.9) + (1,), rough=0.3)
+        out.append(make_object(b, b.obj.name + "_" + name + "_Laces", Vl, Fl, [material(name + "_Laces", tuple(lace[:3]) + (1,), rough=0.9), met], ml,
+                               None, thick=0, subsurf=0))
+    o.objs.extend(out)
+    for ob_ in out[:2]:
+        pass
+    o.layer(Vu, Fu, 0.003 * k)
+    return out

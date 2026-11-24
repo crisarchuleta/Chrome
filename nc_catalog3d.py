@@ -3,7 +3,7 @@ piece gets a fitted mesh on every body. Colours come from the item's default c1 
 import re
 import nc_garments as NG
 
-LINE = re.compile(r'^\s*I\("([a-z0-9_]+)",\s*"(Top|Outer|Bottom|Shoes)",\s*"((?:[^"\\]|\\.)*)",\s*\d+,\s*"([a-z]+)",\s*(\{[^}]*\}|nil),\s*([^,]+),\s*"(#[0-9A-Fa-f]{6})"(?:,\s*([^,]+),\s*"(#[0-9A-Fa-f]{6})")?')
+LINE = re.compile(r'^\s*I\("([a-z0-9_]+)",\s*"(Top|Outer|Bottom|Shoes|Head|Mask|Face)",\s*"((?:[^"\\]|\\.)*)",\s*\d+,\s*"([a-z]+)",\s*(\{[^}]*\}|nil),\s*([^,]+),\s*"(#[0-9A-Fa-f]{6})"(?:,\s*([^,]+),\s*"(#[0-9A-Fa-f]{6})")?')
 
 
 def hexc(h):
@@ -42,6 +42,20 @@ def load(path):
 CAMO = [(0.33, 0.36, 0.22), (0.18, 0.2, 0.12), (0.5, 0.45, 0.32), (0.1, 0.1, 0.07)]
 
 
+SHOE_MAP = {  # catalog id -> (SHOE_STYLES key, extra args)
+    "shoe_white_low": ("court_low", {}),
+    "shoe_black_low": ("court_low", {"white_sole": False}),
+    "shoe_chunky": ("runner_retro", {}),
+    "shoe_slim_runner": ("runner_retro", {}),
+    "shoe_hightop": ("court_high", {}),
+    "shoe_hightop_bw": ("court_high", {}),
+    "shoe_classic": ("runner_retro", {}),
+    "shoe_skate": ("skate_low", {}),
+    "shoe_runner": ("runner_retro", {}),
+    "shoe_platform": ("canvas_high", {}),
+}
+
+
 def build_item(o, it):
     """Returns True when the item has a 3D garment."""
     f, p, c1 = it["fam"], it["p"], it["c1"]
@@ -64,8 +78,9 @@ def build_item(o, it):
     elif f in ("shirt", "polo"):
         sl = "short" if (p.get("sleeve") == "tee" or f == "polo") else "long"
         NG.build_top(o, nm, kind="tee", sleeve=sl, color=c1, accent=c2, hood=False, pocket=False, rib=False,
-                     collar="shirt", ease=0.05, sleeve_ease=0.1 if sl == "long" else 0.2, thick=0.003, front_open=bool(p.get("open")),
-                     zip_front=not p.get("open"), length=-0.01)
+                     collar="shirt", ease=0.05, sleeve_ease=0.1 if sl == "long" else 0.2, thick=0.003, front_open=bool(p.get("open")) and it["slot"] == "Outer",
+                     zip_front=not (p.get("open") and it["slot"] == "Outer"), length=-0.01,
+                     neck_drop=0.03 if p.get("open") else 0)  # Top-slot shirts stay closed so the tank never shows
     elif f == "jersey":
         sl = {"tee": "short", "long": "long"}.get(p.get("sleeve"), "none")
         NG.build_top(o, nm, kind="tee", sleeve=sl, color=c1, accent=c2, hood=False, pocket=False, rib=True,
@@ -114,11 +129,17 @@ def build_item(o, it):
         NG.build_pants(o, nm, fit="straight", color=c1, accent=c1, stack=False)
     elif f == "skirt":
         NG.build_skirt(o, nm, length=0.3, flare=0.22, color=c1, pleats=12 if "Pleat" in it["name"] else 0)
+    elif f == "shoes" and it["id"] in SHOE_MAP:
+        # sneakers use the reference-matched shoe maker (build_shoe), fitted to each body's own foot
+        st, kw = SHOE_MAP[it["id"]]
+        NG.build_shoe(o, nm, style=st, color=c1, accent=c2 if c2 != c1 else None,
+                      sole=hexc("#F5F5F2") if kw.get("white_sole", True) else c1, **{k: v for k, v in kw.items() if k != "white_sole"})
     elif f == "shoes":
         nmn = it["name"].lower()
         high = any(w in nmn for w in ("high", "boot", "timb", "combat"))
         NG.build_sneakers(o, nm, high=high, color=c1, sole=(0.92, 0.92, 0.9) if "boot" not in nmn else (0.12, 0.1, 0.08),
                           accent=c2, chunky=1.3 if "chunky" in nmn or "platform" in nmn else 1.0)
     else:
-        return False
+        import nc_headwear as HW  # helmets, durags, ski masks, great helm, goggles
+        return HW.build_item(o, it, hexc)
     return True
