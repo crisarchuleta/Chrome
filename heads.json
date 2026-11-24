@@ -396,69 +396,154 @@
     "mesh": "Hair_Locs",
     "kind": "Hair",
     "key": "Locs",
-    "label": "Shoulder Locs",
+    "label": "Rope Twist Locs",
     "offset": [
-     0.0082,
-     -0.4599,
-     0.3764
+     0.0903,
+     -0.2693,
+     0.4195
     ],
     "size": [
-     0.9953,
-     1.8387,
-     1.0796
+     0.9364,
+     1.4765,
+     1.0211
     ],
-    "tris": 17000
+    "tris": 17708
+   },
+   {
+    "mesh": "Hair_Locs_2",
+    "kind": "Hair",
+    "key": "Locs",
+    "label": "Rope Twist Locs",
+    "offset": [
+     -0.0574,
+     -0.3126,
+     0.3892
+    ],
+    "size": [
+     0.9933,
+     1.5858,
+     1.1628
+    ],
+    "tris": 17376
+   },
+   {
+    "mesh": "Hair_Locs_3",
+    "kind": "Hair",
+    "key": "Locs",
+    "label": "Rope Twist Locs",
+    "offset": [
+     -0.0118,
+     -0.3261,
+     0.4349
+    ],
+    "size": [
+     1.064,
+     1.5847,
+     1.0004
+    ],
+    "tris": 17148
+   },
+   {
+    "mesh": "Hair_Locs_4",
+    "kind": "Hair",
+    "key": "Locs",
+    "label": "Rope Twist Locs",
+    "offset": [
+     -0.0476,
+     -0.2657,
+     0.3762
+    ],
+    "size": [
+     0.8693,
+     1.4557,
+     1.1455
+    ],
+    "tris": 10440
    },
    {
     "mesh": "Hair_Locs_Cap",
     "kind": "HairCap",
     "key": "Locs",
-    "label": "Shoulder Locs",
+    "label": "Rope Twist Locs",
     "offset": [
-     0.0066,
-     -0.5731,
-     0.4668
+     0.0887,
+     -0.4142,
+     0.3679
     ],
     "size": [
-     0.9971,
-     1.6267,
-     0.9079
+     0.9327,
+     1.309,
+     1.1285
     ],
-    "tris": 17000
+    "tris": 17424
+   },
+   {
+    "mesh": "Hair_Locs_Cap_2",
+    "kind": "HairCap",
+    "key": "Locs",
+    "label": "Rope Twist Locs",
+    "offset": [
+     -0.071,
+     -0.4867,
+     0.413
+    ],
+    "size": [
+     0.9726,
+     1.2695,
+     1.1014
+    ],
+    "tris": 17124
+   },
+   {
+    "mesh": "Hair_Locs_Cap_3",
+    "kind": "HairCap",
+    "key": "Locs",
+    "label": "Rope Twist Locs",
+    "offset": [
+     -0.0101,
+     -0.4214,
+     0.3798
+    ],
+    "size": [
+     1.0627,
+     1.128,
+     1.1532
+    ],
+    "tris": 14616
    },
    {
     "mesh": "Hair_Locs_Cards",
     "kind": "HairCards",
     "key": "Locs",
-    "label": "Shoulder Locs",
+    "label": "Rope Twist Locs",
     "offset": [
-     0.0096,
-     -0.4488,
-     0.3749
+     -0.0045,
+     -0.3241,
+     0.3826
     ],
     "size": [
-     1.0056,
-     1.829,
-     1.083
+     1.1352,
+     1.5987,
+     1.1895
     ],
-    "tris": 10324
+    "tris": 9520
    },
    {
     "mesh": "Hair_Locs_CapCards",
     "kind": "HairCapCards",
     "key": "Locs",
-    "label": "Shoulder Locs",
+    "label": "Rope Twist Locs",
     "offset": [
-     0.0077,
-     -0.6414,
-     0.4668
+     -0.0023,
+     -0.489,
+     0.3784
     ],
     "size": [
-     1.0084,
-     1.4572,
-     0.9183
+     1.1405,
+     1.2728,
+     1.1821
     ],
-    "tris": 3848
+    "tris": 7718
    },
    {
     "mesh": "Hair_Twists",
@@ -466,14 +551,14 @@
     "key": "Twists",
     "label": "Hanging Twists",
     "offset": [
-     0.0014,
-     0.1355,
-     0.3116
+     -0.0009,
+     0.137,
+     0.3117
     ],
     "size": [
-     0.6478,
-     0.6149,
-     0.8429
+     0.6501,
+     0.618,
+     0.8416
     ],
     "tris": 17000
    },
@@ -517,14 +602,14 @@
     "key": "FlatTwists",
     "label": "Flat Twists",
     "offset": [
-     0.0008,
+     -0.0008,
      0.161,
-     0.335
+     0.3343
     ],
     "size": [
-     0.6138,
+     0.6127,
      0.6453,
-     0.7509
+     0.7494
     ],
     "tris": 17000
    },
@@ -970,16 +1055,67 @@
     "key": "Locs",
     "label": "Long Locs",
     "offset": [
-     0.0071,
-     -0.7923,
-     0.2754
+     0.0328,
+     -0.6778,
+     0.2812
     ],
     "size": [
-     0.8173,
-     2.4462,
-     0.933
+     0.6375,
+     2.201,
+     0.9222
     ],
-    "tris": 17000
+    "tris": 17430
+   },
+   {
+    "mesh": "Hair_Locs_2",
+    "kind": "Hair",
+    "key": "Locs",
+    "label": "Long Locs",
+    "offset": [
+     0.0071,
+     -0.7948,
+     0.2626
+    ],
+    "size": [
+     0.8178,
+     2.4504,
+     0.9504
+    ],
+    "tris": 17192
+   },
+   {
+    "mesh": "Hair_Locs_3",
+    "kind": "Hair",
+    "key": "Locs",
+    "label": "Long Locs",
+    "offset": [
+     0.0128,
+     -0.7922,
+     0.2677
+    ],
+    "size": [
+     0.7976,
+     2.4526,
+     0.9374
+    ],
+    "tris": 17080
+   },
+   {
+    "mesh": "Hair_Locs_4",
+    "kind": "Hair",
+    "key": "Locs",
+    "label": "Long Locs",
+    "offset": [
+     0.0032,
+     -0.7888,
+     0.2763
+    ],
+    "size": [
+     0.8029,
+     2.3887,
+     0.9326
+    ],
+    "tris": 16268
    },
    {
     "mesh": "Hair_Locs_Cap",
@@ -987,16 +1123,67 @@
     "key": "Locs",
     "label": "Long Locs",
     "offset": [
-     -0.0022,
-     -0.9244,
-     0.3426
+     0.0203,
+     -0.8928,
+     0.2683
     ],
     "size": [
-     0.7707,
-     2.3178,
-     0.8001
+     0.662,
+     2.2544,
+     0.9427
     ],
-    "tris": 16999
+    "tris": 17202
+   },
+   {
+    "mesh": "Hair_Locs_Cap_2",
+    "kind": "HairCap",
+    "key": "Locs",
+    "label": "Long Locs",
+    "offset": [
+     0.0075,
+     -0.8648,
+     0.2641
+    ],
+    "size": [
+     0.8184,
+     2.1962,
+     0.9511
+    ],
+    "tris": 17262
+   },
+   {
+    "mesh": "Hair_Locs_Cap_3",
+    "kind": "HairCap",
+    "key": "Locs",
+    "label": "Long Locs",
+    "offset": [
+     0.0066,
+     -0.8926,
+     0.2707
+    ],
+    "size": [
+     0.8112,
+     2.2517,
+     0.9449
+    ],
+    "tris": 17206
+   },
+   {
+    "mesh": "Hair_Locs_Cap_4",
+    "kind": "HairCap",
+    "key": "Locs",
+    "label": "Long Locs",
+    "offset": [
+     0.0249,
+     -0.8004,
+     0.2723
+    ],
+    "size": [
+     0.7638,
+     2.0673,
+     0.9217
+    ],
+    "tris": 7686
    },
    {
     "mesh": "Hair_Locs_Cards",
@@ -1004,16 +1191,33 @@
     "key": "Locs",
     "label": "Long Locs",
     "offset": [
-     0.0067,
-     -0.7875,
-     0.2736
+     0.0101,
+     -0.7885,
+     0.2643
     ],
     "size": [
-     0.8244,
-     2.4426,
-     0.94
+     0.8255,
+     2.4415,
+     0.966
     ],
-    "tris": 17970
+    "tris": 17994
+   },
+   {
+    "mesh": "Hair_Locs_Cards_2",
+    "kind": "HairCards",
+    "key": "Locs",
+    "label": "Long Locs",
+    "offset": [
+     0.0253,
+     -0.7815,
+     0.2728
+    ],
+    "size": [
+     0.773,
+     2.3806,
+     0.9253
+    ],
+    "tris": 4850
    },
    {
     "mesh": "Hair_Locs_CapCards",
@@ -1021,16 +1225,33 @@
     "key": "Locs",
     "label": "Long Locs",
     "offset": [
-     0.0001,
-     -1.0336,
-     0.5662
+     0.0044,
+     -0.9553,
+     0.2687
     ],
     "size": [
-     0.7786,
-     2.0941,
-     0.3634
+     0.8242,
+     2.1103,
+     0.9621
     ],
-    "tris": 5468
+    "tris": 17988
+   },
+   {
+    "mesh": "Hair_Locs_CapCards_2",
+    "kind": "HairCapCards",
+    "key": "Locs",
+    "label": "Long Locs",
+    "offset": [
+     0.0214,
+     -0.8719,
+     0.27
+    ],
+    "size": [
+     0.7689,
+     1.895,
+     0.9294
+    ],
+    "tris": 2612
    },
    {
     "mesh": "Hair_LowBun",

@@ -538,8 +538,8 @@ def rope(points, radii, turns=30.0, normals=None, flat=1.0, sides=6):
     P = [np.array(p, float) for p in points]
     out = []
     L = np.concatenate([[0], np.cumsum([np.linalg.norm(P[i + 1] - P[i]) for i in range(len(P) - 1)])])
-    # resample finely so the strands wind smoothly
-    n = max(8, int(L[-1] / 0.008))
+    # resample so the strands wind smoothly: ~9 rings a full turn (finer only wastes Roblox's triangle budget)
+    n = max(8, int(max(L[-1] / 0.03, L[-1] * turns / (2 * math.pi) * 9)))
     ts = np.linspace(0, L[-1], n)
     Q = np.array([np.interp(ts, L, [p[k] for p in P]) for k in range(3)]).T
     R = np.interp(ts, L, radii)
@@ -1272,7 +1272,11 @@ def build_styles(H):
                                               cards=dict(straight_cards("part", 0.24, 0.09), part=0.25)))
 
     # --- locs / twists: a short base, then real strands that hang (the front ones fall over the eyes)
-    def locs_extras(length, n_front, n_all, radius, front_len, end_z=None, part=False, two_strand=False, gap=0.075, clear_k=1.3):
+    def locs_extras(length, n_front, n_all, radius, front_len, end_z=None, part=False, two_strand=False, gap=0.075, clear_k=1.3,
+                    frame_face=False, hat_tail=False, curl_tips=False, turns=30.0):
+        """frame_face: the front locs fall beside the face (not over it); hat_tail: under a hat each loc keeps the part
+        below the cap band, so the locs hang out from under the hat all round (person's photos 2026-11-24);
+        curl_tips: the last few cm twist into a loose hook like real rope-twist locs"""
         def ex(b, T, capped=False):
             r2 = random.Random(11)
             rng_f = np.random.default_rng(zlib.crc32(f"frizz{length}{n_all}".encode()))
@@ -1300,11 +1304,13 @@ def build_styles(H):
                 chosen = [i for i in chosen if abs(rel[i][0]) > 0.035 or rel[i][1] > 0.45 * H.R]
             for k, i in enumerate(chosen):
                 root = V[i] + N[i] * (T[i] * 0.6)
-                if capped and V[i][2] > cap_line(H, V[i])[0] - 0.01:
+                if capped and not hat_tail and V[i][2] > cap_line(H, V[i])[0] - 0.01:
                     continue
                 # (and the ones rooted on the front of the top: full length they fall straight down over the face)
                 is_front = (rel[i][1] < -0.25 * H.R and rel[i][2] > 0.1) or (rel[i][1] < 0.1 * H.R and abs(rel[i][0]) < 0.55 * H.R
                                                                              and rel[i][2] > 0.1 and end_z is None)
+                if frame_face:
+                    is_front = False
                 L = front_len if is_front else length
                 L *= 0.85 + 0.3 * r2.random()
                 if end_z is not None:                  # tips end on one line: brows at the front, ear tops and fade behind
@@ -1325,13 +1331,50 @@ def build_styles(H):
                 pts = [V[i] - N[i] * 0.015, V[i] + N[i] * (T[i] * 0.5) + dir0 * 0.02] + list(pts[1:])
                 # (no sharp kinks where the drape meets the shoulder or chest: relax the path, root held)
                 Pp = np.array(pts, float)
+                if frame_face:
+                    # in front of the ears, below the brows, the loc is pushed out beside the cheek: the face stays open
+                    # and the front locs frame it (centre part, like the photos)
+                    face_hw = 0.6 * H.R + radius * 1.2
+                    for j in range(2, len(Pp)):
+                        q = Pp[j]
+                        fz = smoothstep(H.anchor[2] + 0.2, H.anchor[2] + 0.02, q[2])
+                        fy = smoothstep(0.05 * H.R, -0.35 * H.R, q[1] - H.centre[1])
+                        dx = q[0] - H.centre[0]
+                        if fz * fy > 0 and abs(dx) < face_hw:
+                            sx = math.copysign(1.0, dx if abs(dx) > 1e-4 else rel[i][0] or 1.0)
+                            Pp[j, 0] = H.centre[0] + sx * (abs(dx) + (face_hw - abs(dx)) * fz * fy)
                 for _ in range(6):
                     Pp[3:-1] = 0.25 * Pp[2:-2] + 0.5 * Pp[3:-1] + 0.25 * Pp[4:]
+                if curl_tips and len(Pp) > 6:
+                    # a loose hook at the tip, turning out and a little forward (each one its own way)
+                    n_c = max(3, len(Pp) // 6)
+                    out_ = Pp[-1] - np.array([H.centre[0], H.centre[1], Pp[-1][2]])
+                    out_[2] = 0.0
+                    out_ /= max(np.linalg.norm(out_), 1e-9)
+                    tw = r2.uniform(0.6, 1.0)
+                    for c_ in range(n_c):
+                        t_ = (c_ + 1) / n_c
+                        j = len(Pp) - n_c + c_
+                        Pp[j] += out_ * 0.05 * tw * t_ ** 2 + np.array([0, 0, 0.035]) * tw * t_ ** 3
+                if capped and hat_tail:
+                    # under a hat: only the part of the loc below the cap band (a little under it, so nothing pokes
+                    # through the hat); it hangs out from under the band all round
+                    cl = cap_line(H, Pp) - 0.03
+                    below = np.nonzero(Pp[:, 2] < cl)[0]
+                    if len(below) < 4:
+                        continue
+                    j0 = below[0]
+                    if not (Pp[j0:, 2] < cl[j0:] + 1e-6).all():
+                        runs = np.split(below, np.nonzero(np.diff(below) > 1)[0] + 1)
+                        j0 = max(runs, key=len)[0]
+                    # tucked in towards the head at its top end, so the cut end hides under the brim
+                    near = H.nearest(Pp[j0])[0]
+                    Pp = np.vstack([near + (Pp[j0] - near) * 0.4, Pp[j0:]])
                 pts = list(Pp)
                 rad = [radius * (1.0 - 0.35 * (j / len(pts)) ** 2) for j in range(len(pts))]
                 rad[0] *= 0.8
                 if two_strand:
-                    for vv, ff in rope(pts, rad):
+                    for vv, ff in rope(pts, rad, turns=turns):
                         b.add(vv, ff)
                 else:
                     vv, ff = tube(pts, rad, sides=7, twist=0.6, bumps=0.08, bump_freq=5.0)
@@ -1485,7 +1528,11 @@ def build_styles(H):
 
     base = dict(top=0.03, side=0.02, feather=0.05, groove=0.2, freq=34)
     if male:
-        add_short("Locs", "Shoulder Locs", base, locs_extras(1.1, 12, 70, 0.027, 0.27))   # (front locs end at the brows, eyes clear)
+        # thick two-strand rope-twist locs to the collarbone from a centre part, framing the face, tips curling;
+        # under a hat they hang out from under the band all round (the person's photos, 2026-11-24)
+        add_short("Locs", "Rope Twist Locs", dict(base, parts_y=True), locs_extras(0.95, 12, 64, 0.05, 0.95, part=True, two_strand=True,
+                                                                     gap=0.085, clear_k=1.15, frame_face=True, hat_tail=True,
+                                                                     curl_tips=True, turns=22.0))
         # hanging two-strand twists from a centre part, ending at the brows, the ear tops and the fade line, with a
         # squared edge-up and a high skin fade (references hair_ref_3)
         add_short("Twists", "Hanging Twists", dict(base, top=0.02, fade_z=0.2, feather=0.025, parts_y=True),
@@ -1496,7 +1543,7 @@ def build_styles(H):
                                                     parts_phi=np.degrees(FT_PARTS), parts_angle=ft_angle),
                   ft_ex)
     else:
-        add_short("Locs", "Long Locs", base, locs_extras(1.8, 10, 80, 0.026, 0.27))
+        add_short("Locs", "Long Locs", base, locs_extras(1.8, 10, 80, 0.026, 1.8, frame_face=True, hat_tail=True))   # (face open, like the rope locs)
 
     # --- women: slick centre part with a low bun (the reference), ponytail, long straight, bob
     if not male:
@@ -2061,11 +2108,19 @@ for gender in ("Male", "Female"):
     hair_col = tex_material("NC_Hair", TEX["NC_HairEdge"])
     fade_col = tex_material("NC_HairFaded", TEX["NC_HairFade"])
     card_col = card_material("NC_HairCard")
+    SPLIT_HAIR = {"Rope Twist Locs", "Long Locs"}            # (by label: locs split into parts, never decimated: it squared their ends)
     for key, st in styles.items():
         for kind in ("hair", "cap"):
             ob = st[kind]
             ob.data.materials.append(fade_col if st.get("skin_fade") else hair_col)
-            pieces[ob.name] = (ob, {"hair": "Hair", "cap": "HairCap"}[kind], key, st["label"])
+            knd = {"hair": "Hair", "cap": "HairCap"}[kind]
+            if st["label"] in SPLIT_HAIR:
+                # rope locs and twists: split into _2, _3 ... parts (whole locs kept together) instead of decimated,
+                # which melted the two-strand twist into lumps
+                for ob_ in split_cards(ob, 18000):
+                    pieces[ob_.name] = (ob_, knd, key, st["label"])
+            else:
+                pieces[ob.name] = (ob, knd, key, st["label"])
         for kind in ("cards", "capcards"):
             ob = st.get(kind)
             if ob is not None:
