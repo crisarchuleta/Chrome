@@ -824,6 +824,9 @@ function Kit.BuildCar(cf, vid)
 		root:SetAttribute("Axis", v3(h.Axis))
 		root:SetAttribute("Open", h.Open)
 		root:SetAttribute("Kind", h.Kind or hname)
+		if h.Slide then -- a sliding panel (the sunroof): it also moves this far, in the car's frame, as it opens
+			root:SetAttribute("Slide", v3(h.Slide))
+		end
 		roots[hname] = root
 	end
 	local optFolder = Instance.new("Folder")
@@ -988,11 +991,12 @@ function Kit.SetOpen(car, name, open, time)
 		return false
 	end
 	local closed, axis, angle = root:GetAttribute("ClosedC0"), root:GetAttribute("Axis"), math.rad(root:GetAttribute("Open") or 60)
+	local slide = root:GetAttribute("Slide")
 	local from, to = root:GetAttribute("Amount") or 0, open and 1 or 0
 	local token = {}
 	swing[root] = token
 	root:SetAttribute("Amount", to)
-	time = time or 0.45
+	time = time or (slide and 2.2 or 0.45)
 	local kind = root:GetAttribute("Kind") or "trunk"
 	if to > from then
 		panelSound(root, kind == "door" and "door_open" or "panel_click", 0.6)
@@ -1005,7 +1009,13 @@ function Kit.SetOpen(car, name, open, time)
 			if swing[root] ~= token or not weld.Parent then
 				return
 			end
-			weld.C0 = closed * CFrame.fromAxisAngle(axis, angle * (from + (to - from) * e))
+			local a = from + (to - from) * e
+			if slide then
+				-- tilt up first, then slide back: the tilt finishes in the first third of the travel
+				weld.C0 = closed * CFrame.new(slide * math.clamp((a - 0.25) / 0.75, 0, 1)) * CFrame.fromAxisAngle(axis, angle * math.clamp(a / 0.3, 0, 1))
+			else
+				weld.C0 = closed * CFrame.fromAxisAngle(axis, angle * a)
+			end
 			if k >= 1 then
 				if to < from then
 					panelSound(root, CLOSE_SOUND[kind] or "trunk_close", 0.8)
@@ -1032,6 +1042,7 @@ local PROMPT = {
 	door = { "Open the door", "Close the door" },
 	seat = { "Lift the seat", "Close the seat" },
 	cap = { "Open the gas cap", "Close the gas cap" },
+	sunroof = { "Open the sunroof", "Close the sunroof" },
 }
 function Kit.AddPanelPrompts(car, canUse)
 	local title = Vehicles.Get(Vehicles.Of(car)).name

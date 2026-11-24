@@ -1460,10 +1460,46 @@ def skylight():
 
     hw_min = min(roof_hw(ya + (yb - ya) * k / 10) for k in range(11))   # straight sides, inside the panel everywhere
     fr = sk.get("width", 0.8)
+    n0 = len(OBJS)
     rrect("Dark", ya, yb, fr + 0.04, 0.4, 0.008, 0.05)                         # rubber frame
+    frame = OBJS[n0:]
     ym = (ya + yb) / 2
-    rrect("Glass", ya + 0.07, ym - 0.03, fr, 0.33, 0.016, 0.02)                # front pane
+    # the front pane opens: it tilts up at the back and slides back over the rear pane (hinge "Sunroof" with a slide),
+    # uncovering a hole cut through the roof panel, the frame and the headliner (cut_sunroof, once everything exists)
+    rrect("Glass__Sunroof", ya + 0.07, ym - 0.03, fr, 0.33, 0.016, 0.02)       # front pane
     rrect("Glass", ym + 0.03, yb - 0.07, fr, 0.33, 0.016, 0.02)                # rear pane
+    HINGE_OF["Glass__Sunroof"] = "Sunroof"
+    loc, _, _, _ = body_bvh().ray_cast(Vector((0, ya + 0.07, 9)), Vector((0, 0, -1)), 12.0)
+    zf = loc.z if loc else ROOF
+    HINGES["Sunroof"] = {"pivot": (0.0, ya + 0.07, zf + 0.02), "axis": (1, 0, 0), "open": 2.5, "kind": "sunroof",
+                         "slide": (0.0, (ym - ya - 0.1) * 0.92, 0.1)}
+    SUNROOF_HOLE.update(y0=ya + 0.13, y1=ym - 0.09, x=fr * hw_min - 0.08, frame=frame)
+
+
+SUNROOF_HOLE = {}
+
+
+def cut_sunroof():
+    """the opening under the sliding pane: cut through the roof panel, the sunroof frame and every headliner"""
+    if not SUNROOF_HOLE:
+        return
+    h = SUNROOF_HOLE
+    targets = [ob for ob in OBJS if ob["kind"] == "PanelRoof" or ob["kind"].startswith("OptHeadliner")] + list(h["frame"])
+    for ob in targets:
+        if ob.name not in bpy.data.objects:
+            continue
+        bake(ob)
+        me = ob.data
+        me.transform(ob.matrix_world)
+        ob.matrix_world = Matrix.Identity(4)
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        for co, no in (((0, h["y0"], 0), (0, 1, 0)), ((0, h["y1"], 0), (0, 1, 0)), ((h["x"], 0, 0), (1, 0, 0)), ((-h["x"], 0, 0), (1, 0, 0))):
+            bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=co, plane_no=no)
+        dead = [f for f in bm.faces if (lambda c: h["y0"] < c.y < h["y1"] and abs(c.x) < h["x"])(f.calc_center_median())]
+        bmesh.ops.delete(bm, geom=dead, context="FACES")
+        bm.to_mesh(me)
+        bm.free()
 
 
 def smooth_details():
@@ -1691,6 +1727,7 @@ if S.get("police"):                                       # roof light bar + pus
             sbeam("Dark", (s_ * 0.9, L0 - 0.6, ZB + 0.2), (s_ * 0.9, L0 - 0.6, NOSE - 0.1), 0.14, 0.14)
         sbeam("Dark", (-0.9, L0 - 0.6, NOSE - 0.15), (0.9, L0 - 0.6, NOSE - 0.15), 0.14, 0.14)
         sbeam("Dark", (-0.9, L0 - 0.6, ZB + 0.6), (0.9, L0 - 0.6, ZB + 0.6), 0.14, 0.14)
+cut_sunroof()
 split_onto_doors()
 split_panels()
 car, car_tris = join_style(PREFIX, PREFIX)
@@ -1748,7 +1785,8 @@ data = {
         "Wheels": {"FL": car_pt((WX, WY_F, WR)), "FR": car_pt((-WX, WY_F, WR)), "RL": car_pt((WX, WY_R, WR)), "RR": car_pt((-WX, WY_R, WR))},
         "WheelRadius": WR,
         "LidHinge": car_pt(HINGES["Lid"]["pivot"]),
-        "Hinges": {k: {"Pivot": car_pt(h["pivot"]), "Axis": car_pt(h["axis"]), "Open": h["open"], "Kind": h["kind"]} for k, h in HINGES.items()},
+        "Hinges": {k: dict({"Pivot": car_pt(h["pivot"]), "Axis": car_pt(h["axis"]), "Open": h["open"], "Kind": h["kind"]},
+                           **({"Slide": car_pt(h["slide"])} if h.get("slide") else {})) for k, h in HINGES.items()},
         "HingeOf": {k: v for k, v in HINGE_OF.items() if f"{PREFIX}_{k}" in car_tris},
         "Hull": [car_box((-W, L0 - 0.2, ZB), (W, L1 + 0.2, BELT + 0.1)), car_box((-gx(BELT), A0 + 0.3, BELT), (gx(BELT), (C1 if not BED else C1), ROOF + 0.1))],
         "Seats": seats,
@@ -1862,6 +1900,13 @@ REF_VIEWS = [[0, 3.25], [27, 5.5], [90, 4.5], [208, 4.75], [180, 5.5], [203, 4.7
 fz = (ROOF * 0.4)
 if os.environ.get("NC_REFMASK"):                        # silhouettes for fitting the body to the reference sheet
     show()
+    if os.environ.get("NC_SUNOPEN") and "Sunroof" in HINGES:   # preview the sunroof open
+        h_ = HINGES["Sunroof"]
+        pv_ = Vector(h_["pivot"])
+        M_ = Matrix.Translation(Vector(h_["slide"])) @ Matrix.Translation(pv_) @ Matrix.Rotation(math.radians(h_["open"]), 4, "X") @ Matrix.Translation(-pv_)
+        for ob_ in scene.objects:
+            if ob_.name.endswith("Glass__Sunroof"):
+                ob_.matrix_world = M_ @ ob_.matrix_world
     if os.environ.get("NC_PROBE"):                       # which visible pieces have vertices near a point
         px_, py_, pz_, pr_ = map(float, os.environ["NC_PROBE"].split(","))
         for ob_ in scene.objects:
