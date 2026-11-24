@@ -967,7 +967,7 @@ def decal(kind, c00, c10, c11, c01, d, nu=10, nv=3, out=0.03, inn=0.03, smooth=3
     tree = body_bvh()
     d = Vector(d).normalized()
     c00, c10, c11, c01 = Vector(c00), Vector(c10), Vector(c11), Vector(c01)
-    O, I = [], []
+    O, I, miss = [], [], set()
     for j in range(nv + 1):
         v = j / nv
         ro, ri = [], []
@@ -975,11 +975,9 @@ def decal(kind, c00, c10, c11, c01, d, nu=10, nv=3, out=0.03, inn=0.03, smooth=3
             u = i / nu
             p = (c00 * (1 - u) + c10 * u) * (1 - v) + (c01 * (1 - u) + c11 * u) * v
             loc, n, _, _ = tree.ray_cast(p - d * 4.0, d, 12.0)
-            if loc is None:                                # off the edge of the skin: snap to the nearest surface
-                q = p - d * (p - Vector((0, p.y, BELT * 0.7))).dot(d)
-                loc, n, _, _ = tree.find_nearest(q)
-                if loc is None:
-                    loc, n = p, -d
+            if loc is None:                                # off the edge of the skin: those cells are left out
+                loc, n = p, -d
+                miss.add((j, i))
             n = Vector(n)
             if n.dot(d) > 0:
                 n = -n
@@ -987,7 +985,15 @@ def decal(kind, c00, c10, c11, c01, d, nu=10, nv=3, out=0.03, inn=0.03, smooth=3
             ri.append(loc - n * inn)
         O.append(ro)
         I.append(ri)
-    return solid_grid(kind, O, I, [(j, i) for j in range(nv) for i in range(nu)], smooth)
+    cells = [(j, i) for j in range(nv) for i in range(nu)
+             if not ({(j, i), (j + 1, i), (j, i + 1), (j + 1, i + 1)} & miss)]
+    # a hit far off the plane of its neighbours (a ray that slipped past an edge onto another surface) is dropped too
+    def far(a, b):
+        return (O[a[0]][a[1]] - O[b[0]][b[1]]).length
+    step = max((Vector(c10) - Vector(c00)).length / nu, (Vector(c01) - Vector(c00)).length / nv, 0.02)
+    cells = [(j, i) for (j, i) in cells if max(far((j, i), (j, i + 1)), far((j, i), (j + 1, i)), far((j + 1, i + 1), (j, i + 1)),
+                                               far((j + 1, i + 1), (j + 1, i))) < step * 4.0]
+    return solid_grid(kind, O, I, cells, smooth) if cells else None
 
 
 def smooth_details():
@@ -1020,7 +1026,7 @@ def smooth_details():
     # hatch: a body-colour sill on the lid under the glass's lower edge, so the opened hatch has no gap
     if REAR == "hatch":
         yb = GH_YEND
-        xw = W - 0.62
+        xw = gh_xb(yb) * 0.8 - 0.02                       # as wide as the hatch glass, so no step at its corners
         decal("Lid", (-xw, yb - 0.22, 9), (xw, yb - 0.22, 9), (xw, yb + 0.12, 9), (-xw, yb + 0.12, 9), (0, 0, -1), nu=16, nv=3,
               out=0.03, inn=0.04)
 

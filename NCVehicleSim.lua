@@ -275,6 +275,10 @@ function Sim.Step(car, s, dt, input, noPose)
 				end
 			elseif input.park then
 				long = -vLong * share * 10 -- parked: hold it still (clamped by grip below)
+			elseif absV < 3 then
+				-- no pedals, nearly stopped: the tyres hold it, like park. (A rolling-resistance-only coast let the
+				-- spring force's sideways share on a slight pitch push a seated car along at about 0.4 studs/s.)
+				long = -vLong * share * 10
 			else
 				long = -math.sign(vLong) * math.min(math.abs(vLong) * share * 2, mass * D.Coast / 4)
 			end

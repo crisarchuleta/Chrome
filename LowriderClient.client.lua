@@ -1571,7 +1571,7 @@ do
 		if not (torso and ps and pe and pw) then
 			return false
 		end
-		local la, lf = (pe - ps).Magnitude, (pw - pe).Magnitude + 0.2
+		local la, lf = (pe - ps).Magnitude, (pw - pe).Magnitude + 0.06
 		local v = torso.CFrame:VectorToObjectSpace(target - ps)
 		local d = math.clamp(v.Magnitude, math.abs(la - lf) + 0.05, la + lf - 0.02)
 		local dir = v.Unit
@@ -1605,16 +1605,14 @@ do
 		if up.Y < 0 then
 			up = -up
 		end
-		local turn = CFrame.fromAxisAngle(ax, -(Kit.SteerNow[car] or 0) * rad(250))
+		-- the right hand is the grip on the car's right (+X in the car frame), picked before turning so the hands
+		-- never swap; they turn with the wheel up to a quarter turn and then let it slide through them
+		local sxR = (r * 0.866 + up * 0.5).X > 0 and 1 or -1
+		local turn = CFrame.fromAxisAngle(ax, math.clamp(-(Kit.SteerNow[car] or 0) * rad(250), -rad(90), rad(90)))
 		local function grip(sx)
 			return o * (c + turn * ((r * sx * 0.866 + up * 0.5) * 0.4))
 		end
-		-- which grip is the right hand: the one on the car's right (+X in the car frame)
-		local g1, g2 = grip(1), grip(-1)
-		if (o:PointToObjectSpace(g1)).X < (o:PointToObjectSpace(g2)).X then
-			g1, g2 = g2, g1
-		end
-		return g1, g2
+		return grip(sxR), grip(-sxR)
 	end
 	local BIKE = {}
 	for _, v in Vehicles.List do
