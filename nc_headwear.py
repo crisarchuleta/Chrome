@@ -203,7 +203,7 @@ def build_durag(o, name, color=(0.01, 0.01, 0.01), velvet=False):
     ez, c = h.eye_z, h.c
     P, F = h.faces(sub=1)
     fr = h.front(P)
-    zl = ez + k * np.interp(fr, [-1, -0.5, -0.36, -0.22, 0.0, 1], [-0.05, -0.048, -0.025, 0.022, 0.031, 0.046])
+    zl = ez + k * np.interp(fr, [-1, -0.7, -0.4, -0.15, 0.0, 1], [-0.05, -0.044, -0.012, 0.022, 0.03, 0.046])
     P, F, _ = clip(P, F, zl - P[:, 2], {})
     X, F, E = _shell(o, P, F, 0.0045 * k, 3, 0.004 * k, smooth=3)
     ll = max(boundary_loops(F), key=len)
