@@ -402,7 +402,7 @@ def tube(points, radii, sides=8, twist=0.0, bumps=0.0, bump_freq=6.0):
     return verts, faces
 
 
-def rope(points, radii, turns=30.0, normals=None, flat=1.0):
+def rope(points, radii, turns=30.0, normals=None, flat=1.0, sides=6):
     """a two-strand twist along points: two tubes wound round each other (turns per stud along the path).
     normals + flat < 1: the twist is pressed flat against the scalp (flat twists)"""
     P = [np.array(p, float) for p in points]
@@ -436,7 +436,7 @@ def rope(points, radii, turns=30.0, normals=None, flat=1.0):
             ang = s_ + ts[j] * turns
             pts.append(Q[j] + (e1 * math.cos(ang) + e2 * math.sin(ang) * flat) * R[j] * 0.38)
             rr.append(R[j] * 0.62)
-        out.append(tube(pts, rr, sides=6))
+        out.append(tube(pts, rr, sides=sides))
     return out
 
 
@@ -636,7 +636,7 @@ def style_short(H, V, F, S, N, d, p):
         dist = np.linalg.norm(V - c, axis=1)
         T = np.maximum(0.03, dist / np.maximum(nq, 1e-6) - dist)
     if "fade_z" in p:                                    # skin fade: sides and back thin to nothing below a line
-        fz = H.ear_z + p["fade_z"] + p.get("fade_front", 0.0) * smoothstep(0.0, 0.6 * H.R, -(V[:, 1] - H.centre[1]))
+        fz = (p["fade_line"](V) if "fade_line" in p else H.ear_z) + p["fade_z"] + p.get("fade_front", 0.0) * smoothstep(0.0, 0.6 * H.R, -(V[:, 1] - H.centre[1]))
         T = T * smoothstep(fz - 0.10, fz + 0.06, V[:, 2] + 0.03 * noise(V, 9))
     if p.get("front_lift"):                              # a little more height at the front (the crop in the reference)
         T += p["front_lift"] * smoothstep(0.0, 0.5 * R, -back) * top_w
@@ -776,30 +776,35 @@ def build_styles(H):
         cov = np.clip(hl / (feather * (1 + 1.5 * low) * (1 - 0.6 * burnz)), 0, 1)
         field = hl + 0.004                                   # the surface runs just past the edge, flush on the skin
         if p.get("parts_phi") is not None:                   # clean scalp parts between the rows
-            az_ = H.ear_z - p.get("parts_axis", 0.0)
-            phv = np.arctan2(relv[:, 0], V[:, 2] - az_)
-            rxz = np.hypot(relv[:, 0], V[:, 2] - az_)
+            phv, rxz = p["parts_angle"](V)
             dpart = np.min(np.abs(phv[:, None] - np.radians(p["parts_phi"])[None, :]), axis=1) * rxz
             # (clean parts only where the rows sit close; lower on the sides the base is left dark)
             on_top = smoothstep(H.anchor[2] + 0.2, H.anchor[2] + 0.3, V[:, 2]) * smoothstep(math.radians(30), math.radians(22), np.abs(phv))
             cov = np.minimum(cov, 1 - on_top * (1 - smoothstep(0.002, 0.007, dpart)))
+        if p.get("hard_part") is not None:                  # a shaved line just under where the rows end
+            below = p["hard_part"](V) - V[:, 2]
+            behind = smoothstep(-0.6 * H.R, -0.45 * H.R, relv[:, 1])            # (from the temple corner back)
+            cov = np.minimum(cov, 1 - behind * (1 - smoothstep(0.005, 0.01, np.abs(below - 0.015))))
         if p.get("parts_y") is not None:                     # a centre part from the hairline to the crown
             dpart = np.abs(relv[:, 0])
             on_top = smoothstep(H.anchor[2] + 0.1, H.anchor[2] + 0.25, V[:, 2]) * (relv[:, 1] < 0.45 * H.R)
             cov = np.minimum(cov, 1 - on_top * (1 - smoothstep(0.004, 0.012, dpart)))
         if "fade_z" in p:
-            fz = H.ear_z + p["fade_z"] + p.get("fade_front", 0.0) * smoothstep(0.0, 0.6 * H.R, -(V[:, 1] - H.centre[1]))
-            fc = smoothstep(fz - 0.3, fz + 0.1, V[:, 2] + 0.03 * noise(V, 9))
+            fz = (p["fade_line"](V) if "fade_line" in p else H.ear_z) + p["fade_z"] + p.get("fade_front", 0.0) * smoothstep(0.0, 0.6 * H.R, -(V[:, 1] - H.centre[1]))
+            fc = smoothstep(fz - p.get("fade_len", 0.3), fz + 0.1, V[:, 2] + 0.03 * noise(V, 9))
+            if p.get("hard_part") is not None:               # (the fade starts right under the part: dark there,
+                below = p["hard_part"](V) - V[:, 2]          # then a long thinning tail down to skin)
+                fc = np.clip(1 - (below - 0.026 + 0.012 * noise(V, 9)) / p["fade_len"], 0, 1) ** 1.7
             cov = np.minimum(cov, fc)
             field = np.minimum(field, fc - 0.02)
-        hair = shell(f"Hair_{key}", V, F, N, T, field=field, lift=0.002, uv=(cov, ev))
+        hair = shell(f"Hair_{key}", V, F, N, T, field=field, lift=0.0035, uv=(cov, ev))
         if extras:
             b = Builder()
             b.add_obj(hair)
             extras(b, T)
             hair = b.make(f"Hair_{key}")
         Tc = cap_version(H, V, T, p)
-        cap = shell(f"Hair_{key}_Cap", V, F, N, Tc, field=field, lift=0.002, uv=(cov, ev))
+        cap = shell(f"Hair_{key}_Cap", V, F, N, Tc, field=field, lift=0.0035, uv=(cov, ev))
         if extras and p.get("cap_extras", True):
             b = Builder()
             b.add_obj(cap)
@@ -880,48 +885,133 @@ def build_styles(H):
         return ex
 
     # rows lie in planes through a front-to-back axis well below the head (under the jaw), so they run nearly
-    # parallel over the top like the reference instead of bunching together at the forehead
+    # parallel over the top like the reference instead of bunching together at the forehead. The axis rises towards
+    # the back, so at the back of the head the rows draw together and point down towards the nape (hair_ref_2 M5)
     FT_AXIS = 0.5
     FT_SPAN = 38.0
+    FT_TILT = 0.1
+    FT_FRONT = 0.3                       # rows start at the edge-up's square temple corners, not down the temples
+    ft_o = np.array([0.0, H.centre[1], H.ear_z - FT_AXIS])
+    ft_a = np.array([0.0, 1.0, FT_TILT]) / math.hypot(1.0, FT_TILT)
+    ft_up = np.array([0.0, 0.0, 1.0]) - ft_a * ft_a[2]
+    ft_up /= np.linalg.norm(ft_up)
 
-    def flat_twists(n_rows, radius, drop=0):
-        """two-strand flat twists in rows from the hairline over the crown to the fade (references hair_ref_2): each row
-        lies in a plane through a front-to-back axis at ear height, so the rows fan evenly over the top and sides"""
-        phis = [math.radians(-FT_SPAN + 2 * FT_SPAN * (k + 0.5) / n_rows) for k in range(n_rows)][drop:n_rows - drop]
+    def ft_angle(P):
+        """each point's angle round the rows' axis (0 straight up) and its distance from the axis"""
+        rel = np.atleast_2d(P) - ft_o
+        xx, yy = rel[:, 0], rel @ ft_up
+        return np.arctan2(xx, yy), np.hypot(xx, yy)
+
+    def ft_dir(ph, th):
+        e = np.array([math.sin(ph), 0.0, 0.0]) + math.cos(ph) * ft_up
+        return Vector(-math.cos(th) * ft_a + math.sin(th) * e)
+
+    def ft_rows(n_rows):
+        """row angles spaced by equal distance OVER THE SCALP (not equal angles: on the sides the head turns away from
+        the axis and equal angles leave wide gaps), from just above the fade on one side to the other"""
+        grid = np.radians(np.linspace(-85, 85, 341))
+        pts = []
+        for ph in grid:
+            dv = ft_dir(ph, math.pi / 2)
+            hit = H.bvh.ray_cast(Vector(ft_o) + dv * 3, -dv, 3.0)
+            pts.append(np.array(hit[0]) if hit[0] is not None else np.full(3, np.nan))
+        pts = np.array(pts)
+        ok = pts[:, 2] > H.ear_z + FT_LOW                                    # (the lowest row, above the ear)
+        g, P = grid[ok], pts[ok]
+        arc = np.r_[0, np.cumsum(np.linalg.norm(np.diff(P, axis=0), axis=1))]
+        pitch = arc[-1] / n_rows
+        rows = np.interp(pitch * (np.arange(n_rows) + 0.5), arc, g)
+        parts = np.interp(pitch * np.arange(1, n_rows), arc, g)
+        return rows, parts, pitch
+
+    FT_CUT = 0.10                         # the hard part, from ear_z at the back; it rises by FT_FRONT to the temples
+
+    def ft_cut(P):
+        P = np.atleast_2d(P)
+        return H.ear_z + FT_CUT + FT_FRONT * smoothstep(0.1 * H.R, 0.6 * H.R, -(P[:, 1] - H.centre[1]))
+
+    FT_LOW = 0.12
+    FT_ROWS, FT_PARTS, FT_PITCH = ft_rows(12)
+
+    def flat_twists():
+        """two-strand flat twists in rows from the hairline over the crown to the fade (references hair_ref_2): fat
+        twists packed side by side (only a thin part between them), knobbed ends at the front hairline. Returns the
+        extras builder and a function giving each scalp point's distance from the twists (for the part and fade)"""
         kv = KDTree(len(V))
         for ii, vv_ in enumerate(V):
             kv.insert(vv_, ii)
         kv.balance()
-        axis_o = Vector((0.0, H.centre[1], H.ear_z - FT_AXIS))
+        axis_o = Vector(ft_o)
+        rows = []
+        for ph in FT_ROWS:
+            segs = [[]]
+            dref = None
+            for th in np.linspace(math.radians(-20), math.radians(220), 240):
+                dvec = ft_dir(ph, th)
+                hit = H.bvh.ray_cast(axis_o + dvec * 3, -dvec, 3.0)
+                if hit[0] is None:
+                    continue
+                q = np.array(hit[0])
+                if dref is None and th >= math.pi / 2:
+                    dref = ft_angle(q)[1][0]
+                _, idx, _ = kv.find(q)
+                if d[idx] < 0.005:
+                    segs.append([])                             # (only inside the hairline)
+                    continue
+                segs[-1].append((q, np.array(hit[1])))
+            path = max(segs, key=len)                           # the longest unbroken run
+            above = [q[2] > ft_cut(q)[0] + 0.01 for q, _ in path]   # both ends trimmed back to the hard part
+            if not any(above):
+                continue
+            k0, k1 = above.index(True), len(above) - above[::-1].index(True)
+            path = path[k0:k1]
+            if len(path) < 30:                                  # (no stubs where a row only grazes the hair)
+                continue
+            path = path[::3]
+            # each twist is as wide as its row (they touch; as the rows draw together at the back so do the twists)
+            _, dist = ft_angle(np.array([q for q, _ in path]))
+            rows.append((path, 0.53 * FT_PITCH * np.clip(dist / (dref or dist.max()), 0.75, 1.0)))
+        # the hard part runs along the twists' lower edge: per direction round the head, the lowest twist edge,
+        # smoothed into one clean line (sides and back; the front is the hairline)
+        allq = np.concatenate([[q for q, _ in pth] for pth, _ in rows])
+        allr = np.concatenate([rw for _, rw in rows])
+        nb = 90
+        az = np.arctan2(allq[:, 0] - H.centre[0], allq[:, 1] - H.centre[1])
+        bins = ((az + math.pi) / (2 * math.pi) * nb).astype(int) % nb
+        zb = np.full(nb, np.nan)
+        for k_ in range(nb):
+            sel = bins == k_
+            if sel.any():
+                zb[k_] = np.min(allq[sel, 2] - 0.7 * allr[sel])
+        okb = ~np.isnan(zb)
+        xb = np.arange(nb)
+        zb = np.interp(xb, xb[okb], zb[okb], period=nb)
+        zb = np.convolve(np.r_[zb[-5:], zb, zb[:5]], np.ones(11) / 11, "same")[5:-5]
+
+        def twist_line(P):
+            P = np.atleast_2d(P)
+            a_ = np.arctan2(P[:, 0] - H.centre[0], P[:, 1] - H.centre[1])
+            return np.interp((a_ + math.pi) / (2 * math.pi) * nb - 0.5, xb, zb, period=nb)
 
         def ex(b, T, capped=False):
-            fz = H.ear_z + 0.1
-            for ph in phis:
-                segs = [[]]
-                for th in np.linspace(math.radians(-20), math.radians(220), 200):
-                    d0 = (-math.cos(th), math.sin(th))                     # (y, up) in the row's plane
-                    dvec = Vector((d0[1] * math.sin(ph), d0[0], d0[1] * math.cos(ph)))
-                    hit = H.bvh.ray_cast(axis_o + dvec * 3, -dvec, 3.0)
-                    if hit[0] is None:
+            for path, rw in rows:
+                if capped:                                      # (under a hat: only the band below the crown)
+                    keep = [k for k, (q, _) in enumerate(path) if q[2] <= H.anchor[2] + 0.2]
+                    if len(keep) < 4:
                         continue
-                    q = np.array(hit[0])
-                    _, idx, _ = kv.find(q)
-                    if d[idx] < 0.005 or q[2] < fz + 0.16 * smoothstep(0.0, 0.6 * H.R, -(q[1] - H.centre[1])) or (capped and q[2] > H.anchor[2] + 0.2):
-                        segs.append([])                         # (only inside the hairline and above the fade)
-                        continue
-                    segs[-1].append((q, np.array(hit[1])))
-                path = max(segs, key=len)                       # the longest unbroken run
-                if len(path) < 4:
-                    continue
-                path = path[::3]
+                    runs = np.split(np.array(keep), np.nonzero(np.diff(keep) > 1)[0] + 1)
+                    run = max(runs, key=len)
+                    path, rw = [path[k] for k in run], rw[run]
                 m = len(path)
-                # the ends start flat at the hairline and finish flat at the fade (thin, sunk into the scalp)
-                env = [smoothstep(-1, 1.5, j) * (1 - 0.6 * smoothstep(m - 4, m - 1, j)) for j in range(m)]
-                rad = [radius * (0.35 + 0.65 * e) for e in env]
-                P = [q + n_ * (radius * (0.1 + 0.45 * e)) for (q, n_), e in zip(path, env)]
-                for vv, ff in rope(P, rad, turns=60.0, normals=[n_ for _, n_ in path], flat=0.45):
+                # the front end is a full knob, the back end thins into the fade
+                env = [(0.8 + 0.2 * smoothstep(-1, 1.5, j)) * (1 - 0.35 * smoothstep(m - 3, m - 1, j)) for j in range(m)]
+                rad = [r_ * (0.35 + 0.65 * e_) for r_, e_ in zip(rw, env)]
+                # (sitting on top of the short base hair, never sunk under it)
+                P = [q + n_ * (0.008 + r_ * (0.1 + 0.45 * e_)) for (q, n_), r_, e_ in zip(path, rw, env)]
+                for vv, ff in rope(P, rad, turns=70.0, normals=[n_ for _, n_ in path], flat=0.5, sides=8):
                     b.add(vv, ff)
-        return ex
+        return ex, twist_line
+
 
     base = dict(top=0.03, side=0.02, feather=0.05, groove=0.2, freq=34)
     if male:
@@ -930,9 +1020,10 @@ def build_styles(H):
         # squared edge-up and a high skin fade (references hair_ref_3)
         add_short("Twists", "Hanging Twists", dict(base, top=0.02, fade_z=0.2, feather=0.025, parts_y=True),
                   locs_extras(0.45, 14, 220, 0.022, 0.3, end_z=H.ear_z + 0.12, part=True, two_strand=True, gap=0.042, clear_k=0.8))
-        add_short("FlatTwists", "Flat Twists", dict(top=0.012, side=0.012, fade_z=0.19, fade_front=0.16, feather=0.025, groove=0.05, freq=40,
-                                                    parts_phi=[-FT_SPAN + 2 * FT_SPAN * k / 15 for k in range(3, 13)], parts_axis=FT_AXIS),
-                  flat_twists(15, 0.034, drop=2))
+        ft_ex, ft_line = flat_twists()
+        add_short("FlatTwists", "Flat Twists", dict(top=0.012, side=0.012, fade_z=-0.03, fade_len=0.24, fade_line=ft_line, hard_part=ft_line, feather=0.025, groove=0.05, freq=40,
+                                                    parts_phi=np.degrees(FT_PARTS), parts_angle=ft_angle),
+                  ft_ex)
     else:
         add_short("Locs", "Long Locs", base, locs_extras(1.8, 10, 80, 0.026, 0.38))
 
