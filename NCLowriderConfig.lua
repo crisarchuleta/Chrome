@@ -70,6 +70,9 @@ C.Art = {
 -- Decal image ids. Importing LowriderVinyls.glb and running NCLowriderKit.Prepare on it fills these in by itself;
 -- you can also upload the PNGs yourself and paste ids here, e.g. flames_side = "rbxassetid://123456".
 C.VinylIds = {}
+-- Uniform roughness image (vehicles/vinyl_gloss_roughness.png, grey 56 = roughness 0.22) for the vinyl
+-- SurfaceAppearance templates, so printed panels stay glossy like the paint. Prepare copies it onto each template.
+C.VinylRoughness = ""
 
 -- finishes for chrome parts (bumpers, grille, trim, rims, knock-offs...). "paint" follows the body colour.
 C.TrimFinishes = {

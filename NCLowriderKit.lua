@@ -203,6 +203,10 @@ function Kit.Prepare(import)
 					t.Name = key
 					pcall(function()
 						t.AlphaMode = Enum.AlphaMode.Overlay
+						-- without a roughness map the print renders fully rough (flat) next to the glossy paint
+						if (Config.VinylRoughness or "") ~= "" then
+							t.RoughnessMap = Config.VinylRoughness
+						end
 					end)
 					t.Parent = vinyls
 				end

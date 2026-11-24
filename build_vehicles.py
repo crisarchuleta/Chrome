@@ -724,6 +724,7 @@ def greenhouse_smooth():
     phis = [math.radians(t) for t in th] + [math.radians(180 - t) for t in reversed(th[:-1])]
     O = [[gh_pt(y, ph) for ph in phis] for y in ys]
     nj, ni = len(ys), len(phis)
+    q_end = lambda z: (Q if Q else B) + 1.55 - 1.1 * (z - GH_ZB) / (ROOF - GH_ZB)
     N = []
     for j in range(nj):
         row = []
@@ -738,7 +739,6 @@ def greenhouse_smooth():
                 n = -n
             row.append(n)
         N.append(row)
-    q_end = lambda z: (Q if Q else B) + 1.55 - 1.1 * (z - GH_ZB) / (ROOF - GH_ZB)
 
     def kind_of(yc, t, zc):
         if t > 46:
@@ -752,18 +752,45 @@ def greenhouse_smooth():
             return "RoofBody"
         return "RoofGlass"
     thick = {"Glass": 0.05, "RoofGlass": 0.05, "RoofGlass__Lid": 0.05, "PanelRoof": 0.1, "RoofBody": 0.08, "RoofChrome": 0.06}
-    groups = {}
+    groups, cut = {}, []
     for j in range(nj - 1):
         for i in range(ni - 1):
             ph = (phis[i] + phis[i + 1]) / 2
             t = math.degrees(min(ph, math.pi - ph))
             yc = (ys[j] + ys[j + 1]) / 2
             zc = (O[j][i].z + O[j + 1][i + 1].z) / 2
+            if t <= 39:
+                # the quarter window's rear edge slants across the grid: cut that cell along the line itself
+                q = [(j, i), (j, i + 1), (j + 1, i + 1), (j + 1, i)]
+                f = [O[a][b].y - q_end(O[a][b].z) for a, b in q]
+                if min(f) < 0 < max(f):
+                    kf, kb = kind_of(q_end(zc) - 0.02, t, zc), kind_of(q_end(zc) + 0.02, t, zc)
+                    if kf != kb:
+                        cut.append((q, f, kf, kb))
+                        continue
             groups.setdefault(kind_of(yc, t, zc), []).append((j, i))
     for k, cells in groups.items():
         t = thick[k]
         I = [[O[j][i] - N[j][i] * t for i in range(ni)] for j in range(nj)]
         solid_grid(k, O, I, cells, smooth=40.0 if k != "RoofChrome" else 20.0)
+    for q, f, kf, kb in cut:                               # each cut cell: the part before the line, the part after
+        P = [O[a][b] for a, b in q]
+        Nn = [N[a][b] for a, b in q]
+        for kk, sgn in ((kf, -1), (kb, 1)):
+            outer, inner = [], []
+            for m in range(4):
+                p0, p1, f0, f1 = P[m], P[(m + 1) % 4], f[m], f[(m + 1) % 4]
+                n0, n1 = Nn[m], Nn[(m + 1) % 4]
+                if f0 * sgn >= 0:
+                    outer.append(p0)
+                    inner.append(p0 - n0 * thick[kk])
+                if (f0 < 0) != (f1 < 0):
+                    u = f0 / (f0 - f1)
+                    pc, nc = p0.lerp(p1, u), n0.lerp(n1, u).normalized()
+                    outer.append(pc)
+                    inner.append(pc - nc * thick[kk])
+            if len(outer) >= 3:
+                sprism(kk, [tuple(v) for v in outer], [tuple(v) for v in inner])
     HINGE_OF["RoofGlass__Lid"] = "Lid"
 
 
@@ -1438,6 +1465,8 @@ if os.environ.get("NC_DEBUG_SHOTS"):
     pose(0.0)
     shot("dbg_hood", (-Lr * 0.55, -Lr * 1.15, ROOF * 1.5), (0, L0 + 2.5, BELT - 0.6))
     shot("dbg_cornerA", (W + 3.5, L0 - 3.5, 2.6), (W - 1.0, L0 + 1.0, 1.9))
+    shot("dbg_quarter", (W + 6.0, (Q or B) + 1.0, 4.8), (W - 0.6, (Q or B) + 1.0, 4.2))
+    shot("dbg_rwheel", (W + 6.0, WY_R, 1.6), (W, WY_R, 1.4))
     shot("dbg_cornerB", (-W - 3.5, L0 - 3.5, 2.6), (-W + 1.0, L0 + 1.0, 1.9))
     shot("dbg_hood_side", (-Lr * 1.1, -Lr * 0.55, BELT + 0.8), (0, (L0 + A0) / 2, BELT - 0.5))
     HINGES_SAVE = {k: v["open"] for k, v in HINGES.items()}
