@@ -193,6 +193,150 @@ Ink.FIT = {
 	},
 }
 
+-- the R15 part sizes (studs) Ink.FIT was measured on; Attach warns when a body's part differs (wrong body file)
+Ink.PART_SIZE = {
+	Female_Athletic = {
+		Head = Vector3.new(1.3229, 3.078, 0.7404),
+		LeftHand = Vector3.new(1.524, 2.5225, 0.4599),
+		LeftLowerArm = Vector3.new(1.5021, 2.1013, 0.4397),
+		LeftLowerLeg = Vector3.new(1.3229, 4.7871, 0.5435),
+		LeftUpperArm = Vector3.new(1.4619, 2.1013, 0.4668),
+		LeftUpperLeg = Vector3.new(1.325, 3.3311, 0.8928),
+		RightHand = Vector3.new(1.524, 2.5225, 0.4599),
+		RightLowerArm = Vector3.new(1.5021, 2.1013, 0.4397),
+		RightLowerLeg = Vector3.new(1.3229, 4.7871, 0.5435),
+		RightUpperArm = Vector3.new(1.4619, 2.1013, 0.4668),
+		RightUpperLeg = Vector3.new(1.325, 3.3311, 0.8965),
+		UpperTorso = Vector3.new(1.402, 2.2204, 0.8067),
+	},
+	Female_Average = {
+		Head = Vector3.new(1.3663, 3.2495, 0.7394),
+		LeftHand = Vector3.new(1.5444, 2.5591, 0.5635),
+		LeftLowerArm = Vector3.new(1.5187, 2.3158, 0.5635),
+		LeftLowerLeg = Vector3.new(1.3663, 4.8168, 0.5635),
+		LeftUpperArm = Vector3.new(1.4723, 2.3158, 0.5767),
+		LeftUpperLeg = Vector3.new(1.3789, 3.3514, 0.9263),
+		RightHand = Vector3.new(1.5444, 2.5591, 0.5635),
+		RightLowerArm = Vector3.new(1.5187, 2.3158, 0.5635),
+		RightLowerLeg = Vector3.new(1.3663, 4.8168, 0.5635),
+		RightUpperArm = Vector3.new(1.4723, 2.3158, 0.5767),
+		RightUpperLeg = Vector3.new(1.379, 3.3514, 0.9266),
+		UpperTorso = Vector3.new(1.395, 2.3934, 0.8131),
+	},
+	Female_Heavy = {
+		Head = Vector3.new(1.5409, 3.2319, 0.7496),
+		LeftHand = Vector3.new(1.6319, 2.5306, 0.5024),
+		LeftLowerArm = Vector3.new(1.6132, 2.2687, 0.4856),
+		LeftLowerLeg = Vector3.new(1.5409, 4.7901, 0.5626),
+		LeftUpperArm = Vector3.new(1.5786, 2.2687, 0.5259),
+		LeftUpperLeg = Vector3.new(1.5409, 3.3271, 1.0192),
+		RightHand = Vector3.new(1.6319, 2.5306, 0.5024),
+		RightLowerArm = Vector3.new(1.6132, 2.2687, 0.4856),
+		RightLowerLeg = Vector3.new(1.5409, 4.7901, 0.5626),
+		RightUpperArm = Vector3.new(1.5786, 2.2687, 0.5259),
+		RightUpperLeg = Vector3.new(1.5409, 3.3271, 1.0192),
+		UpperTorso = Vector3.new(1.5409, 2.3835, 0.9079),
+	},
+	Female_Muscular = {
+		Head = Vector3.new(0.6083, 1.1451, 0.7396),
+		LeftHand = Vector3.new(1.1331, 2.3979, 0.4412),
+		LeftLowerArm = Vector3.new(1.131, 1.788, 0.3827),
+		LeftLowerLeg = Vector3.new(0.8782, 4.6567, 0.5476),
+		LeftUpperArm = Vector3.new(1.0986, 1.1129, 0.5428),
+		LeftUpperLeg = Vector3.new(0.9454, 3.2057, 0.9176),
+		RightHand = Vector3.new(1.1331, 2.3979, 0.4412),
+		RightLowerArm = Vector3.new(1.131, 1.788, 0.3827),
+		RightLowerLeg = Vector3.new(0.8782, 4.6567, 0.5476),
+		RightUpperArm = Vector3.new(1.0986, 1.1129, 0.5428),
+		RightUpperLeg = Vector3.new(0.9454, 3.2057, 0.9168),
+		UpperTorso = Vector3.new(1.4082, 1.289, 0.8704),
+	},
+	Female_Skinny = {
+		Head = Vector3.new(1.2618, 3.281, 0.7402),
+		LeftHand = Vector3.new(1.494, 2.5383, 0.5786),
+		LeftLowerArm = Vector3.new(1.4669, 2.3215, 0.5786),
+		LeftLowerLeg = Vector3.new(1.2618, 4.8051, 0.5786),
+		LeftUpperArm = Vector3.new(1.4268, 2.3215, 0.5786),
+		LeftUpperLeg = Vector3.new(1.2618, 3.3129, 0.7733),
+		RightHand = Vector3.new(1.494, 2.5383, 0.5786),
+		RightLowerArm = Vector3.new(1.4669, 2.3215, 0.5786),
+		RightLowerLeg = Vector3.new(1.2618, 4.8051, 0.5786),
+		RightUpperArm = Vector3.new(1.4268, 2.3215, 0.5786),
+		RightUpperLeg = Vector3.new(1.2618, 3.3129, 0.7727),
+		UpperTorso = Vector3.new(1.3638, 2.4148, 0.7862),
+	},
+	Male_Athletic = {
+		Head = Vector3.new(1.2205, 1.6264, 0.8394),
+		LeftHand = Vector3.new(1.6931, 3.1367, 0.5821),
+		LeftLowerArm = Vector3.new(1.6633, 2.365, 0.4384),
+		LeftLowerLeg = Vector3.new(1.2741, 5.569, 0.5508),
+		LeftUpperArm = Vector3.new(1.6063, 1.3592, 0.5438),
+		LeftUpperLeg = Vector3.new(1.3158, 3.8207, 0.8916),
+		RightHand = Vector3.new(1.6931, 3.1367, 0.5821),
+		RightLowerArm = Vector3.new(1.6633, 2.365, 0.4384),
+		RightLowerLeg = Vector3.new(1.2741, 5.569, 0.5508),
+		RightUpperArm = Vector3.new(1.6063, 1.3592, 0.5438),
+		RightUpperLeg = Vector3.new(1.3158, 3.8207, 0.8917),
+		UpperTorso = Vector3.new(1.7216, 1.4856, 0.8971),
+	},
+	Male_Average = {
+		Head = Vector3.new(1.2327, 1.6846, 0.9366),
+		LeftHand = Vector3.new(1.7073, 3.1507, 0.6732),
+		LeftLowerArm = Vector3.new(1.6818, 2.3794, 0.5668),
+		LeftLowerLeg = Vector3.new(1.2985, 5.5976, 0.5984),
+		LeftUpperArm = Vector3.new(1.6283, 1.3845, 0.6312),
+		LeftUpperLeg = Vector3.new(1.3497, 3.8259, 0.9245),
+		RightHand = Vector3.new(1.7073, 3.1507, 0.6732),
+		RightLowerArm = Vector3.new(1.6818, 2.3794, 0.5668),
+		RightLowerLeg = Vector3.new(1.2985, 5.5976, 0.5984),
+		RightUpperArm = Vector3.new(1.6283, 1.3845, 0.6312),
+		RightUpperLeg = Vector3.new(1.3497, 3.8259, 0.9255),
+		UpperTorso = Vector3.new(1.7208, 1.4873, 0.9211),
+	},
+	Male_Heavy = {
+		Head = Vector3.new(1.1497, 1.6508, 0.972),
+		LeftHand = Vector3.new(1.6635, 3.176, 0.7092),
+		LeftLowerArm = Vector3.new(1.6592, 2.4017, 0.6194),
+		LeftLowerLeg = Vector3.new(1.2662, 5.6206, 0.6372),
+		LeftUpperArm = Vector3.new(1.5946, 1.3975, 0.7108),
+		LeftUpperLeg = Vector3.new(1.3335, 3.8834, 1.0062),
+		RightHand = Vector3.new(1.6635, 3.176, 0.7092),
+		RightLowerArm = Vector3.new(1.6592, 2.4017, 0.6194),
+		RightLowerLeg = Vector3.new(1.2662, 5.6206, 0.6372),
+		RightUpperArm = Vector3.new(1.5946, 1.3975, 0.7108),
+		RightUpperLeg = Vector3.new(1.3335, 3.8834, 1.0071),
+		UpperTorso = Vector3.new(1.7619, 1.4456, 0.9967),
+	},
+	Male_Muscular = {
+		Head = Vector3.new(0.6903, 1.3028, 0.9965),
+		LeftHand = Vector3.new(1.4267, 3.0696, 0.7327),
+		LeftLowerArm = Vector3.new(1.4047, 2.2922, 0.6306),
+		LeftLowerLeg = Vector3.new(1.0261, 5.5088, 0.6667),
+		LeftUpperArm = Vector3.new(1.3629, 1.2979, 0.6911),
+		LeftUpperLeg = Vector3.new(1.0811, 3.7488, 0.9176),
+		RightHand = Vector3.new(1.4267, 3.0696, 0.7327),
+		RightLowerArm = Vector3.new(1.4047, 2.2922, 0.6306),
+		RightLowerLeg = Vector3.new(1.0261, 5.5088, 0.6667),
+		RightUpperArm = Vector3.new(1.3629, 1.2979, 0.6911),
+		RightUpperLeg = Vector3.new(1.0811, 3.7488, 0.9175),
+		UpperTorso = Vector3.new(1.6828, 1.4788, 0.982),
+	},
+	Male_Skinny = {
+		Head = Vector3.new(1.1914, 1.6595, 0.8528),
+		LeftHand = Vector3.new(1.691, 3.0907, 0.5897),
+		LeftLowerArm = Vector3.new(1.6622, 2.321, 0.5185),
+		LeftLowerLeg = Vector3.new(1.2721, 5.5262, 0.5385),
+		LeftUpperArm = Vector3.new(1.5899, 1.3177, 0.537),
+		LeftUpperLeg = Vector3.new(1.2668, 3.7552, 0.8307),
+		RightHand = Vector3.new(1.6705, 3.0907, 0.5897),
+		RightLowerArm = Vector3.new(1.6416, 2.321, 0.5185),
+		RightLowerLeg = Vector3.new(1.2516, 5.5262, 0.5385),
+		RightUpperArm = Vector3.new(1.5694, 1.3177, 0.537),
+		RightUpperLeg = Vector3.new(1.2463, 3.7552, 0.8313),
+		UpperTorso = Vector3.new(1.6938, 1.5128, 0.8778),
+	},
+}
+
 local function textureId(file)
 	local ids = RS:FindFirstChild("NCInkIds")
 	local v = ids and ids:FindFirstChild(file)
@@ -237,7 +381,7 @@ function Ink.Attach(character, bodyName)
 	if ut and lua and ut:IsA("BasePart") and lua:IsA("BasePart") and ut.CFrame:PointToObjectSpace(lua.Position).X > 0 then
 		flip = -1
 	end
-	local placed = 0
+	local placed, warned = 0, {}
 	for _, name in ipairs(Ink.LAYERS) do
 		local mp = src:FindFirstChild(name, true)
 		local part = character:FindFirstChild(partFor(name))
@@ -257,6 +401,15 @@ function Ink.Attach(character, bodyName)
 				end
 			end
 			local f = fit[name]
+			local want = (Ink.PART_SIZE[bodyName] or {})[part.Name]
+			if want and not warned[part.Name] then
+				local r = part.Size / want
+				if math.abs(r.X - 1) > 0.05 or math.abs(r.Y - 1) > 0.05 or math.abs(r.Z - 1) > 0.05 then
+					warned[part.Name] = true
+					warn(("[NCInk] %s %s is %s, the ink was fitted to %s: placement scales with it, but a different mesh will put the ink off"):format(
+						bodyName, part.Name, tostring(part.Size), tostring(want)))
+				end
+			end
 			local rel
 			if f then
 				c.Size = part.Size * Vector3.new(f[4], f[5], f[6])
@@ -280,6 +433,27 @@ function Ink.Attach(character, bodyName)
 	end
 	folder.Parent = character
 	return placed > 0
+end
+
+-- Studio/command-bar check: prints every layer's part, sizes and where it sits from its part, and what it shows
+function Ink.Debug(character)
+	local folder = character:FindFirstChild("NCInk")
+	if not folder then
+		print("[NCInk] no NCInk folder on", character:GetFullName())
+		return
+	end
+	for _, name in ipairs(Ink.LAYERS) do
+		local mp = folder:FindFirstChild(name)
+		local part = character:FindFirstChild(partFor(name))
+		if mp and part then
+			local rel = part.CFrame:Inverse() * mp.CFrame
+			local sa = mp:FindFirstChildOfClass("SurfaceAppearance")
+			print(("[NCInk] %-20s on %-14s part %s layer %s offset %s  T=%.2f tex=%s sa=%s"):format(name, part.Name, tostring(part.Size),
+				tostring(mp.Size), tostring(rel.Position), mp.Transparency, mp.TextureID, sa and sa.ColorMap or "-"))
+		else
+			print("[NCInk]", name, "missing", mp == nil and "layer" or "part")
+		end
+	end
 end
 
 -- the texture each layer gets for an ink table (layer name -> file name)

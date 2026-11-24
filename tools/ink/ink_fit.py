@@ -19,5 +19,15 @@ for ob in bpy.data.objects:
     d = (ca - cb) / sb; s = sa / sb
     # Blender (x, y, z) -> Roblox (-x, z, y); sizes have no sign
     out.setdefault(body, {})[layer] = [round(-d[0], 5), round(d[2], 5), round(d[1], 5), round(s[0], 5), round(s[2], 5), round(s[1], 5)]
+# the R15 part sizes the fit was measured on (Roblox axes), so the game can warn when a body part differs
+sizes = {}
+for body in out:
+    for pname in ("Head", "UpperTorso", "LeftUpperArm", "LeftLowerArm", "LeftHand", "LeftUpperLeg", "LeftLowerLeg",
+                  "RightUpperArm", "RightLowerArm", "RightHand", "RightUpperLeg", "RightLowerLeg"):
+        g = bpy.data.objects.get(f"{body}_{pname}_Geo")
+        if g:
+            b0, b1 = bbox(g); sb = b1 - b0
+            sizes.setdefault(body, {})[pname] = [round(sb[0], 4), round(sb[2], 4), round(sb[1], 4)]
+out = {"fit": out, "sizes": sizes}
 json.dump(out, open(sys.argv[-1], "w"), indent=1)
-print(len(out), {b: len(v) for b, v in out.items()})
+print(len(out['fit']))
