@@ -30,6 +30,7 @@ RENDER = os.environ.get("NC_RENDER", "1") != "0"
 sys.path.insert(0, OUT)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nc_baselayer as NB
+import nc_haircards as HC
 
 SPM = 6.6 / 1.75
 bpy.ops.wm.open_mainfile(filepath=SRC)
@@ -157,7 +158,28 @@ def make_textures():
     alpha = np.clip(hairs * edge * 1.2 + 0.35 * edge * smoothstep(0.1, 0.5, VV), 0, 1)
     c = 0.85 + 0.15 * hairs
     T["NC_Brow"] = np.dstack([c, c, c, alpha])
+    T.update(HC.make_atlas(OUT))                           # hair cards: strand colour/alpha, normal, roughness
     return {k: _save_png(k, v) for k, v in T.items()}
+
+
+def card_material(name):
+    """hair cards: the strand atlas (greyscale, tinted in Roblox) with its normal and roughness maps"""
+    if name in MATS:
+        return MATS[name]
+    m = tex_material(name, TEX["NC_HairCard_Color"])
+    nt = m.node_tree
+    b = nt.nodes.get("Principled BSDF")
+    nm = nt.nodes.new("ShaderNodeNormalMap")
+    tn = nt.nodes.new("ShaderNodeTexImage")
+    tn.image = TEX["NC_HairCard_Normal"]
+    tn.image.colorspace_settings.name = "Non-Color"
+    nt.links.new(tn.outputs["Color"], nm.inputs["Color"])
+    nt.links.new(nm.outputs["Normal"], b.inputs["Normal"])
+    tr = nt.nodes.new("ShaderNodeTexImage")
+    tr.image = TEX["NC_HairCard_Rough"]
+    tr.image.colorspace_settings.name = "Non-Color"
+    nt.links.new(tr.outputs["Color"], b.inputs["Roughness"])
+    return m
 
 
 def tex_material(name, image):
@@ -758,6 +780,67 @@ def build_styles(H):
 
     ev = edge_v(H, V)
 
+    rel_, up_, side_, back_, crown_ = head_frame(H, V)
+
+    def flow_crown(loc, nrm):
+        """hair grows away from the crown whorl (behind the top of the head)"""
+        return loc - crown_
+
+    def flow_back(loc, nrm):
+        """brushed back (and a little up): from the front hairline over the top, down-back on the sides"""
+        # behind the crown it is combed down the back (projected onto the scalp, "back and up" would point the
+        # back hair up at the crown, standing off the head)
+        t = float(np.clip((loc[1] - crown_[1]) / 0.08 + 0.5, 0, 1))
+        t = t * t * (3 - 2 * t)
+        return (1 - t) * np.array([0.0, 1.0, 0.35]) + t * np.array([0.0, 0.35, -1.0])
+
+    FLOWS = {"crown": flow_crown, "back": flow_back}
+
+    def make_cards(key, p, cov, T):
+        cp = p["cards"]
+        rng = np.random.default_rng(abs(hash(key)) % (2 ** 31))
+        flow = FLOWS[cp.get("flow", "crown")]
+        tmin, tmax = p["side"], max(p["top"], p["side"] + 1e-4)
+        tw = np.clip((T - tmin) / (tmax - tmin), 0, 1)
+        builders = {"full": Builder(), "cap": Builder()}
+        kdv = KDTree(len(V))
+        for ii, vv_ in enumerate(V):
+            kdv.insert(vv_, ii)
+        kdv.balance()
+        vol = np.maximum(T, 0.004)
+
+        def height_at(frac):
+            return lambda loc: vol[kdv.find(loc)[1]] * frac
+        for kind, spacing, hfrac, width, lmul, wmin in cp["layers"]:
+            weight = smoothstep(wmin, 1.0, cov)
+            for i in sample_roots_(rng, weight, spacing):
+                length = (cp["len_side"] + (cp["len_top"] - cp["len_side"]) * tw[i]) * lmul * rng.uniform(0.8, 1.15)
+                # keep the card about as long as the strand texture is tall for its width (1:4 in the atlas): a short
+                # card as wide as it is long squashes the strands into a brush-shaped block
+                w_i = min(width, length * 0.4)
+                segs_i = max(3, int(round(cp.get("segs", 6) * min(1.0, length / (0.6 * cp["len_top"])))))
+                vv, ff, uu, ww = HC.grow_card(H, V[i], flow, length, height_at(hfrac * rng.uniform(0.85, 1.1)), w_i,
+                                              segs_i, rng, kind, jitter=cp.get("jitter", 0.35),
+                                              lift_curve=lambda s_: min(1.0, s_ / 0.2) ** 0.7 * (1 - 0.35 * s_ * s_))
+                builders["full"].add(vv, ff, uu, ww)
+                if V[i][2] < H.anchor[2] + 0.2:                  # (under a hat only the band below it shows)
+                    builders["cap"].add(vv, ff, uu, ww)
+        mk = lambda b_, n_: b_.make(n_, uv=False) if b_.v else None
+        out_ = []
+        for nm, b_ in ((f"Hair_{key}_Cards", builders["full"]), (f"Hair_{key}_CapCards", builders["cap"])):
+            if not b_.v:
+                out_.append(None)
+                continue
+            ob = b_.make(nm, uv=False)
+            uvl = ob.data.uv_layers.new(name="UVMap")
+            loops = np.array([l.vertex_index for l in ob.data.loops])
+            uvl.data.foreach_set("uv", np.stack([np.array(b_.u)[loops], np.array(b_.w)[loops]], 1).ravel())
+            out_.append(ob)
+        return out_
+
+    def sample_roots_(rng, weight, spacing):
+        return HC.sample_roots(rng, V, weight, spacing)
+
     def add_short(key, label, p, extras=None):
         T, hl = style_short(H, V, F, S, N, d, p)
         if p.get("edge_up") is not None:                     # a razor-straight edge-up across the forehead with
@@ -810,6 +893,12 @@ def build_styles(H):
                 fc = np.clip(1 - (below - 0.012 + 0.01 * noise(V, 9)) / flen, 0, 1) ** 1.9
             cov = np.minimum(cov, fc)
             field = np.minimum(field, fc - 0.02)
+        cards = capcards = None
+        if p.get("cards"):
+            # hair cards: the scalp layer is a thin painted base (colour under the cards, the fade, the edge-up);
+            # the volume is cards of single-hair texture grown along the style's flow
+            cards, capcards = make_cards(key, p, cov, T)
+            T = np.minimum(T, 0.003)
         hair = shell(f"Hair_{key}", V, F, N, T, field=field, lift=0.0035, uv=(cov, ev))
         if extras:
             b = Builder()
@@ -823,7 +912,8 @@ def build_styles(H):
             b.add_obj(cap)
             extras(b, T, capped=True)
             cap = b.make(f"Hair_{key}_Cap")
-        out[key] = {"label": label, "hair": hair, "cap": cap, "fade": None, "skin_fade": "fade_z" in p}
+        out[key] = {"label": label, "hair": hair, "cap": cap, "fade": None, "skin_fade": "fade_z" in p,
+                    "cards": cards, "capcards": capcards}
 
     if male:
         add_short("Buzz", "Buzz Cut", dict(top=0.016, side=0.012, feather=0.05, groove=0.06, freq=40))
@@ -831,7 +921,12 @@ def build_styles(H):
         # textured crop with a mid skin fade (references hair_ref_1): 4-6 cm on top brushed up with a small front lift,
         # the fade thins the same colour out to skin from just above the ear
         add_short("TaperFade", "Textured Crop, Mid Fade", dict(top=0.07, side=0.012, top_from=0.0, top_to=0.9, front_lift=0.04, fade_z=0.22,
-                                                              feather=0.035, groove=0.08, freq=60, texture=0.14))
+                                                              feather=0.035, groove=0.08, freq=60, texture=0.14,
+                                                              cards=dict(flow="back", len_top=0.3, len_side=0.07, jitter=0.12, segs=7,
+                                                                         # (kind, root spacing, height share, width, length x, min coverage)
+                                                                         layers=[("STRAIGHT_DENSE", 0.042, 0.45, 0.034, 1.0, 0.75),
+                                                                                 ("STRAIGHT_WISPY", 0.042, 0.6, 0.032, 1.0, 0.85),
+                                                                                 ("STRAIGHT_WISPY", 0.017, 0.2, 0.03, 0.4, 0.45)])))
         add_short("HighFade", "High Skin Fade", dict(top=0.10, side=0.02, fade_z=0.22, feather=0.06, groove=0.1, freq=24))
         add_short("SidePart", "Side Part", dict(top=0.10, side=0.025, part=0.32, sweep=0.03, feather=0.07, groove=0.12))
         add_short("CurlyTop", "Curly Top", dict(top=0.12, side=0.018, fade_z=0.05, curls=260, curl_r=0.028, curl_amp=0.25, feather=0.06))
@@ -1478,11 +1573,17 @@ for gender in ("Male", "Female"):
     pieces = {}
     hair_col = tex_material("NC_Hair", TEX["NC_HairEdge"])
     fade_col = tex_material("NC_HairFaded", TEX["NC_HairFade"])
+    card_col = card_material("NC_HairCard")
     for key, st in styles.items():
         for kind in ("hair", "cap"):
             ob = st[kind]
             ob.data.materials.append(fade_col if st.get("skin_fade") else hair_col)
             pieces[ob.name] = (ob, {"hair": "Hair", "cap": "HairCap"}[kind], key, st["label"])
+        for kind in ("cards", "capcards"):
+            ob = st.get(kind)
+            if ob is not None:
+                ob.data.materials.append(card_col)
+                pieces[ob.name] = (ob, {"cards": "HairCards", "capcards": "HairCapCards"}[kind], key, st["label"])
     for name, ob in face.items():
         kind = name.split("_")[0]
         col = {"Brows": tex_material("NC_Brows", TEX["NC_Brow"]), "LashLine": material("Lash", (0.03, 0.025, 0.02, 1)),
@@ -1584,6 +1685,10 @@ local root = RS:FindFirstChild("NC_HeadAssets") or Instance.new("Folder")
 root.Name = "NC_HeadAssets"
 root.Parent = RS
 local done = 0
+-- hair cards: the strand normal and roughness maps. If the 3D Importer didn't bring them in, upload
+-- textures_heads/NC_HairCard_Normal.png and NC_HairCard_Rough.png and paste their rbxassetid:// ids here.
+local CARD_NORMAL = ""
+local CARD_ROUGH = ""
 for _, model in ipairs(Selection:Get()) do
 \tlocal gender = model.Name:match("NC_Head_(%a+)")
 \tif not gender then
@@ -1601,7 +1706,6 @@ for _, model in ipairs(Selection:Get()) do
 \t\t\tpart.Anchored = false
 \t\t\tpart.CanCollide, part.CanTouch, part.CanQuery, part.Massless = false, false, false, true
 \t\t\tpart.CastShadow = false
-\t\t\tpart.DoubleSided = false
 \t\t\t-- hair, brows and stubble keep their greyscale texture as a SurfaceAppearance with soft alpha
 \t\t\tlocal sa = part:FindFirstChildOfClass("SurfaceAppearance")
 \t\t\tif not sa and part.TextureID ~= "" then
@@ -1610,10 +1714,20 @@ for _, model in ipairs(Selection:Get()) do
 \t\t\t\tsa.Parent = part
 \t\t\tend
 \t\t\tpart.TextureID = ""
+\t\t\tlocal isCards = part.Name:match("_Cards$") or part.Name:match("_CapCards$")
 \t\t\tif sa then
 \t\t\t\tsa.AlphaMode = Enum.AlphaMode.Transparency
-\t\t\t\tsa.NormalMap, sa.RoughnessMap, sa.MetalnessMap = "", "", ""
+\t\t\t\tif isCards then
+\t\t\t\t\t-- cards keep the strand normal/roughness so light runs along the hair
+\t\t\t\t\tif CARD_NORMAL ~= "" then sa.NormalMap = CARD_NORMAL end
+\t\t\t\t\tif CARD_ROUGH ~= "" then sa.RoughnessMap = CARD_ROUGH end
+\t\t\t\t\tsa.MetalnessMap = ""
+\t\t\t\telse
+\t\t\t\t\tsa.NormalMap, sa.RoughnessMap, sa.MetalnessMap = "", "", ""
+\t\t\t\tend
 \t\t\tend
+\t\t\t-- a card is one thin ribbon: seen from behind it must still draw
+\t\t\tpart.DoubleSided = isCards and true or false
 \t\t\tfor _, ch in ipairs(part:GetChildren()) do
 \t\t\t\tif not (ch:IsA("Attachment") or ch == sa) then
 \t\t\t\t\tch:Destroy()

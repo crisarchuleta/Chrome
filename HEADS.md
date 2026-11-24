@@ -71,6 +71,13 @@ item with no mesh style for that body, and stock avatars, keep the older procedu
   `NCLookCatalog.FACE_SLIDERS`, and the server cleans what clients send with `NCLookCatalog.CleanFaceShape`.
 - `NCHead.lua` holds each piece on the Head with a classic `Weld` (C0 = the piece's offset from the point between the eyes), so a piece can't be left behind if the character is moved or teleported while it is being put on.
 
+- **Hair cards** (`nc_haircards.py`, first style: TaperFade). Realistic hair is many thin ribbons ("cards") over
+  a painted scalp. `make_atlas` paints the strand atlas `textures_heads/NC_HairCard_{Color,Normal,Rough}.png`
+  (columns: straight dense, straight wispy, wavy, coily; V runs root to tip; colour is greyscale so Roblox tints it).
+  `grow_card` grows each card from a root along the style's flow over the scalp (path smoothed, so outlines stay
+  clean). A style with `cards=dict(...)` in `add_short` gets `Hair_<Style>_Cards` and `Hair_<Style>_CapCards`
+  (under a hat) on top of a thin scalp shell; NCHead.WearHair puts them on with the hair. Cards are double-sided.
+
 ## Install in Studio
 
 After the bodies (MAKEHUMAN_BODIES.md):
@@ -80,7 +87,9 @@ After the bodies (MAKEHUMAN_BODIES.md):
    The FBX files carry four greyscale textures (hair edge, brows, two stubble maps). If the hair, brows or
    stubble come in without them, upload the PNGs in `textures_heads/` and set each piece's
    SurfaceAppearance.ColorMap (NC_HairEdge for every Hair_ piece, NC_Brow for Brows_, NC_Stubble /
-   NC_StubbleHeavy for the stubble).
+   NC_StubbleHeavy for the stubble). Hair cards (`Hair_*_Cards`) use NC_HairCard_Color; for their normal and
+   roughness maps, upload NC_HairCard_Normal.png and NC_HairCard_Rough.png and paste the ids into CARD_NORMAL and
+   CARD_ROUGH at the top of `AssembleHeads.lua` (only needed if the importer didn't bring them in).
 3. Select both imported models. Paste `AssembleHeads.lua` into the command bar and press Enter. The pieces go to
    `ReplicatedStorage.NC_HeadAssets.Male` and `.Female`.
 4. Re-import the ten `NC_Body_*.fbx` files and run `AssembleMakeHumanBodies.lua` again, because they now have the face bones.

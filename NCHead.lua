@@ -6,6 +6,7 @@
 --   Hair_<Style>        the hair (Male: Buzz, Crop, TaperFade, HighFade, SidePart, CurlyTop, Locs, Twists, FlatTwists;
 --                       Female: Pixie, Locs, LowBun, Ponytail, LongStraight, Bob)
 --   Hair_<Style>_Cap    the same style pressed flat and trimmed, worn under a hat
+--   Hair_<Style>_Cards / _CapCards   hair-card styles: strand cards over the painted scalp (and their under-hat cut)
 --   Brows_<Shape>       Natural, Thick, Arched, Straight, Thin
 --   LashLine, Lips      on every face (the lips are tinted from the skin colour)
 --   Stubble, StubbleHeavy   (Male)
@@ -218,6 +219,12 @@ function H.WearHair(fr, pp, parent, hair, skin, hatOn)
 	end
 	if not H.put(fr, name, parent, { Color = hair, Material = Enum.Material.SmoothPlastic, CastShadow = true }) then
 		return false
+	end
+	-- hair-card styles: the strand cards lie over the painted scalp (Hair_<Style>_Cards, or the flattened
+	-- Hair_<Style>_CapCards under a hat). They are thin, so they don't cast shadows.
+	local cards = "Hair_" .. style .. (hatOn and "_CapCards" or "_Cards")
+	if H.has(fr, cards) then
+		H.put(fr, cards, parent, { Color = hair, Material = Enum.Material.SmoothPlastic })
 	end
 	return true
 end

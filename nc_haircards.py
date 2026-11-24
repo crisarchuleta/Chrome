@@ -51,7 +51,10 @@ def _strand_paths(rng, kind, n, H, W):
     for i in range(n):
         c = rng.integers(nclump)
         # (denser in the middle of the card, so its long edges are soft single hairs, never a straight line)
-        x0 = np.clip(cx[c] + rng.normal(0, 0.09), 0.03, 0.97) * W
+        x0 = cx[c] + rng.normal(0, 0.09)
+        while not 0.06 < x0 < 0.94:                                     # (re-drawn, not clipped: clipping piles
+            x0 = cx[c] + rng.normal(0, 0.09)                            #  strands into a hard line at the edge)
+        x0 *= W
         # strands converge slightly towards the tips (a clump), wisps drift out
         conv = rng.uniform(0.0, 0.18)
         x = x0 + (W / 2 - x0) * conv * v ** 1.5
@@ -71,8 +74,9 @@ def _strand_paths(rng, kind, n, H, W):
             x = x + (rng.choice([-1, 1]) * rng.uniform(0.05, 0.2) * W) * v ** 2
         width = rng.uniform(1.0, 2.1) * (W / 256)
         shade = rng.uniform(0.62, 1.0)
-        v_end = rng.uniform(0.55, 1.0) if kind != "STRAIGHT_DENSE" else rng.uniform(0.75, 1.0)
-        v_start = rng.uniform(0.0, 0.08)
+        # every hair ends before the card does, at its own length: the card's tip is a fringe of single ends
+        v_end = rng.uniform(0.35, 0.94) if kind != "STRAIGHT_DENSE" else rng.uniform(0.6, 0.95)
+        v_start = rng.uniform(0.0, 0.3)                                 # (roots spread out: no hard card edge)
         out.append((x, width, shade, v_start, v_end))
     return out
 
@@ -89,7 +93,7 @@ def _column(rng, kind, H, W):
         d = (xs - x[:, None]) / width                                   # signed distance across the strand
         prof = np.clip(1 - np.abs(d), 0, 1)                             # 1 in the middle, 0 at its edge
         # the hair tapers to a point at its tip and starts a little in from the root
-        taper = np.clip((v1 - v) / 0.18, 0, 1) * np.clip((v - v0) / 0.03, 0, 1)
+        taper = np.clip((v1 - v) / 0.25, 0, 1) ** 0.7 * np.clip((v - v0) / 0.22, 0, 1) ** 1.5
         a = np.clip(prof * 1.6, 0, 1) * taper
         root_dark = 0.82 + 0.18 * np.clip(v / 0.3, 0, 1)                # roots a touch darker
         over = a * (1 - cov)                                            # strands in front cover those behind
@@ -101,6 +105,10 @@ def _column(rng, kind, H, W):
         nx = np.where(cov > 1e-4, nx / np.maximum(cov, 1e-4), 0.0)
     # alpha: fully opaque where the hair is dense, soft single hairs at the edges and tips
     alpha = np.clip(cov * 1.15, 0, 1)
+    # and the card's long edges always thin out, so no card shows its outline whichever way it lies
+    xn = (np.arange(W) + 0.5) / W
+    edge = np.clip(np.minimum(xn - 0.012 * NK, 1 - 0.012 * NK - xn) / 0.2, 0, 1) ** 1.5
+    alpha *= edge[None, :]
     return alpha, col, nx
 
 
@@ -135,6 +143,97 @@ def make_atlas(out_dir, seed=21):
         "NC_HairCard_Rough": np.dstack([rough, rough, rough, np.ones((H, ATLAS))]),
     }
     return maps
+
+
+# ------------------------------------------------------------------------------------------------ card builder
+def _unit(v):
+    n = np.linalg.norm(v)
+    return v / n if n > 1e-12 else v
+
+
+def sample_roots(rng, V, weight, spacing):
+    """roughly even root points over the scalp (dart throwing on the scalp vertices), denser where weight is high"""
+    order = rng.permutation(len(V))
+    keep = []
+    cell = {}
+    inv = 1.0 / spacing
+    for i in order:
+        w = weight[i]
+        if w <= 0.02 or rng.random() > w:
+            continue
+        key = tuple((V[i] * inv).astype(int))
+        ok = True
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for dz in (-1, 0, 1):
+                    for j in cell.get((key[0] + dx, key[1] + dy, key[2] + dz), ()):
+                        if np.sum((V[j] - V[i]) ** 2) < spacing * spacing:
+                            ok = False
+                            break
+                    if not ok:
+                        break
+                if not ok:
+                    break
+            if not ok:
+                break
+        if ok:
+            keep.append(i)
+            cell.setdefault(key, []).append(i)
+    return np.array(keep, int)
+
+
+def grow_card(H, p0, flow, length, height, width, segs, rng, kind, jitter=0.35, lift_curve=None, droop=0.0):
+    """height: a number, or a function of the scalp point (the style's volume there) so cards lie in layers over
+    the hair's shape instead of standing off the head"""
+    """one card: a ribbon from the root p0 along the flow over the head, rising to `height` off the scalp.
+    Returns verts, faces, u, v (u inside the kind's atlas column, v root -> tip)."""
+    u0, u1 = kind_u(kind)
+    span = (u1 - u0) * rng.uniform(0.97, 1.0)                     # (nearly the whole column: its long edges are soft single
+    #  hairs, while a narrower slice would cut straight through dense strands and show the card's rectangle)
+    us = u0 + rng.uniform(0, (u1 - u0) - span)
+    ue = us + span
+    if rng.random() < 0.5:                                          # (mirrored half the time)
+        us, ue = ue, us
+    loc, nrm, _, _ = H.nearest(p0)
+    turn = rng.normal(0, jitter)
+    step = length / segs
+    pts, nrms = [], []
+    p = loc
+    for i in range(segs + 1):
+        s = i / segs
+        loc, nrm, _, _ = H.nearest(p)
+        d = flow(loc, nrm)
+        d = d - nrm * (d @ nrm)
+        # a small personal turn so cards don't run perfectly parallel
+        b = np.cross(nrm, _unit(d))
+        d = _unit(_unit(d) * math.cos(turn) + b * math.sin(turn))
+        lc = lift_curve(s) if lift_curve else min(1.0, s / 0.35)
+        hh = height(loc) if callable(height) else height
+        q = loc + nrm * (0.002 + hh * lc) - np.array([0, 0, 1.0]) * droop * s * s
+        pts.append(q)
+        nrms.append(nrm)
+        p = loc + d * step
+    # smooth the marched path: snapping each step to the nearest scalp point makes it zigzag, which shows as
+    # jagged card outlines at the silhouette. A few relaxation passes (root held) give a clean combed curve.
+    P = np.array(pts)
+    Nn = np.array(nrms)
+    for _ in range(4):
+        P[1:-1] = 0.25 * P[:-2] + 0.5 * P[1:-1] + 0.25 * P[2:]
+        P[-1] = 0.5 * P[-1] + 0.5 * (2 * P[-2] - P[-3]) if len(P) > 2 else P[-1]
+        Nn[1:-1] = 0.25 * Nn[:-2] + 0.5 * Nn[1:-1] + 0.25 * Nn[2:]
+    Nn /= np.linalg.norm(Nn, axis=1, keepdims=True)
+    pts, nrms = list(P), list(Nn)
+    verts, us_, vs_ = [], [], []
+    for i, (q, nrm) in enumerate(zip(pts, nrms)):
+        s = i / segs
+        t = pts[min(i + 1, segs)] - pts[max(i - 1, 0)]
+        b = _unit(np.cross(nrm, _unit(t)))
+        w = width * (1.0 - 0.65 * s ** 1.3) * 0.5
+        verts += [q - b * w, q + b * w]
+        us_ += [us, ue]
+        vs_ += [s * 0.985 + 0.01, s * 0.985 + 0.01]
+    faces = [[2 * i, 2 * i + 1, 2 * i + 3, 2 * i + 2] for i in range(segs)]
+    return verts, faces, us_, vs_
 
 
 def save_png(path, rgba):

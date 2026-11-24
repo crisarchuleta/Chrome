@@ -7,6 +7,10 @@ local root = RS:FindFirstChild("NC_HeadAssets") or Instance.new("Folder")
 root.Name = "NC_HeadAssets"
 root.Parent = RS
 local done = 0
+-- hair cards: the strand normal and roughness maps. If the 3D Importer didn't bring them in, upload
+-- textures_heads/NC_HairCard_Normal.png and NC_HairCard_Rough.png and paste their rbxassetid:// ids here.
+local CARD_NORMAL = ""
+local CARD_ROUGH = ""
 for _, model in ipairs(Selection:Get()) do
 	local gender = model.Name:match("NC_Head_(%a+)")
 	if not gender then
@@ -24,7 +28,6 @@ for _, model in ipairs(Selection:Get()) do
 			part.Anchored = false
 			part.CanCollide, part.CanTouch, part.CanQuery, part.Massless = false, false, false, true
 			part.CastShadow = false
-			part.DoubleSided = false
 			-- hair, brows and stubble keep their greyscale texture as a SurfaceAppearance with soft alpha
 			local sa = part:FindFirstChildOfClass("SurfaceAppearance")
 			if not sa and part.TextureID ~= "" then
@@ -33,10 +36,20 @@ for _, model in ipairs(Selection:Get()) do
 				sa.Parent = part
 			end
 			part.TextureID = ""
+			local isCards = part.Name:match("_Cards$") or part.Name:match("_CapCards$")
 			if sa then
 				sa.AlphaMode = Enum.AlphaMode.Transparency
-				sa.NormalMap, sa.RoughnessMap, sa.MetalnessMap = "", "", ""
+				if isCards then
+					-- cards keep the strand normal/roughness so light runs along the hair
+					if CARD_NORMAL ~= "" then sa.NormalMap = CARD_NORMAL end
+					if CARD_ROUGH ~= "" then sa.RoughnessMap = CARD_ROUGH end
+					sa.MetalnessMap = ""
+				else
+					sa.NormalMap, sa.RoughnessMap, sa.MetalnessMap = "", "", ""
+				end
 			end
+			-- a card is one thin ribbon: seen from behind it must still draw
+			part.DoubleSided = isCards and true or false
 			for _, ch in ipairs(part:GetChildren()) do
 				if not (ch:IsA("Attachment") or ch == sa) then
 					ch:Destroy()
