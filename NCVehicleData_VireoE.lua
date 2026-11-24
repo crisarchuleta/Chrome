@@ -61,7 +61,7 @@ return {
 				Axis = {0, 1, 0},
 				Kind = "charge",
 				Open = -80,
-				Pivot = {-3.301, 2.931, 7.354},
+				Pivot = {-3.306, 2.865, 7.354},
 			},
 			Hood = {
 				Axis = {-1, 0, 0},
@@ -959,22 +959,22 @@ return {
 		Windows = {
 			DoorL = {
 				Dir = {0, -1, 0},
-				Drop = 1.523,
+				Drop = 1.354,
 				Piece = "RoofGlass__WinDoorL",
 			},
 			DoorR = {
 				Dir = {0, -1, 0},
-				Drop = 1.523,
+				Drop = 1.354,
 				Piece = "RoofGlass__WinDoorR",
 			},
 			DoorRL = {
 				Dir = {0, -1, 0},
-				Drop = 1.269,
+				Drop = 0.957,
 				Piece = "RoofGlass__WinDoorRL",
 			},
 			DoorRR = {
 				Dir = {0, -1, 0},
-				Drop = 1.269,
+				Drop = 0.957,
 				Piece = "RoofGlass__WinDoorRR",
 			},
 		},

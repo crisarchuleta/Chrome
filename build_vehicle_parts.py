@@ -166,8 +166,20 @@ def taillights():
         sbox(kind(S, "Slim", "Tail"), -(W - 0.7), y + 0.06, BELT + 0.05, W - 0.7, y + 0.1, BELT + 0.12) if REAR == "liftgate" else None
         return
     z0, z1 = max(BZ1 + 0.08, REAR_TOP - 0.55), REAR_TOP - 0.05
-    zc = (z0 + z1) / 2
     xo = (min(W, station_w(y - 0.1)) if SMOOTH else W) - 0.5      # a rounded tail is narrower at the rear face
+    if SMOOTH and globals()["S"].get("TDROP"):
+        # a tail that rolls down at the end: the add-on lamps sit on the face under the deck lip, set into the skin
+        zt_ = TAIL - 0.45 - 0.1 * globals()["S"]["TDROP"]
+        z0, z1 = zt_ - 0.5, zt_ + 0.05
+        hits = []
+        for xx in (0.0, xo * 0.5, xo):
+            for zz in (z0, z1):
+                loc_, _, _, _ = body_bvh().ray_cast(Vector((xx, L1 + 3, zz)), Vector((0, -1, 0)), 8.0)
+                if loc_:
+                    hits.append(loc_.y)
+        if hits:
+            y = min(hits) + 0.02
+    zc = (z0 + z1) / 2
     sbox(kind(S, "Bar", "Tail"), -xo, y - 0.04, z0 + 0.08, xo, y + 0.08, z1 - 0.08)
     for s in (-1, 1):
         for dx in (0.0, 0.62):
@@ -175,7 +187,7 @@ def taillights():
         sbox(kind(S, "Stacked", "Tail"), s * (xo - 1.0), y - 0.04, zc + 0.02, s * xo, y + 0.08, z1 - 0.04)
         sbox(kind(S, "Stacked", "Light"), s * (xo - 1.0), y - 0.04, z0 + 0.04, s * xo, y + 0.08, zc - 0.02)
         if SMOOTH:  # the reference's lamps: wide units under the deck lip, cast from behind so they wrap the corners
-            yb, zt = L1 + 1.5, TAIL - 0.45
+            yb, zt = L1 + 1.5, TAIL - 0.45 - 0.1 * globals()["S"].get("TDROP", 0.0)
             TL = [(0.36, zt - 0.25), (0.895, zt - 0.36), (0.895, zt + 0.12), (0.36, zt + 0.04)]
             q = lambda g: [(s * (a * W + g * (0.4 if a > 0.6 else -1)), yb, b + g * (1 if k in (2, 3) else -1)) for k, (a, b) in enumerate(TL)]
             decal(kind(S, "Slim", "Dark"), *q(0.05), (0, -1, 0), nu=12, nv=3, out=0.02, inn=0.06)
@@ -184,7 +196,8 @@ def taillights():
             R = [(0.62, ZB + 0.72), (0.86, ZB + 0.72), (0.86, ZB + 0.82), (0.62, ZB + 0.82)]
             decal(kind(S, "Slim", "Tail"), *[(s * a * W, yb, b) for a, b in R], (0, -1, 0), nu=6, nv=1, out=0.03, inn=0.02)
             if s == 1:                                 # plate recess on the hatch and a dark diffuser under the bumper
-                decal("Dark", (-0.78, yb, zt - 1.05), (0.78, yb, zt - 1.05), (0.78, yb, zt - 0.42), (-0.78, yb, zt - 0.42), (0, -1, 0),
+                if not globals()["S"].get("TDROP"):        # (the Vireo: no plate panel)
+                  decal("Dark", (-0.78, yb, zt - 1.05), (0.78, yb, zt - 1.05), (0.78, yb, zt - 0.42), (-0.78, yb, zt - 0.42), (0, -1, 0),
                       nu=8, nv=3, out=0.012, inn=0.05)
                 pass
             if s == 1:                                 # a chrome strip across the hatch between the lamps

@@ -121,7 +121,7 @@ SPECS = {
     "VireoE": dict(name="Vireo E", flavour="sports", W=3.8, L0=-9.6, L1=9.15, WB=11.17, WR=1.33, WX=3.18, TW=1.0,
                    ZB=0.62, BELT=3.4, NOSE=2.95, HOOD=3.8, TAIL=4.0, CROWN=0.02, HCROWN=-0.42,
                    A0=-3.6, A1=-0.1, C0=3.8, C1=7.9, ROOF=5.35, TUCK=0.75, B=1.0, Q=3.9, doors=4, rear="hatch",
-                   electric=True, LEAN=0.1, LONGGLASS=True, PLAN=True, NOSEDROP=1.25, FLEAN=0.08, GH_IN=0.06, GH_N=2.3, QWIN=(2.5, 1.9), DLO=dict(tip=5.9, kick=10.0), SQUARE=1.0, WS_BACK=1.4, FUEL_DY=-0.25, FUEL_DZ=-0.2, SKYLIGHT=dict(front=0.15, rear=0.07, width=0.9), lowpro=0.24, smooth=True, rim_dark=True, RIM_TWIN=True,
+                   electric=True, LEAN=0.1, LONGGLASS=True, PLAN=True, NOSEDROP=1.25, FLEAN=0.08, GH_IN=0.06, GH_N=3.0, GH_TH=0.24, QWIN=(2.5, 1.9), DLO=dict(tip=5.9, kick=10.0), SQUARE=1.0, TDROP=1.3, WS_BACK=1.4, FUEL_DY=-0.25, FUEL_DZ=-0.2, SKYLIGHT=dict(front=0.15, rear=0.07, width=0.9), lowpro=0.24, smooth=True, rim_dark=True, RIM_TWIN=True,
                    stock={"Exhaust": "", "Spoiler": "", "Rim": "Split", "KO": "", "Top": "", "Seats": "Buckets", "Grille": "", "FrontBumper": "", "RearBumper": "",
                                          "Dash": "Digital", "Steering": "Sport"}, paint=(0.025, 0.025, 0.03)),
 }
@@ -334,8 +334,10 @@ def make_stations():
             ep = 1 - u ** 2.2                                 # plan rounds sooner than the profile
             yy = y0 + (L1 - y0) * u
             pw = W * plan_frac(PLAN_REAR, L1 - yy) if S.get("PLAN") else W * (0.64 + 0.36 * ep)
-            st.append((yy, pw - 0.03, ZB + 0.25 * (1 - e), tb + 0.15 - 0.5 * (1 - e),
-                       TAIL - 0.4 * (1 - e) ** 1.5, CROWN * e))
+            td = S.get("TDROP", 0.0) * u ** 8                 # the reference's tail rolls down over its last few inches
+            tp = TAIL - 0.4 * (1 - e) ** 1.5 - td
+            bl = min(tb + 0.15 - 0.5 * (1 - e), tp - 0.15 - 0.3 * td)
+            st.append((yy, pw - 0.03, ZB + (0.25 + 0.6 * S.get("TDROP", 0.0) * 0.25) * (1 - e), bl, tp, CROWN * e))
         return st
     st += [(L1 - 0.2, W - 0.2, ZB + 0.12, tb, tb + 0.12, CROWN * 0.4), (L1, W - 0.45, ZB + 0.3, tb - 0.15, tb - 0.05, 0.0)]
     return st
@@ -706,7 +708,7 @@ def arch_tunnel(s, x_in, wy):
         if WR + ARCH * c < ZB:
             continue
         yy_ = wy + ARCH * math.cos(a)
-        xo = min(W, station_w(yy_), body_x(yy_, WR + ARCH * c) if S.get("smooth") else W) - (0.1 if S.get("SQUARE") else 0.03)   # inside the skin
+        xo = min(W, station_w(yy_), body_x(yy_, WR + ARCH * c) if S.get("smooth") else W) - (0.055 if S.get("SQUARE") else 0.03)   # inside the skin
         rows.append([bm.verts.new((s * x, wy + r * math.cos(a), max(ZB - 0.02, WR + r * c)))
                      for x in (x_in, xo) for r in (r0, r1)])
     for A, B in zip(rows, rows[1:]):
@@ -874,15 +876,30 @@ def gh_xb(y):
     return W - 0.3 - 0.2 * (1 - sm((y - A0) / 1.0)) - 0.35 * sm((y - Q) / (GH_YEND - Q))
 
 
+GH_TH = S.get("GH_TH", 0.0)                          # tumblehome: the canopy's sides lean in toward the roof
+
+
 def gh_pt(y, phi):
     c, s_ = math.cos(phi), math.sin(phi)
     xb, h = gh_xb(y), max(0.0, gh_zr(y) - GH_ZB)
-    return Vector((xb * math.copysign(abs(c) ** GH_P, c), y, GH_ZB + h * abs(s_) ** GH_P))
+    zf = abs(s_) ** GH_P
+    return Vector((xb * (1 - GH_TH * zf) * math.copysign(abs(c) ** GH_P, c), y, GH_ZB + h * zf))
 
 
 def roof_z(x, y):
     """height of the canopy's outer skin at (x, y)"""
     xb, h = gh_xb(y), max(0.0, gh_zr(y) - GH_ZB)
+    if GH_TH:                                             # x(phi) falls monotonically: bisect for the angle
+        lo_, hi_ = 0.0, math.pi / 2
+        if abs(x) >= xb:
+            return GH_ZB
+        for _ in range(30):
+            m_ = (lo_ + hi_) / 2
+            if abs(gh_pt(y, m_).x) > abs(x):
+                lo_ = m_
+            else:
+                hi_ = m_
+        return GH_ZB + h * abs(math.sin(lo_)) ** GH_P
     u = min(1.0, abs(x) / xb)
     c = u ** (1 / GH_P)
     return GH_ZB + h * math.sqrt(max(0.0, 1 - c * c)) ** GH_P
@@ -1001,8 +1018,34 @@ def dlo_greenhouse(ys, phis, O, N, nj, ni):
         t = thick[k]
         I = [[O[j][i] - N[j][i] * t for i in range(ni)] for j in range(nj)]
         solid_grid(k, O, I, cells, smooth=40.0 if k != "RoofChrome" else 20.0)
+    # the clipped cells of each kind become one welded, smooth-shaded mesh (separate flat prisms read as facets)
+    byk = {}
     for k, pts, nrm in polys:
-        sprism(k, [tuple(p) for p in pts], [tuple(p - n * thick[k]) for p, n in zip(pts, nrm)])
+        byk.setdefault(k, []).append((pts, nrm))
+    for k, lst in byk.items():
+        bm = bmesh.new()
+        for pts, nrm in lst:
+            o = [bm.verts.new(tuple(p)) for p in pts]
+            i = [bm.verts.new(tuple(p - n * thick[k])) for p, n in zip(pts, nrm)]
+            m = len(o)
+            try:
+                bm.faces.new(o)
+                bm.faces.new(list(reversed(i)))
+                for q in range(m):
+                    bm.faces.new((o[q], o[(q + 1) % m], i[(q + 1) % m], i[q]))
+            except ValueError:
+                pass
+        bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-4)
+        seen, dup = {}, []
+        for f in bm.faces:                                # walls shared by two neighbouring cells: drop both
+            key = frozenset(v.index for v in f.verts)
+            if key in seen:
+                dup += [f, seen[key]]
+            else:
+                seen[key] = f
+        bmesh.ops.delete(bm, geom=list(set(dup)), context="FACES")
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+        new_obj(bm, k, style=PREFIX, smooth=40.0 if k != "RoofChrome" else 20.0)
     HINGE_OF["RoofGlass__Lid"] = "Lid"
 
 
@@ -1261,7 +1304,7 @@ def build_frunk():
         for k in range(ns_):
             ya_, yb_ = y0 + 0.06 + (y1 - y0 - 0.12) * k / ns_, y0 + 0.06 + (y1 - y0 - 0.12) * (k + 1) / ns_
             xc = min(ap, xo(ya_) - 0.08, xo(yb_) - 0.08) - 0.06
-            sbox("Carpet", -xc, ya_, fl, xc, yb_, fl + 0.03)
+            sbox("Under", -xc, ya_, fl, xc, yb_, fl + 0.03)   # black frunk floor (a grey carpet read as a loose slab)
     else:
         sbox("Carpet", -(ap - 0.06), y0 + 0.06, fl, ap - 0.06, y1 - 0.06, fl + 0.04)
     if not S.get("smooth"):
@@ -1508,15 +1551,11 @@ def smooth_details():
     if S.get("PLAN"):
         # the reference's lower front: a wide mouth whose top edge dips gently toward the sides, side intakes that rise
         # outward holding a small round fog lamp and two chrome blades, and a shallow chrome wing under the nose (no badge)
-        n_ = 24
-        for k in range(n_):
-            a, b = -0.63 + 1.26 * k / n_, -0.63 + 1.26 * (k + 1) / n_
-            zt = lambda u: ZB + 0.66 - 0.1 * (abs(u) / 0.63) ** 2
-            decal("Dark", (a * W, yF, ZB + 0.26), (b * W, yF, ZB + 0.26), (b * W, yF, zt(b)), (a * W, yF, zt(a)), (0, 1, 0),
-                  nu=3, nv=3, out=0.02, inn=0.05)
+        decal("Dark", (-0.63 * W, yF, ZB + 0.26), (0.63 * W, yF, ZB + 0.26), (0.63 * W, yF, ZB + 0.62), (-0.63 * W, yF, ZB + 0.62),
+              (0, 1, 0), nu=32, nv=4, out=0.02, inn=0.05, bridge=True)
         for s_ in (-1, 1):
             x0, x1 = s_ * W * 0.6, s_ * W * 0.88
-            decal("Dark", (x0, yF, ZB + 0.26), (x1, yF, ZB + 0.46), (x1, yF, ZB + 0.98), (x0, yF, ZB + 0.84), (0, 1, 0), nu=10, nv=5,
+            decal("Dark", (x0, yF, ZB + 0.26), (x1, yF, ZB + 0.46), (x1, yF, ZB + 0.98), (x0, yF, ZB + 0.62), (0, 1, 0), nu=10, nv=5,
                   out=0.015, inn=0.05)
             for dz in (0.0, 0.11):                       # two chrome blades along the intake's top
                 za0, za1 = ZB + 0.66 + dz, ZB + 0.78 + dz
