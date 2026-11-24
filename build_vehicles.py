@@ -606,9 +606,15 @@ def cutters_and_body():
             y0_, y1_ = yq0 + (cab_end - yq0) * i_ / nq, yq0 + (cab_end - yq0) * (i_ + 1) / nq
             xa_, xb_ = (min(xin, gh_xb(y)) - 0.11 for y in (y0_, y1_))
             za_, zb_ = (min(belt_at(y), gh_zr(y)) + 0.02 for y in (y0_, y1_))
+            def fl_(y):                                   # clear the rear tyre: start above the arch
+                dy = 0.0 if y0_ <= WY_R <= y1_ else abs(y - WY_R)
+                return max(floor, WR + math.sqrt(max(0.0, (ARCH + 0.15) ** 2 - dy * dy)) + 0.12) if dy < ARCH + 0.15 else floor
+            fa_ = fb_ = max(fl_(y0_), fl_(y1_))
+            if fa_ >= min(za_, zb_) - 0.05:
+                continue
             for sd in (-1, 1):
-                sprism("Carpet", [(sd * xa_, y0_, floor), (sd * xb_, y1_, floor), (sd * xb_, y1_, zb_), (sd * xa_, y0_, za_)],
-                       [(sd * (xa_ - 0.04), y0_, floor), (sd * (xb_ - 0.04), y1_, floor), (sd * (xb_ - 0.04), y1_, zb_), (sd * (xa_ - 0.04), y0_, za_)])
+                sprism("Under", [(sd * xa_, y0_, fa_), (sd * xb_, y1_, fb_), (sd * xb_, y1_, zb_), (sd * xa_, y0_, za_)],
+                       [(sd * (xa_ - 0.04), y0_, fa_), (sd * (xb_ - 0.04), y1_, fb_), (sd * (xb_ - 0.04), y1_, zb_), (sd * (xa_ - 0.04), y0_, za_)])
     if OPEN:                                                                  # rubber edge trim round the step-in + a sill plate
         for s in (-1, 1):
             xa, xb_ = s * (xin - 0.06), s * (W + 0.015)
@@ -1363,10 +1369,12 @@ def split_onto_doors():
             if info["slot"] == "Doors":
                 return W - 0.85, ZB + 0.2, BELT + 0.3
             if info["slot"] in ("Mirrors",):
-                return W - 0.4, DOOR_Z0, ROOF
+                return W - (1.2 if S.get("smooth") else 0.4), DOOR_Z0, ROOF     # smooth: the foot starts inboard
             return None
         if kind == "RoofGlass":
             return W - 0.32 - TUCK - 0.2, BELT, ROOF
+        if kind == "RoofBody" and S.get("smooth"):        # the canopy's sill band under the door glass
+            return W - 0.32 - TUCK - 0.2, DOOR_Z0, BELT + 0.3
         if kind == "RoofChrome":                          # window surround + door trim strips ride on the doors
             return W - 0.32 - TUCK - 0.2, DOOR_Z0 - 0.1, ROOF
         return None
