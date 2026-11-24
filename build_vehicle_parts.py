@@ -121,11 +121,22 @@ def headlights():
         if SMOOTH:  # the reference's lamps: big swept units on the nose corners, cast from the front so they wrap
             yc = L0 - 2.0
             q = lambda pts, g=0.0: [(s * (a * W + g * (1 if a > 0.6 else -1)), yc, b + g * (1 if k in (0, 1) else -1)) for k, (a, b) in enumerate(pts)]
-            HL = [(0.43, 2.66), (0.88, 2.76), (0.92, 2.36), (0.5, 2.45)]
-            DRL = [(0.45, 2.66), (0.88, 2.76), (0.88, 2.69), (0.47, 2.6)]
-            decal(kind(S, "Slim", "Dark"), *q(HL, 0.06), (0, 1, 0), nu=12, nv=4, out=0.02, inn=0.06)
-            decal(kind(S, "Slim", "Chrome"), *q(HL), (0, 1, 0), nu=12, nv=4, out=0.04, inn=0.02)     # the lamp's reflector
-            decal(kind(S, "Slim", "Head"), *q(DRL), (0, 1, 0), nu=12, nv=2, out=0.055, inn=0.0)     # LED strip (lights up)
+            # a swept teardrop: low pointed inner tip, the top edge curving up the fender to a rounded outer end
+            def ztop(u):
+                return 2.32 + 0.56 * u ** 1.5 - 0.12 * max(0.0, (u - 0.88) / 0.12) ** 2
+            def zbot(u):
+                return 2.14 + 0.1 * u + 0.36 * max(0.0, (u - 0.7) / 0.3) ** 2
+            xu = lambda u: 0.45 + 0.47 * u
+            def strip(kd, f0, f1, g, out, inn, u0=0.0, u1=1.0, n=8):
+                for k in range(n):
+                    a, b = u0 + (u1 - u0) * k / n, u0 + (u1 - u0) * (k + 1) / n
+                    xa, xb_ = s * (xu(a) * W - (g if k == 0 else 0)), s * (xu(b) * W + (g if k == n - 1 else 0))
+                    decal(kd, (xa, yc, f1(a) + g), (xb_, yc, f1(b) + g), (xb_, yc, f0(b) - g), (xa, yc, f0(a) - g), (0, 1, 0),
+                          nu=3, nv=3, out=out, inn=inn)
+            strip(kind(S, "Slim", "Dark"), zbot, ztop, 0.05, 0.02, 0.06)                       # housing
+            strip(kind(S, "Slim", "Chrome"), zbot, ztop, 0.0, 0.04, 0.02)                      # the lamp's reflector
+            strip(kind(S, "Slim", "Head"), lambda u: ztop(u) - 0.075, lambda u: ztop(u) - 0.025, 0.0, 0.055, 0.0,
+                  u0=0.04, u1=0.9)                                                             # LED strip (lights up)
         else:
             sbox(kind(S, "Slim", "Dark"), x - 0.55, y - 0.05, z1 - 0.3, x + 0.55, y + 0.08, z1 - 0.06, bev=0.03)
             sbox(kind(S, "Slim", "Head"), x - 0.5, y - 0.08, z1 - 0.2, x + 0.5, y, z1 - 0.12)
@@ -165,8 +176,8 @@ def taillights():
         sbox(kind(S, "Stacked", "Light"), s * (xo - 1.0), y - 0.04, z0 + 0.04, s * xo, y + 0.08, zc - 0.02)
         if SMOOTH:  # the reference's lamps: wide units under the deck lip, cast from behind so they wrap the corners
             yb, zt = L1 + 1.5, TAIL - 0.45
-            TL = [(0.36, zt - 0.25), (0.93, zt - 0.4), (0.93, zt + 0.12), (0.36, zt + 0.04)]
-            q = lambda g: [(s * (a * W + g * (1 if a > 0.6 else -1)), yb, b + g * (1 if k in (2, 3) else -1)) for k, (a, b) in enumerate(TL)]
+            TL = [(0.36, zt - 0.25), (0.895, zt - 0.36), (0.895, zt + 0.12), (0.36, zt + 0.04)]
+            q = lambda g: [(s * (a * W + g * (0.4 if a > 0.6 else -1)), yb, b + g * (1 if k in (2, 3) else -1)) for k, (a, b) in enumerate(TL)]
             decal(kind(S, "Slim", "Dark"), *q(0.05), (0, -1, 0), nu=12, nv=3, out=0.02, inn=0.06)
             decal(kind(S, "Slim", "Tail"), *q(0.0), (0, -1, 0), nu=12, nv=3, out=0.04, inn=0.03)
             # bumper reflectors low on the corners
@@ -289,9 +300,11 @@ def mirrors():
         x = s * (W + 0.05)
         if SMOOTH:
             x = s * (gh_xb(y) + 0.02)
-            sbeam(kind(S, "Sport", "Body"), (s * (gh_xb(y) - 0.08), y + 0.12, BELT + 0.06), (x + s * 0.35, y + 0.08, z - 0.05), 0.1, 0.16)
-            scyl(kind(S, "Sport", "Body"), (x + s * 0.6, y - 0.15, z), (x + s * 0.6, y + 0.14, z), 0.19, seg=16, r2=0.15)
-            scyl(kind(S, "Sport", "Glass"), (x + s * 0.6, y + 0.14, z), (x + s * 0.6, y + 0.16, z), 0.15, seg=16)
+            # the reference's shell: a teardrop swelling outboard, on a short thick foot from the door's front corner
+            sbeam(kind(S, "Sport", "Body"), (s * (gh_xb(y) - 0.08), y + 0.1, BELT + 0.06), (x + s * 0.28, y + 0.04, z - 0.04), 0.12, 0.16)
+            scyl(kind(S, "Sport", "Body"), (x + s * 0.12, y, z), (x + s * 0.5, y, z), 0.09, seg=18, r2=0.19)
+            scyl(kind(S, "Sport", "Body"), (x + s * 0.5, y, z), (x + s * 0.7, y, z), 0.19, seg=18, r2=0.09)
+            sbox(kind(S, "Sport", "Glass"), x + s * 0.38, y + 0.12, z - 0.09, x + s * 0.62, y + 0.195, z + 0.09)
             sbox(kind(S, "Rect", "Body"), x, y - 0.1, z - 0.2, x + s * 0.62, y + 0.14, z + 0.2, bev=0.06)
             sbox(kind(S, "Rect", "Glass"), x + s * 0.05, y + 0.14, z - 0.15, x + s * 0.57, y + 0.16, z + 0.15)
             continue
@@ -573,6 +586,7 @@ def build_wheels(ox):
     then everything scaled to this vehicle's wheel"""
     ns = dict(globals())
     exec(compile(open(os.path.join(HERE, "build_lowrider_parts.py")).read(), "build_lowrider_parts.py", "exec"), ns)
+    ns["RIM_TWIN"] = S.get("RIM_TWIN")
     ns["WR"] = 1.17
     ns["wheel_rims"](ox)
     ns["wheel_knockoffs"](ox)

@@ -678,6 +678,18 @@ def wheel_rims(ox):
         beam(wopt("Rim", "Turbine", "Spokes"), p0, p1, 0.06, 0.12, up=(1, 0, 0), style=st)
     cyl(wopt("Rim", "Turbine", "Spokes"), c + X * 0.18, c + X * 0.3, 0.22, seg=24, style=st)
     # Split: ten split spokes (pairs)
+    if globals().get("RIM_TWIN"):
+        # a modern twin-spoke: ten thin pairs fanning out from a small hub, dished in toward the rim, small flush cap
+        cyl(wopt("Rim", "Split", "Spokes"), c + X * 0.14, c + X * 0.27, 0.16, seg=24, style=st)
+        cyl(wopt("Rim", "Split", "Spokes"), c + X * 0.27, c + X * 0.3, 0.1, seg=20, style=st, r2=0.08)
+        for i in range(10):
+            a = 2 * math.pi * i / 10
+            for off in (-1, 1):
+                a0, a1 = a + off * 0.045, a + off * 0.065
+                beam(wopt("Rim", "Split", "Spokes"), c + Vector((0.24, 0.14 * math.cos(a0), 0.14 * math.sin(a0))),
+                     c + Vector((0.13, 0.63 * math.cos(a1), 0.63 * math.sin(a1))), 0.035, 0.07, up=(1, 0, 0), style=st)
+        ring(wopt("Rim", "Split", "Dish"), c + X * 0.12, X, 0.6, 0.66, 0.04, seg=48, style=st)
+        return _rest_after_split(c, X, st, designs)
     cyl(wopt("Rim", "Split", "Spokes"), c + X * 0.12, c + X * 0.26, 0.22, seg=24, style=st)
     for i in range(10):
         a = 2 * math.pi * i / 10
@@ -685,6 +697,10 @@ def wheel_rims(ox):
             beam(wopt("Rim", "Split", "Spokes"), c + Vector((0.2, 0.18 * math.cos(a), 0.18 * math.sin(a))),
                  c + Vector((0.18, 0.62 * math.cos(a + off * 1.5), 0.62 * math.sin(a + off * 1.5))), 0.06, 0.06, up=(1, 0, 0), style=st)
     ring(wopt("Rim", "Split", "Dish"), c + X * 0.17, X, 0.58, 0.66, 0.05, seg=48, style=st)
+    return _rest_after_split(c, X, st, designs)
+
+
+def _rest_after_split(c, X, st, designs):
     # Mesh: cross-hatched face
     ring(wopt("Rim", "Mesh", "Dish"), c + X * 0.17, X, 0.56, 0.66, 0.05, seg=48, style=st)
     for i in range(16):

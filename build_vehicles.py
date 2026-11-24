@@ -121,8 +121,8 @@ SPECS = {
     "VireoE": dict(name="Vireo E", flavour="sports", W=3.8, L0=-9.6, L1=9.15, WB=11.17, WR=1.33, WX=3.18, TW=1.0,
                    ZB=0.62, BELT=3.4, NOSE=2.95, HOOD=3.8, TAIL=4.0, CROWN=0.02, HCROWN=-0.42,
                    A0=-3.6, A1=-0.1, C0=3.8, C1=7.9, ROOF=5.35, TUCK=0.75, B=1.0, Q=3.9, doors=4, rear="hatch",
-                   electric=True, LEAN=0.1, LONGGLASS=True, PLAN=True, NOSEDROP=1.25, FLEAN=0.08, GH_IN=0.06, GH_N=2.3, QWIN=(2.5, 1.9), DLO=dict(tip=5.9, kick=10.0), SQUARE=1.0, WS_BACK=1.4, SKYLIGHT=dict(front=0.15, rear=0.07, width=0.9), lowpro=0.24, smooth=True, rim_dark=True,
-                   stock={"Exhaust": "", "Spoiler": "", "Rim": "Split", "KO": "Cap", "Top": "", "Seats": "Buckets", "Grille": "", "FrontBumper": "", "RearBumper": "",
+                   electric=True, LEAN=0.1, LONGGLASS=True, PLAN=True, NOSEDROP=1.25, FLEAN=0.08, GH_IN=0.06, GH_N=2.3, QWIN=(2.5, 1.9), DLO=dict(tip=5.9, kick=10.0), SQUARE=1.0, WS_BACK=1.4, FUEL_DY=-0.25, FUEL_DZ=-0.2, SKYLIGHT=dict(front=0.15, rear=0.07, width=0.9), lowpro=0.24, smooth=True, rim_dark=True, RIM_TWIN=True,
+                   stock={"Exhaust": "", "Spoiler": "", "Rim": "Split", "KO": "", "Top": "", "Seats": "Buckets", "Grille": "", "FrontBumper": "", "RearBumper": "",
                                          "Dash": "Digital", "Steering": "Sport"}, paint=(0.025, 0.025, 0.03)),
 }
 # ------------------------------------------------------------------ real-world proportions (vehicle QA, 2026-11-24)
@@ -287,7 +287,11 @@ def make_stations():
             f = math.sqrt(max(0.0, 1 - (1 - min(1.0, d / 1.2)) ** 2))
             v = (y - L0) / (A0 - L0)
             top = NOSE + (HOOD - NOSE) * (1 - (1 - v) ** 2) - S.get("NOSEDROP", 0.6) * (1 - f)
-            st.append((y, W * pf, ZB + 0.1 * (1 - e), top - 0.07 - (0.4 if S.get("NOSEDROP") else 0.55) * (1 - f), top, hc * f))
+            bl = top - 0.07 - (0.4 if S.get("NOSEDROP") else 0.55) * (1 - f)
+            if S.get("SQUARE"):                           # the fender crest eases down into the door's belt (no step at the cowl)
+                g = min(1.0, max(0.0, (y - (A0 - 3.0)) / 2.4))
+                bl = min(bl, bl + (BELT + 0.04 - bl) * g * g * (3 - 2 * g)) if bl > BELT else bl
+            st.append((y, W * pf, ZB + 0.1 * (1 - e), bl, top, hc * f))
         st.append((A0, W, ZB, BELT, HOOD + 0.06, hc * 0.5))
     else:
         st = [(L0, W - 0.5, ZB + 0.35, nb - 0.2, nb - 0.12, 0.0), (L0 + 0.2, W - 0.22, ZB + 0.15, nb, NOSE - 0.05, CROWN * 0.4),
@@ -462,7 +466,9 @@ for s in (1, -1):
     if S["doors"] == 4:
         DOORS.append(("DoorR" + sd, s, B + 0.1, Q))
 FUEL_Y = (WY_R + ARCH + 0.35, WY_R + ARCH + 0.95)
+FUEL_Y = (FUEL_Y[0] + S.get("FUEL_DY", 0.0), FUEL_Y[1] + S.get("FUEL_DY", 0.0))
 FUEL_Z = (belt_at(FUEL_Y[0]) - 0.95, belt_at(FUEL_Y[0]) - 0.4)
+FUEL_Z = (FUEL_Z[0] + S.get("FUEL_DZ", 0.0), FUEL_Z[1] + S.get("FUEL_DZ", 0.0))
 if FLAV == "sports":
     FUEL_Z = (FUEL_Z[0] - 0.1, FUEL_Z[1] - 0.1)
 HINGES, HINGE_OF = {}, {"PanelHood": "Hood", "HoodInner": "Hood", "Lid": "Lid", "PanelFuel": "Fuel", "LidInner": "Lid"}
@@ -656,12 +662,18 @@ def wheel_houses(kind, xh, y0, y1, z0):
     hx = house_x()
     for wy in arches_in(y0, y1):
         a, b = max(y0, wy - ARCH - 0.05), min(y1, wy + ARCH + 0.05)
+        def lim(y, x):                                    # a rounded/tucked tail: stay inside the skin
+            if not S.get("smooth"):
+                return x
+            return min(x, min(body_x(y, z0 + (top - z0) * k / 4) for k in range(5)) - 0.08)
         for s in (-1, 1):
-            sbox(kind, s * (hx - 0.06), a, z0 - 0.02, s * hx, b, top)               # inner wall
-            sbox(kind, s * (hx - 0.06), a, top - 0.06, s * xh, b, top)               # top
+            xt = lim(a, lim(b, xh))
+            hx_ = min(hx, xt)
+            sbox(kind, s * (hx_ - 0.06), a, z0 - 0.02, s * hx_, b, top)             # inner wall
+            sbox(kind, s * (hx_ - 0.06), a, top - 0.06, s * xt, b, top)              # top
             for ye in (a, b):
                 if y0 + 0.01 < ye < y1 - 0.01:                                     # end walls inside the floor
-                    sbox(kind, s * (hx - 0.06), ye - 0.03, z0 - 0.02, s * xh, ye + 0.03, top)
+                    sbox(kind, s * (hx_ - 0.06), ye - 0.03, z0 - 0.02, s * lim(ye, xh), ye + 0.03, top)
 
 
 def liner(x0, x1, wy):
@@ -928,7 +940,9 @@ def dlo_greenhouse(ys, phis, O, N, nj, ni):
     ang = [math.degrees(min(p, math.pi - p)) for p in phis]
     bounds = [lambda y, t, z: t - dlo_lo(y), lambda y, t, z: t - (dlo_lo(y) - 2.6), lambda y, t, z: t - dlo_hi(y),
               lambda y, t, z: t - (dlo_hi(y) + 3.0), lambda y, t, z: y - dlo_front(z), lambda y, t, z: y - (dlo_front(z) - 0.12),
-              lambda y, t, z: y - WS_END]
+              lambda y, t, z: y - WS_END, lambda y, t, z: y - (B - 0.08), lambda y, t, z: y - (B + 0.1)]
+    if Q:
+        bounds += [lambda y, t, z: y - (Q - 0.06), lambda y, t, z: y - (Q + 0.07)]
     thick = {"Glass": 0.05, "RoofGlass": 0.05, "RoofGlass__Lid": 0.05, "PanelRoof": 0.1, "RoofBody": 0.08, "RoofChrome": 0.06}
     groups, polys = {}, []
     for j in range(nj - 1):
@@ -941,30 +955,35 @@ def dlo_greenhouse(ys, phis, O, N, nj, ni):
             if len(kinds) == 1:
                 groups.setdefault(dlo_kind(yc, tc, zc), []).append((j, i))
                 continue
-            done = False
+            # clip the cell by every outline it crosses in turn (corners where two outlines meet stay clean)
+            cell = [[(O[a][b], N[a][b], ys[a], ang[b]) for a, b in q]]
             for fb in bounds:
-                f = [fb(ys[a], ang[b], O[a][b].z) for a, b in q]
-                if min(f) < 0 < max(f):
-                    P = [O[a][b] for a, b in q]
-                    Nn = [N[a][b] for a, b in q]
+                nxt = []
+                for poly in cell:
+                    f = [fb(y_, t_, p_.z) for (p_, n_, y_, t_) in poly]
+                    if not (min(f) < 0 < max(f)):
+                        nxt.append(poly)
+                        continue
                     for sgn in (-1, 1):
-                        pts, nrm, yy, tt = [], [], [], []
-                        for m in range(4):
-                            a0, b0 = q[m]
-                            a1, b1 = q[(m + 1) % 4]
-                            f0, f1 = f[m], f[(m + 1) % 4]
+                        out_ = []
+                        for m in range(len(poly)):
+                            v0, v1 = poly[m], poly[(m + 1) % len(poly)]
+                            f0, f1 = f[m], f[(m + 1) % len(poly)]
                             if f0 * sgn >= 0:
-                                pts.append(P[m]); nrm.append(Nn[m]); yy.append(ys[a0]); tt.append(ang[b0])
+                                out_.append(v0)
                             if (f0 < 0) != (f1 < 0):
                                 u = f0 / (f0 - f1)
-                                pts.append(P[m].lerp(P[(m + 1) % 4], u)); nrm.append(Nn[m].lerp(Nn[(m + 1) % 4], u).normalized())
-                                yy.append(ys[a0] + (ys[a1] - ys[a0]) * u); tt.append(ang[b0] + (ang[b1] - ang[b0]) * u)
-                        if len(pts) >= 3:
-                            cy, ct = sum(yy) / len(yy), sum(tt) / len(tt)
-                            cz = sum(p.z for p in pts) / len(pts)
-                            polys.append((dlo_kind(cy, ct, cz), pts, nrm))
-                    done = True
-                    break
+                                out_.append((v0[0].lerp(v1[0], u), v0[1].lerp(v1[1], u).normalized(),
+                                             v0[2] + (v1[2] - v0[2]) * u, v0[3] + (v1[3] - v0[3]) * u))
+                        if len(out_) >= 3:
+                            nxt.append(out_)
+                cell = nxt
+            for poly in cell:
+                cy = sum(v[2] for v in poly) / len(poly)
+                ct = sum(v[3] for v in poly) / len(poly)
+                cz = sum(v[0].z for v in poly) / len(poly)
+                polys.append((dlo_kind(cy, ct, cz), [v[0] for v in poly], [v[1] for v in poly]))
+            done = True
             if not done:
                 groups.setdefault(dlo_kind(yc, tc, zc), []).append((j, i))
     for k, cells in groups.items():
@@ -1137,6 +1156,10 @@ def build_fuel_door():
     y0, y1 = FUEL_Y
     z0, z1 = FUEL_Z
     W = min(globals()["W"], body_x((y0 + y1) / 2, (z0 + z1) / 2) - 0.05) if S.get("smooth") else globals()["W"]   # under the cast flap
+    if S.get("smooth"):
+        # a rounded tail: the flap and its port are placed on the skin's own normal once the body exists
+        HINGES["Fuel"]["pivot"] = (W + 0.03, y0, (z0 + z1) / 2)
+        return
     sbox("Under", W - 0.04, y0 + 0.06, z0 + 0.06, W - 0.005, y1 - 0.06, z1 - 0.06)
     c = (W - 0.005, (y0 + y1) / 2, (z0 + z1) / 2)
     if S.get("electric"):                                  # charge port: a socket with two pins
@@ -1156,8 +1179,31 @@ def build_fuel_door_smooth():
     """after the body exists (decals cast onto it): the charge flap and its port on the curved quarter"""
     y0, y1 = FUEL_Y
     z0, z1 = FUEL_Z
-    decal("PanelFuel", (W + 1, y0, z0), (W + 1, y1, z0), (W + 1, y1, z1), (W + 1, y0, z1), (-1, 0, 0), nu=4, nv=4,
-          out=0.025, inn=0.0)
+    yc, zc = (y0 + y1) / 2, (z0 + z1) / 2
+    loc, n, _, _ = body_bvh().ray_cast(Vector((W + 3, yc, zc)), Vector((-1, 0, 0)), 8.0)
+    if loc is None:
+        return
+    n = Vector(n).normalized()
+    if n.x < 0:
+        n = -n
+    t1 = Vector((0, 0, 1)).cross(n).normalized()          # along the skin, horizontal
+    if t1.y < 0:
+        t1 = -t1
+    t2 = n.cross(t1).normalized()
+    if t2.z < 0:
+        t2 = -t2
+    hw, hh = (y1 - y0) / 2, (z1 - z0) / 2
+    P = lambda a, b, o: loc + n * o + t1 * a + t2 * b
+    decal("PanelFuel", P(-hw, -hh, 1), P(hw, -hh, 1), P(hw, hh, 1), P(-hw, hh, 1), -n, nu=4, nv=4, out=0.025, inn=0.0)
+    # the port under the flap, sunk into the skin along its normal
+    decal("Under", P(-hw + 0.06, -hh + 0.06, 1), P(hw - 0.06, -hh + 0.06, 1), P(hw - 0.06, hh - 0.06, 1), P(-hw + 0.06, hh - 0.06, 1), -n,
+          nu=3, nv=3, out=0.004, inn=0.05)
+    c = loc + n * 0.0
+    if S.get("electric"):
+        scyl("Dark", c - n * 0.02, c + n * 0.012, 0.17, seg=16)
+        for dz in (-0.05, 0.05):
+            scyl("Chrome", c + t2 * dz - n * 0.01, c + t2 * dz + n * 0.018, 0.03, seg=8)
+    HINGES["Fuel"]["pivot"] = tuple(loc + n * 0.03 - t1 * hw)
 
 
 def build_frunk():
@@ -1173,7 +1219,8 @@ def build_frunk():
         uz = lambda x, y: deck_z(abs(x), y) - 0.12
         xo = lambda y: min(0.8 * station_w(y), W - 0.12)
         def sect(y):
-            e, a = xo(y), ap
+            e = xo(y)
+            a = min(ap, e - 0.08)                           # the rounded nose: the tub narrows with it
             return [(-e, uz(e, y)), (-a, uz(a, y)), (-a, fl), (a, fl), (a, uz(a, y)), (e, uz(e, y))]
         n = 16
         ys = [y0 + (y1 - y0) * j / n for j in range(n + 1)]
@@ -1198,7 +1245,14 @@ def build_frunk():
             sbox("Under", s * (ap - 0.05), y0, fl, s * ap, y1, top)
         for yy in (y0, y1 - 0.05):
             sbox("Under", -ap, yy, fl, ap, yy + 0.05, top)
-    sbox("Carpet", -(ap - 0.06), y0 + 0.06, fl, ap - 0.06, y1 - 0.06, fl + 0.04)
+    if S.get("smooth"):                                    # carpet in slices that follow the narrowing tub
+        ns_ = 8
+        for k in range(ns_):
+            ya_, yb_ = y0 + 0.06 + (y1 - y0 - 0.12) * k / ns_, y0 + 0.06 + (y1 - y0 - 0.12) * (k + 1) / ns_
+            xc = min(ap, xo(ya_) - 0.08, xo(yb_) - 0.08) - 0.06
+            sbox("Carpet", -xc, ya_, fl, xc, yb_, fl + 0.03)
+    else:
+        sbox("Carpet", -(ap - 0.06), y0 + 0.06, fl, ap - 0.06, y1 - 0.06, fl + 0.04)
     sbox("Dark", -0.5, y1 - 0.4, fl + 0.04, 0.5, y1 - 0.08, fl + 0.3, bev=0.04)          # charger bag
 
 
@@ -1390,33 +1444,57 @@ def skylight():
 def smooth_details():
     """the fixed details of a smooth modern body: lower intake, fog-lamp slats, rear diffuser, door trim"""
     yF, yR = L0 - 1.0, L1 + 1.0
-    decal("Dark", (-W * 0.55, yF, ZB + 0.3), (W * 0.55, yF, ZB + 0.3), (W * 0.55, yF, ZB + 0.85), (-W * 0.55, yF, ZB + 0.85),
-          (0, 1, 0), nu=16, nv=3, out=0.02, inn=0.05)
-    if S.get("PLAN"):          # the reference's nose: a thin chrome V from each lamp's inner tip down to the middle (no badge)
+    if S.get("PLAN"):
+        # the reference's lower front: a wide mouth whose top edge dips gently toward the sides, side intakes that rise
+        # outward holding a small round fog lamp and two chrome blades, and a shallow chrome wing under the nose (no badge)
+        n_ = 12
+        for k in range(n_):
+            a, b = -0.6 + 1.2 * k / n_, -0.6 + 1.2 * (k + 1) / n_
+            zt = lambda u: ZB + 0.66 - 0.12 * (abs(u) / 0.6) ** 2
+            decal("Dark", (a * W, yF, ZB + 0.26), (b * W, yF, ZB + 0.26), (b * W, yF, zt(b)), (a * W, yF, zt(a)), (0, 1, 0),
+                  nu=3, nv=3, out=0.02, inn=0.05)
         for s_ in (-1, 1):
-            xa, za, zb_ = s_ * W * 0.44, 2.42, 2.12
-            decal("Chrome", (xa, yF, za - 0.035), (0.0, yF, zb_ - 0.035), (0.0, yF, zb_ + 0.01), (xa, yF, za + 0.01), (0, 1, 0),
-                  nu=12, nv=1, out=0.035, inn=0.02)
+            x0, x1 = s_ * W * 0.6, s_ * W * 0.88
+            decal("Dark", (x0, yF, ZB + 0.36), (x1, yF, ZB + 0.46), (x1, yF, ZB + 0.98), (x0, yF, ZB + 0.84), (0, 1, 0), nu=6, nv=3,
+                  out=0.015, inn=0.05)
+            for dz in (0.0, 0.11):                       # two chrome blades along the intake's top
+                za0, za1 = ZB + 0.66 + dz, ZB + 0.78 + dz
+                decal("Chrome", (x0, yF, za0), (s_ * W * 0.82, yF, za1), (s_ * W * 0.82, yF, za1 + 0.035), (x0, yF, za0 + 0.035),
+                      (0, 1, 0), nu=6, nv=1, out=0.035, inn=0.02)
+            xf = s_ * W * 0.8                            # fog lamp
+            decal("Chrome", (xf - 0.15, yF, ZB + 0.45), (xf + 0.15, yF, ZB + 0.45), (xf + 0.15, yF, ZB + 0.66), (xf - 0.15, yF, ZB + 0.66),
+                  (0, 1, 0), nu=3, nv=3, out=0.035, inn=0.02)
+            decal("Head", (xf - 0.1, yF, ZB + 0.49), (xf + 0.1, yF, ZB + 0.49), (xf + 0.1, yF, ZB + 0.62), (xf - 0.1, yF, ZB + 0.62),
+                  (0, 1, 0), nu=2, nv=2, out=0.05, inn=0.0)
+            m_ = 8                                       # nose wing: from the lamp's inner tip in a shallow arc to the middle
+            for k in range(m_):
+                ua, ub = k / m_, (k + 1) / m_
+                zw = lambda u: 2.04 + 0.12 * u ** 1.6
+                xa, xb_ = s_ * W * 0.44 * ua, s_ * W * 0.44 * ub
+                decal("Chrome", (xa, yF, zw(ua) - 0.03), (xb_, yF, zw(ub) - 0.03), (xb_, yF, zw(ub) + 0.01), (xa, yF, zw(ua) + 0.01),
+                      (0, 1, 0), nu=2, nv=1, out=0.035, inn=0.02)
+    else:
+        decal("Dark", (-W * 0.55, yF, ZB + 0.3), (W * 0.55, yF, ZB + 0.3), (W * 0.55, yF, ZB + 0.85), (-W * 0.55, yF, ZB + 0.85),
+              (0, 1, 0), nu=16, nv=3, out=0.02, inn=0.05)
+        for s_ in (-1, 1):
+            x0, x1 = s_ * W * 0.56, s_ * W * 0.8
+            decal("Dark", (x0, yF, ZB + 0.4), (x1, yF, ZB + 0.4), (x1, yF, ZB + 0.78), (x0, yF, ZB + 0.78), (0, 1, 0), nu=6, nv=3,
+                  out=0.015, inn=0.05)
+            for k in range(3):
+                z = ZB + 0.48 + k * 0.11
+                decal("Chrome", (x0, yF, z), (x1, yF, z), (x1, yF, z + 0.035), (x0, yF, z + 0.035), (0, 1, 0), nu=6, nv=1,
+                      out=0.035, inn=0.02)
     for s_ in (-1, 1):
-        x0, x1 = s_ * W * 0.56, s_ * W * 0.8
-        if S.get("PLAN"):
-            x0, x1 = s_ * W * 0.6, s_ * W * 0.86
-        decal("Dark", (x0, yF, ZB + 0.4), (x1, yF, ZB + 0.4), (x1, yF, ZB + 0.78), (x0, yF, ZB + 0.78), (0, 1, 0), nu=6, nv=3,
-              out=0.015, inn=0.05)
-        for k in range(3):
-            z = ZB + 0.48 + k * 0.11
-            decal("Chrome", (x0, yF, z), (x1, yF, z), (x1, yF, z + 0.035), (x0, yF, z + 0.035), (0, 1, 0), nu=6, nv=1,
-                  out=0.035, inn=0.02)
         # chrome strip low along the doors
         xs = s_ * (W + 1.0)
         y0, y1 = WY_F + ARCH + 0.2, WY_R - ARCH - 0.2
         decal("RoofChrome", (xs, y0, DOOR_Z0 + 0.14), (xs, y1, DOOR_Z0 + 0.14), (xs, y1, DOOR_Z0 + 0.19), (xs, y0, DOOR_Z0 + 0.19),
               (-s_, 0, 0), nu=60, nv=1, out=0.025, inn=0.02)
-    decal("Dark", (-W * 0.6, yR, ZB + 0.3), (W * 0.6, yR, ZB + 0.3), (W * 0.6, yR, ZB + 0.6), (-W * 0.6, yR, ZB + 0.6),
+    decal("Dark", (-W * 0.5, yR, ZB + 0.3), (W * 0.5, yR, ZB + 0.3), (W * 0.5, yR, ZB + 0.6), (-W * 0.5, yR, ZB + 0.6),
           (0, -1, 0), nu=14, nv=3, out=0.03, inn=0.05)
     if S.get("PLAN"):          # the reference's rear: the hatch's shut line over the bumper, across the tail
         zc_ = ZB + 1.45
-        decal("Seam", (-W * 0.7, yR, zc_ - 0.012), (W * 0.7, yR, zc_ - 0.012), (W * 0.7, yR, zc_ + 0.012), (-W * 0.7, yR, zc_ + 0.012),
+        decal("Seam", (-W * 0.6, yR, zc_ - 0.012), (W * 0.6, yR, zc_ - 0.012), (W * 0.6, yR, zc_ + 0.012), (-W * 0.6, yR, zc_ + 0.012),
               (0, -1, 0), nu=24, nv=1, out=0.006, inn=0.05)
     # door shut lines, following the barrelled side (a straight box poked out above the shoulder)
     for (nm, s_, y0, y1) in DOORS:
@@ -1430,6 +1508,9 @@ def smooth_details():
     # hood shut lines: along the fender peaks' inner edge and across behind the nose cone
     y0h, y1h = L0 + 0.95, A0 - 0.1
     hx = lambda y: 0.744 * station_w(y)
+    if S.get("PLAN"):                                    # the reference: lines from the pillars forward to the lamps' tops
+        while hx(y0h) < 0.6 * W and y0h < y1h - 1:
+            y0h += 0.05
     n = 10
     for k in range(n):
         ya, yb = y0h + (y1h - y0h) * k / n, y0h + (y1h - y0h) * (k + 1) / n
@@ -1799,7 +1880,8 @@ if os.environ.get("NC_REFMASK"):                        # silhouettes for fittin
     VIEWS_ = json.loads(os.environ.get("NC_REFVIEWS", "null")) or REF_VIEWS
     for k, (a, h) in enumerate(VIEWS_):
         ar = math.radians(a)
-        shot(f"mask{k}", (D_ * math.sin(ar), -D_ * math.cos(ar), h), (0, 0, ROOF * 0.42))
+        tx_, ty_, tz_ = json.loads(os.environ.get("NC_REFT", "null")) or (0, 0, ROOF * 0.42)   # look-at point
+        shot(f"mask{k}", (tx_ + D_ * math.sin(ar), ty_ - D_ * math.cos(ar), h), (tx_, ty_, tz_))
     if os.environ.get("NC_REFGRID"):
         scene.render.resolution_x = scene.render.resolution_y = 300
         for a in range(0, 360, 5):
