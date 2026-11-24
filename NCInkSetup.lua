@@ -29,6 +29,9 @@ function S.Prepare(model)
 	local ids = RS:FindFirstChild("NCInkIds") or Instance.new("Folder")
 	ids.Name = "NCInkIds"
 	ids.Parent = RS
+	local sas = RS:FindFirstChild("NCInkSA") or Instance.new("Folder")
+	sas.Name = "NCInkSA"
+	sas.Parent = RS
 	local n, missing = 0, {}
 	for _, mp in ipairs(model:GetDescendants()) do
 		if mp:IsA("MeshPart") then
@@ -40,6 +43,21 @@ function S.Prepare(model)
 				v.Value = id
 				v.Parent = ids
 				n += 1
+				-- keep the imported SurfaceAppearance too (alpha mode Transparency): NCInk.Apply prefers it over
+				-- TextureID, because a script can clone a SurfaceAppearance at runtime but can't set its ColorMap
+				local sa = mp:FindFirstChildOfClass("SurfaceAppearance")
+				if sa then
+					local old = sas:FindFirstChild(name)
+					if old then
+						old:Destroy()
+					end
+					local c = sa:Clone()
+					c.Name = name
+					pcall(function()
+						c.AlphaMode = Enum.AlphaMode.Transparency
+					end)
+					c.Parent = sas
+				end
 			else
 				table.insert(missing, name)
 			end

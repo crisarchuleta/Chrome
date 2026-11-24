@@ -331,9 +331,22 @@ function Ink.Apply(character, ink)
 		local mp = folder:FindFirstChild(name)
 		if mp then
 			local file = want[name]
-			local id = file and textureId(file) or ""
-			mp.TextureID = id
-			mp.Transparency = (id ~= "") and 0 or 1
+			local old = mp:FindFirstChildOfClass("SurfaceAppearance")
+			if old then
+				old:Destroy()
+			end
+			-- prefer the saved SurfaceAppearance (alpha mode Transparency), fall back to TextureID
+			local sas = RS:FindFirstChild("NCInkSA")
+			local sa = file and sas and sas:FindFirstChild(file)
+			if sa then
+				sa:Clone().Parent = mp
+				mp.TextureID = ""
+				mp.Transparency = 0
+			else
+				local id = file and textureId(file) or ""
+				mp.TextureID = id
+				mp.Transparency = (id ~= "") and 0 or 1
+			end
 		end
 	end
 end
