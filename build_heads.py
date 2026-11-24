@@ -716,8 +716,8 @@ def cap_version(H, V, T, p):
     capline = cap_line(H, V)
     T2 = T.copy()
     over = V[:, 2] > capline - 0.03
-    T2[over] = np.minimum(T2[over], 0.008)
-    T2[V[:, 2] > capline] = 0.0          # above the band: only a hair-coloured skin under the crown
+    T2[over] = 0.0                       # over the band: only a hair-coloured skin, right on the scalp
+    T2[~over] += 0.002                   # (the cap piece sits at lift 0.005, so the hair below keeps its height)
     return T2
 
 
@@ -1003,7 +1003,8 @@ def build_styles(H):
         Tc = cap_version(H, V, T, p)
         # (the hair-coloured skin stays under the whole crown: a cap leaves a small gap between its crown and band at the
         #  back, and bare scalp showed through it)
-        cap = shell(f"Hair_{key}_Cap", V, F, N, Tc, field=field, lift=0.007, uv=(cov, ev))
+        # (and only up to just over the band's top: the cap's crown covers the rest, and the layer showed through it)
+        cap = shell(f"Hair_{key}_Cap", V, F, N, Tc, field=np.minimum(field, cap_line(H, V) + 0.11 - V[:, 2]), lift=0.005, uv=(cov, ev))
         if extras and p.get("cap_extras", True):
             b = Builder()
             b.add_obj(cap)
