@@ -1485,3 +1485,108 @@ player.CharacterRemoving:Connect(function()
 		closeShop()
 	end
 end)
+
+-- ================================================================ seated pose
+-- The stock sit animation leaves the shins hanging straight down, and car seats sit low over the floor, so feet
+-- went through it. Anyone seated in a kit car (not bikes) gets a driving pose each frame, on top of the sit
+-- animation: body lifted a little, thighs up and splayed round the steering wheel, shins reaching forward to the
+-- footwell, and the driver's hands toward the wheel. Works on Motor6D and AnimationConstraint joints. Tunables:
+local SEAT_POSE = {
+	lift = 0.2, -- studs the body rises off the seat
+	hip = 104, -- thigh, degrees forward from hanging straight down
+	shin = 50, -- shin, degrees forward of straight down
+	splay = 10, -- knees apart (degrees)
+	shoulder = 46, -- driver's arms forward
+	shoulderIn = 16, -- driver's arms inward
+	elbow = 72,
+}
+do
+	local JOINTS = { "Root", "RightHip", "LeftHip", "RightKnee", "LeftKnee", "RightAnkle", "LeftAnkle", "RightShoulder",
+		"LeftShoulder", "RightElbow", "LeftElbow" }
+	local WANT = {}
+	for _, n in JOINTS do
+		WANT[n] = true
+	end
+	local cache = {} -- [character] = { [jointName] = joint }
+	local function jointsOf(char)
+		local e = cache[char]
+		if e and e.RightHip and e.RightHip.Parent then
+			return e
+		end
+		e = {}
+		for _, d in char:GetDescendants() do
+			if WANT[d.Name] and (d:IsA("Motor6D") or d:IsA("AnimationConstraint")) and not e[d.Name] then
+				e[d.Name] = d
+			end
+		end
+		if not cache[char] then
+			char.Destroying:Once(function()
+				cache[char] = nil
+			end)
+		end
+		cache[char] = e
+		return e
+	end
+	local function frames(j)
+		if j:IsA("Motor6D") then
+			return j.C0.Rotation, j.C1.Rotation
+		end
+		local a0, a1 = j.Attachment0, j.Attachment1
+		local p0 = a0 and a0:FindFirstAncestorWhichIsA("BasePart")
+		local p1 = a1 and a1:FindFirstAncestorWhichIsA("BasePart")
+		if not (p0 and p1) then
+			return nil
+		end
+		return p0.CFrame:ToObjectSpace(a0.WorldCFrame).Rotation, p1.CFrame:ToObjectSpace(a1.WorldCFrame).Rotation
+	end
+	-- the child's rotation q relative to its rest pose (parent's axes), plus an optional offset
+	local function setJoint(j, q, off)
+		if not j then
+			return
+		end
+		local c0, c1 = frames(j)
+		if not c0 then
+			return
+		end
+		local t = c0:Inverse() * q * c1
+		j.Transform = off and (CFrame.new(c0:Inverse() * off) * t) or t
+	end
+	local rad, A = math.rad, CFrame.Angles
+	local BIKE = {}
+	for _, v in Vehicles.List do
+		if v.bike then
+			BIKE[v.id] = true
+		end
+	end
+	RunService.Stepped:Connect(function()
+		local P = SEAT_POSE
+		local camPos = workspace.CurrentCamera.CFrame.Position
+		for _, plr in Players:GetPlayers() do
+			local char = plr.Character
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			local seat = hum and hum.Health > 0 and hum.SeatPart
+			local car = seat and seat.Parent
+			if not (car and car:GetAttribute("NCLowrider")) or BIKE[car:GetAttribute("Vehicle")] then
+				continue
+			end
+			if (seat.Position - camPos).Magnitude > 200 then
+				continue
+			end
+			local J = jointsOf(char)
+			local h, sh, sp = rad(P.hip), rad(P.shin), rad(P.splay)
+			setJoint(J.Root, CFrame.identity, Vector3.new(0, P.lift, 0))
+			setJoint(J.RightHip, A(h, 0, sp))
+			setJoint(J.LeftHip, A(h, 0, -sp))
+			setJoint(J.RightKnee, A(sh - h, 0, 0))
+			setJoint(J.LeftKnee, A(sh - h, 0, 0))
+			setJoint(J.RightAnkle, A(-sh + rad(10), 0, 0))
+			setJoint(J.LeftAnkle, A(-sh + rad(10), 0, 0))
+			if seat.Name == "DriveSeat" then
+				setJoint(J.RightShoulder, A(rad(P.shoulder), 0, -rad(P.shoulderIn)))
+				setJoint(J.LeftShoulder, A(rad(P.shoulder), 0, rad(P.shoulderIn)))
+				setJoint(J.RightElbow, A(rad(P.elbow), 0, 0))
+				setJoint(J.LeftElbow, A(rad(P.elbow), 0, 0))
+			end
+		end
+	end)
+end

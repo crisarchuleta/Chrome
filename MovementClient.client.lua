@@ -1061,42 +1061,6 @@ local function stateOf(char)
 	return s
 end
 
--- sitting in a car: the stock sit animation leaves the shins hanging straight down, and car seats sit low over the
--- floor, so the feet went through it. Thighs rise a little, shins reach forward to the pedals / footwell.
-local function carSeatPose(J, driver)
-	local h, shin = rad(108), rad(52)
-	local k = shin - h
-	setJoint(J.RightHip, A_(h, 0, rad(-4)), 1)
-	setJoint(J.LeftHip, A_(h, 0, rad(4)), 1)
-	setJoint(J.RightKnee, A_(k, 0, 0), 1)
-	setJoint(J.LeftKnee, A_(k, 0, 0), 1)
-	setJoint(J.RightAnkle, A_(-shin + rad(10), 0, 0), 1)
-	setJoint(J.LeftAnkle, A_(-shin + rad(10), 0, 0), 1)
-	if driver then -- hands on the wheel
-		setJoint(J.RightShoulder, D(62, 0, 8), 1)
-		setJoint(J.LeftShoulder, D(62, 0, -8), 1)
-		setJoint(J.RightElbow, D(28), 1)
-		setJoint(J.LeftElbow, D(28), 1)
-	end
-end
-
-local BIKE_IDS = {}
-do
-	local ok, Vehicles = pcall(function()
-		return require(game:GetService("ReplicatedStorage"):WaitForChild("NCVehicles", 5))
-	end)
-	if ok and type(Vehicles) == "table" then
-		for _, v in Vehicles.List or Vehicles do
-			if type(v) == "table" and v.bike then
-				BIKE_IDS[v.id] = true
-			end
-		end
-	end
-end
-local function isBikeId(id)
-	return id ~= nil and BIKE_IDS[id] == true
-end
-
 local frame = 0
 RunService.Stepped:Connect(function(_, dt)
 	dt = math.clamp(dt, 1 / 240, 0.1)
@@ -1116,11 +1080,6 @@ RunService.Stepped:Connect(function(_, dt)
 			continue
 		end
 		local isMe = p == player
-		local seatCar = hum.SeatPart and hum.SeatPart.Parent
-		if hum.Health > 0 and seatCar and seatCar:GetAttribute("NCLowrider") and not isBikeId(seatCar:GetAttribute("Vehicle")) then
-			carSeatPose(jointsOf(char), hum.SeatPart.Name == "DriveSeat")
-			continue
-		end
 		if hum.Health <= 0 or hum.SeatPart or char:GetAttribute("SwimPose") or char:GetAttribute("ChuteState") or char:GetAttribute("Workout") then
 			continue
 		end
