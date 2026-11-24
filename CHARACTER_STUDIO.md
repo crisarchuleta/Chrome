@@ -154,8 +154,8 @@ that hugs the skin, so it looks like part of the skin, not a sticker.
   1. `NCInk.Attach(character, "Male_Average")` once after the body is built.
   2. `NCInk.Apply(character, ink)` whenever the look changes.
 
-<<<<<<< HEAD
-  The layers bind to the rig's bones by name.
+  Attach places each layer on its own body part from `Ink.FIT` (offset and size as fractions of the part) and holds
+  it with a classic Weld. The layers are rigid on purpose: skinned layers came in scattered from the importer.
 - **Wired into Character Studio.**
   - The old painted Arm Ink and Face & Neck Ink slots are gone. A look now carries an `Ink` table, and the presets
     that had tattoos use real ink instead.
@@ -169,10 +169,6 @@ that hugs the skin, so it looks like part of the skin, not a sticker.
     Presets keep your own tattoos unless the preset comes with its own.
   - The Studio package `.rbxmx` now carries NCInk and NCInkCatalog (moved to ReplicatedStorage) and NCInkSetup
     (moved to ServerStorage).
-=======
-  Attach places each layer on its own body part from `Ink.FIT` (offset and size as fractions of the part) and holds
-  it with a classic Weld. The layers are rigid on purpose: skinned layers came in scattered from the importer.
->>>>>>> 7e50913f7d8d8110cf8fb218acdd988456cb836d
 - **Rebuilding.**
   1. `python tools/ink/compose.py <out>` makes the PNGs and the catalog.
   2. `python tools/ink/build_ink.py rig.blend <out>` makes the layers.
