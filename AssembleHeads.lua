@@ -73,4 +73,25 @@ for _, model in ipairs(Selection:Get()) do
 	folder.Parent = root
 	model:Destroy()
 end
-print("AssembleHeads: " .. done .. " hair and face pieces ready in ReplicatedStorage.NC_HeadAssets")
+-- drop pieces a newer build no longer makes (NCHead would still wear them): anything not listed in NCHeadData
+local removed = 0
+local okData, data = pcall(function()
+	local m = RS:FindFirstChild("NCHeadData")
+	return m and require(m:Clone())
+end)
+if okData and data then
+	for _, folder in ipairs(root:GetChildren()) do
+		local listed = data[folder.Name] and data[folder.Name].pieces
+		if listed then
+			for _, part in ipairs(folder:GetChildren()) do
+				if part:IsA("MeshPart") and not listed[part.Name] then
+					part:Destroy()
+					removed += 1
+				end
+			end
+		end
+	end
+else
+	warn("AssembleHeads: update ReplicatedStorage.NCHeadData first, then run this again to remove old pieces")
+end
+print("AssembleHeads: " .. done .. " hair and face pieces ready in ReplicatedStorage.NC_HeadAssets, " .. removed .. " old ones removed")

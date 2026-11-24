@@ -717,6 +717,7 @@ def cap_version(H, V, T, p):
     T2 = T.copy()
     over = V[:, 2] > capline - 0.03
     T2[over] = np.minimum(T2[over], 0.008)
+    T2[V[:, 2] > capline] = 0.0          # above the band: only a hair-coloured skin under the crown
     return T2
 
 
@@ -829,20 +830,32 @@ def build_styles(H):
         kdv.balance()
         vol = np.maximum(T, 0.004)
 
+        # the solid base shell's surface over the scalp (same formula add_short uses after the cards)
+        if cp.get("base"):
+            tsurf = T * cp["base"] * (0.15 + 0.85 * smoothstep(0.0, cp.get("edge_ramp", 0.07), hl_ if hl_ is not None else 1.0))
+        else:
+            tsurf = np.minimum(T, 0.003)
+        tsurf = np.maximum(tsurf, 0) + 0.007
+        floor_at = lambda loc: tsurf[kdv.find(loc)[1]]
+
         def height_at(frac):
             return lambda loc: vol[kdv.find(loc)[1]] * frac
         relc = V - H.centre
         masks = {
             # the front strip along the hairline, where the hair rises off the forehead (its coverage is still
             # feathering in, so the coverage-weighted layers leave it bare)
-            "front": smoothstep(0.35 * H.R, 0.7 * H.R, -relc[:, 1]) * smoothstep(H.anchor[2] + 0.12, H.anchor[2] + 0.2, V[:, 2]),
+            "front": smoothstep(0.35 * H.R, 0.7 * H.R, -relc[:, 1]) * smoothstep(H.anchor[2] + 0.04, H.anchor[2] + 0.12, V[:, 2])
+                     * (1 - smoothstep(0.42 * H.R, 0.68 * H.R, np.abs(relc[:, 0]))),   # (not round the temples)
         }
         for layer in cp["layers"]:
             kind, spacing, hfrac, width, lmul, wmin = layer[:6]
             weight = smoothstep(wmin, 1.0, cov)
             if len(layer) > 6:
                 weight = weight * masks[layer[6]]
-            for root, i in sample_roots_(rng, weight, spacing):
+            _roots = sample_roots_(rng, weight, spacing)
+            if os.environ.get("NC_DBG"):
+                print("NC_DBG", key, layer[6] if len(layer) > 6 else "-", len(_roots), float(weight.max()))
+            for root, i in _roots:
                 # (the back of a crop is short: the long top hair is the front and crown, so no bowl-shaped fringe)
                 backness = float(smoothstep(-0.1 * H.R, 0.8 * H.R, relc[i, 1]))   # (a long blend: no step at the crown)
                 length = (cp["len_side"] + (cp["len_top"] - cp["len_side"]) * tw[i] * (1 - 0.55 * backness)) * lmul * rng.uniform(0.8, 1.15)
@@ -851,8 +864,13 @@ def build_styles(H):
                     length *= 0.3 + 0.7 * smoothstep(0.5, 1.0, cov[i])
                 if cp.get("forward") and hl_ is not None:       # hair combed forward stops about at the hairline
                     length = min(length, max(0.02, 0.9 * hl_[i] + 0.015))
-                if fade_top is not None:                         # and never down past where the fade begins
-                    length = min(length, max(0.025, 1.3 * (root[2] - fade_top[i] + 0.08)))
+                is_front = len(layer) > 6 and layer[6] == "front"
+                if fade_top is not None and not is_front:        # and never down past where the fade begins
+                    #  (the hairline layer is combed back off the forehead and kept off the temples by its mask)
+                    room = 1.3 * (root[2] - fade_top[i] + 0.08)
+                    if room < 0.04:                              # (a stub card there reads as a block at the temple:
+                        continue                                 #  the shell and the fade texture carry it)
+                    length = min(length, room)
                 # keep the card about as long as the strand texture is tall for its width (1:4 in the atlas): a short
                 # card as wide as it is long squashes the strands into a brush-shaped block
                 w_i = min(width, length * 0.4)
@@ -860,7 +878,8 @@ def build_styles(H):
                 vv, ff, uu, ww = HC.grow_card(H, root, flow, length, height_at(hfrac * rng.uniform(0.85, 1.1)), w_i,
                                               segs_i, rng, kind, jitter=cp.get("jitter", 0.35),
                                               lift_curve=lambda s_: min(1.0, s_ / 0.2) ** 0.7 * (1 - 0.35 * s_ * s_),
-                                              v0=0.28 if len(layer) > 6 and layer[6] == "front" else 0.0)
+                                              v0=float(rng.uniform(0.04, 0.14)) if len(layer) > 6 and layer[6] == "front" else 0.0,
+                                              floor=floor_at)
                 builders["full"].add(vv, ff, uu, ww)
                 # under a hat only the band below it shows: a card goes in the cap set only if all of it stays well
                 # under the cap line (the same line cap_version uses) and close to the scalp, or it pokes through
@@ -982,8 +1001,9 @@ def build_styles(H):
             extras(b, T)
             hair = b.make(f"Hair_{key}")
         Tc = cap_version(H, V, T, p)
-        # (and nothing at all above the cap line: even pressed flat, hair there showed through a snug cap)
-        cap = shell(f"Hair_{key}_Cap", V, F, N, Tc, field=np.minimum(field, cap_line(H, V) + 0.02 - V[:, 2]), lift=0.007, uv=(cov, ev))
+        # (the hair-coloured skin stays under the whole crown: a cap leaves a small gap between its crown and band at the
+        #  back, and bare scalp showed through it)
+        cap = shell(f"Hair_{key}_Cap", V, F, N, Tc, field=field, lift=0.007, uv=(cov, ev))
         if extras and p.get("cap_extras", True):
             b = Builder()
             b.add_obj(cap)
@@ -992,17 +1012,17 @@ def build_styles(H):
         out[key] = {"label": label, "hair": hair, "cap": cap, "fade": None, "skin_fade": "fade_z" in p,
                     "cards": cards, "capcards": capcards}
 
+    def straight_cards(flow, len_top, len_side, base=0.3, dense=1.0, edge_ramp=0.14):
+        """the card layers of a short straight cut (worked out on the TaperFade against hair_ref_1)"""
+        k = 1.0 / math.sqrt(dense)
+        return dict(flow=flow, base=base, edge_ramp=edge_ramp, len_top=len_top, len_side=len_side, jitter=0.1, segs=6,
+                    # (kind, root spacing, height share, width, length x, min coverage[, mask])
+                    layers=[("STRAIGHT_DENSE", 0.025 * k, 0.86, 0.04, 1.0, 0.7),                  # on the base
+                            ("STRAIGHT_DENSE", 0.022 * k, 0.9, 0.036, 1.0, 0.1, "front"),         # the hairline
+                            ("STRAIGHT_DENSE", 0.027 * k, 0.88, 0.036, 1.0, 0.8),                 # the outer shape
+                            ("STRAIGHT_DENSE", 0.022 * k, 0.62, 0.03, 0.5, 0.45)])                # short sides/back
     if male:
         add_short("Buzz", "Buzz Cut", dict(top=0.016, side=0.012, feather=0.05, groove=0.06, freq=40))
-        def straight_cards(flow, len_top, len_side, base=0.3, dense=1.0, edge_ramp=0.14):
-            """the card layers of a short straight cut (worked out on the TaperFade against hair_ref_1)"""
-            k = 1.0 / math.sqrt(dense)
-            return dict(flow=flow, base=base, edge_ramp=edge_ramp, len_top=len_top, len_side=len_side, jitter=0.1, segs=6,
-                        # (kind, root spacing, height share, width, length x, min coverage[, mask])
-                        layers=[("STRAIGHT_DENSE", 0.025 * k, 0.86, 0.04, 1.0, 0.7),                  # on the base
-                                ("STRAIGHT_DENSE", 0.022 * k, 0.9, 0.036, 1.0, 0.1, "front"),         # the hairline
-                                ("STRAIGHT_DENSE", 0.027 * k, 0.88, 0.036, 1.0, 0.8),                 # the outer shape
-                                ("STRAIGHT_DENSE", 0.022 * k, 0.62, 0.03, 0.5, 0.45)])                # short sides/back
         add_short("Crop", "Short Crop", dict(top=0.06, side=0.02, front_lift=0.025, feather=0.06, groove=0.03, freq=44,
                                               cards=dict(straight_cards("crown", 0.13, 0.05), forward=True)))
         # textured crop with a mid skin fade (references hair_ref_1): 4-6 cm on top brushed up with a small front lift,
@@ -1028,7 +1048,8 @@ def build_styles(H):
                                                                     ("COILY", 0.02, 0.85, 0.04, 1.0, 0.1, "front"),
                                                                     ("STRAIGHT_DENSE", 0.022, 0.62, 0.03, 0.5, 0.45)])))
     else:
-        add_short("Pixie", "Pixie Cut", dict(top=0.07, side=0.03, part=0.25, sweep=0.03, feather=0.06, groove=0.12))
+        add_short("Pixie", "Pixie Cut", dict(top=0.07, side=0.03, part=0.25, sweep=0.03, feather=0.06, groove=0.12,
+                                              cards=dict(straight_cards("part", 0.24, 0.09), part=0.25)))
 
     # --- locs / twists: a short base, then real strands that hang (the front ones fall over the eyes)
     def locs_extras(length, n_front, n_all, radius, front_len, end_z=None, part=False, two_strand=False, gap=0.075, clear_k=1.3):
@@ -1869,7 +1890,28 @@ for _, model in ipairs(Selection:Get()) do
 \tfolder.Parent = root
 \tmodel:Destroy()
 end
-print("AssembleHeads: " .. done .. " hair and face pieces ready in ReplicatedStorage.NC_HeadAssets")
+-- drop pieces a newer build no longer makes (NCHead would still wear them): anything not listed in NCHeadData
+local removed = 0
+local okData, data = pcall(function()
+\tlocal m = RS:FindFirstChild("NCHeadData")
+\treturn m and require(m:Clone())
+end)
+if okData and data then
+\tfor _, folder in ipairs(root:GetChildren()) do
+\t\tlocal listed = data[folder.Name] and data[folder.Name].pieces
+\t\tif listed then
+\t\t\tfor _, part in ipairs(folder:GetChildren()) do
+\t\t\t\tif part:IsA("MeshPart") and not listed[part.Name] then
+\t\t\t\t\tpart:Destroy()
+\t\t\t\t\tremoved += 1
+\t\t\t\tend
+\t\t\tend
+\t\tend
+\tend
+else
+\twarn("AssembleHeads: update ReplicatedStorage.NCHeadData first, then run this again to remove old pieces")
+end
+print("AssembleHeads: " .. done .. " hair and face pieces ready in ReplicatedStorage.NC_HeadAssets, " .. removed .. " old ones removed")
 """
 with open(os.path.join(OUT, "AssembleHeads.lua"), "w", encoding="utf-8") as f:
     f.write(ASSEMBLE)

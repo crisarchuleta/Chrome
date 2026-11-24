@@ -182,7 +182,7 @@ def sample_roots(rng, V, weight, spacing):
     return np.array(keep, int)
 
 
-def grow_card(H, p0, flow, length, height, width, segs, rng, kind, jitter=0.35, lift_curve=None, droop=0.0, v0=0.0):
+def grow_card(H, p0, flow, length, height, width, segs, rng, kind, jitter=0.35, lift_curve=None, droop=0.0, v0=0.0, floor=None):
     """height: a number, or a function of the scalp point (the style's volume there) so cards lie in layers over
     the hair's shape instead of standing off the head"""
     """one card: a ribbon from the root p0 along the flow over the head, rising to `height` off the scalp.
@@ -209,7 +209,10 @@ def grow_card(H, p0, flow, length, height, width, segs, rng, kind, jitter=0.35, 
         d = _unit(_unit(d) * math.cos(turn) + b * math.sin(turn))
         lc = lift_curve(s) if lift_curve else min(1.0, s / 0.35)
         hh = height(loc) if callable(height) else height
-        q = loc + nrm * (0.002 + hh * lc) - np.array([0, 0, 1.0]) * droop * s * s
+        off = 0.002 + hh * lc
+        if floor is not None:                                       # (never under the solid base shell: a card that
+            off = max(off, floor(loc) + 0.0015)                     #  starts inside it pokes out as a hard block)
+        q = loc + nrm * off - np.array([0, 0, 1.0]) * droop * s * s
         pts.append(q)
         nrms.append(nrm)
         p = loc + d * step
