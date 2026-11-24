@@ -203,7 +203,7 @@ def build_durag(o, name, color=(0.01, 0.01, 0.01), velvet=False):
     ez, c = h.eye_z, h.c
     P, F = h.faces(sub=1)
     fr = h.front(P)
-    zl = ez + k * np.interp(fr, [-1, -0.6, -0.3, 0.0, 1], [-0.035, -0.012, 0.024, 0.031, 0.046])
+    zl = ez + k * np.interp(fr, [-1, -0.5, -0.36, -0.22, 0.0, 1], [-0.05, -0.048, -0.025, 0.022, 0.031, 0.046])
     P, F, _ = clip(P, F, zl - P[:, 2], {})
     X, F, E = _shell(o, P, F, 0.0045 * k, 3, 0.004 * k, smooth=3)
     ll = max(boundary_loops(F), key=len)
@@ -222,10 +222,15 @@ def build_durag(o, name, color=(0.01, 0.01, 0.01), velvet=False):
     for t in (0.0, 0.5, 1.0):
         r = base + np.array([0, 0, Hb * t])
         for _ in range(12):
-            r = col.push(r, 0.0022 * k)
+            _, j = col.tree.query(r)
+            r = col.P[j] + col.N[j] * 0.0022 * k  # lie on the crown, never float off it
             r = 0.5 * r + 0.25 * (np.roll(r, 1, 0) + np.roll(r, -1, 0))
-            r[:, 2] = np.maximum(r[:, 2], base[:, 2] + Hb * t * 0.9)
-        rows.append(col.push(r, 0.0022 * k))
+        _, j = col.tree.query(r)
+        r = col.P[j] + col.N[j] * 0.0022 * k
+        for _ in range(8):  # nearest-vertex snapping is a little stepped: even it out along the loop
+            r = 0.5 * r + 0.25 * (np.roll(r, 1, 0) + np.roll(r, -1, 0))
+            r = col.push(r, 0.0022 * k)
+        rows.append(r)
     rows[0] = base + (rows[0] - base) * 0.5
     nb = len(base)
     Vb = np.vstack(rows)
@@ -234,7 +239,9 @@ def build_durag(o, name, color=(0.01, 0.01, 0.01), velvet=False):
     parts.append((Vb, Fb, 0))
     Vt, Ft = make_tube(rows[0], 0.0028 * k, nseg=8, closed=True)
     parts.append((Vt, Ft, 0))
-    st = col.push(rows[-1] + np.array([0, 0, 0.004 * k]), 0.0016 * k)
+    _, j = col.tree.query(rows[-1] + np.array([0, 0, 0.004 * k])); st = col.P[j] + col.N[j] * 0.0018 * k
+    for _ in range(8):
+        st = 0.5 * st + 0.25 * (np.roll(st, 1, 0) + np.roll(st, -1, 0)); st = col.push(st, 0.0018 * k)
     Vt, Ft = make_tube(st, 0.0008 * k, nseg=5, closed=True)
     parts.append((Vt, Ft, 1))
     # centre seam over the top, from the band to the back
@@ -245,7 +252,7 @@ def build_durag(o, name, color=(0.01, 0.01, 0.01), velvet=False):
     Vt, Ft = make_tube(Q[1:-4], 0.0012 * k, nseg=6)
     parts.append((Vt, Ft, 1))
     # tail flap: from the back of the hem, as wide as the neck, down onto the upper back
-    back = base[np.abs(h.ang(base)) > np.radians(128)]
+    back = base[np.abs(h.ang(base)) > np.radians(104)]
     back = back[np.argsort(back[:, 0])]
     xs = np.linspace(back[0, 0], back[-1, 0], 17)
     top = np.stack([xs, np.interp(xs, back[:, 0], back[:, 1]), np.interp(xs, back[:, 0], back[:, 2])], 1)
