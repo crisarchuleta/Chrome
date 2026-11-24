@@ -1470,7 +1470,8 @@ def build_styles(H):
                 if ringlet is not None and len(Pp) >= 4:
                     # natural curls: each clump is one springy coil of hair round the drape path (radius = the coil's
                     # outside, so the clearance and the under-hat tuck work as for locs), with coily wisps round it
-                    cr, sr, pitch = ringlet
+                    cr, sr, pitch = ringlet[:3]
+                    r_sides, r_ppt, r_frizz = (tuple(ringlet[3:]) + (5, 8, True)[len(ringlet) - 3:])[:3]
                     # (curls of different sizes side by side: some tight and small, some looser)
                     sz = r2.choice((0.7, 0.85, 1.0, 1.0, 1.15))
                     cr, sr, pitch = cr * sz, sr * (0.8 + 0.2 * sz), pitch * (0.8 + 0.25 * sz)
@@ -1479,7 +1480,7 @@ def build_styles(H):
                     tot = s_[-1]
                     if tot < 0.05:
                         continue
-                    ss = np.arange(0.0, tot, pitch / 8.0)        # (8 points a turn, 5 sides: round coils, not zigzags)
+                    ss = np.arange(0.0, tot, pitch / r_ppt)
                     C_ = np.stack([np.interp(ss, s_, Pp[:, a]) for a in range(3)], axis=1)
                     for _ in range(3):
                         C_[1:-1] = 0.25 * C_[:-2] + 0.5 * C_[1:-1] + 0.25 * C_[2:]
@@ -1499,9 +1500,10 @@ def build_styles(H):
                     coil = C_ + (e1 * np.cos(th)[:, None] + e2 * np.sin(th)[:, None]) * rr_[:, None]
                     coil[0] = C_[0]
                     srad = sr * (1.0 - 0.55 * tt ** 2)
-                    vv, ff = tube(list(coil), list(srad), sides=5, twist=0.3, bumps=0.08, bump_freq=7.0)
+                    vv, ff = tube(list(coil), list(srad), sides=r_sides, twist=0.3, bumps=0.08 if r_sides > 3 else 0.0, bump_freq=7.0)
                     b.add(vv, ff)
-                    frizz_cards(list(C_[1:]), list((rr_ + sr)[1:]), rng_f, capped, k=1.2, kind="COILY", cross=1)
+                    if r_frizz:
+                        frizz_cards(list(C_[1:]), list((rr_ + sr)[1:]), rng_f, capped, k=1.2, kind="COILY", cross=1)
                     continue
                 pts = list(Pp)
                 tap = 0.5 if hem is not None else 0.35    # (an even hem: the ends taper more, so they don't read cut)
@@ -1666,11 +1668,11 @@ def build_styles(H):
         # natural curls (person 2026-11-24: "shoulder length curly hair natural, long curly hair"): springy coils
         # from all over the scalp, no part, face open, volume off the head; under a hat they hang out under the band
         add_short("Curls", "Shoulder Length Curls", dict(base, groove=0.25),
-                  locs_extras(1.15, 12, 125, 0.058, 1.15, gap=0.06, clear_k=1.25, frame_face=True, hat_tail=True,
-                              layered=0.72, ringlet=(0.03, 0.022, 0.1)))
+                  locs_extras(1.15, 12, 290, 0.03, 1.15, gap=0.039, clear_k=2.4, frame_face=True, hat_tail=True,
+                              layered=0.72, ringlet=(0.024, 0.009, 0.07, 3, 6, False)))
         add_short("LongCurls", "Long Curls", dict(base, groove=0.25),
-                  locs_extras(1.75, 12, 115, 0.062, 1.75, gap=0.064, clear_k=1.25, frame_face=True, hat_tail=True,
-                              layered=1.35, ringlet=(0.034, 0.023, 0.12)))
+                  locs_extras(1.75, 12, 240, 0.032, 1.75, gap=0.042, clear_k=2.3, frame_face=True, hat_tail=True,
+                              layered=1.35, ringlet=(0.026, 0.0095, 0.08, 3, 6, False)))
 
     if male:
         # thick two-strand rope-twist locs to the collarbone from a centre part, framing the face, tips curling;
