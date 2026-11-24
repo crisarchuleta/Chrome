@@ -109,6 +109,8 @@ function World.Settle(car)
 	local target = CFrame.lookAt(ground, ground + look)
 	car:PivotTo(target * origin:ToObjectSpace(car:GetPivot()))
 	car:SetAttribute("Sim", 0)
+	car:SetAttribute("SlipF", Vector2.zero) -- no tyre smoke on a parked car
+	car:SetAttribute("SlipR", Vector2.zero)
 end
 
 ---------------------------------------------------------------------------------------------------- doors (old ids)

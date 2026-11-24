@@ -117,7 +117,7 @@ C.ShopFallbackPosition = Vector3.new(260, 0, -260)
 C.CustomizeRadius = 40 -- your car must be this close to the shop to customize it
 
 -- optional sounds: put your own uploaded sound ids here ("rbxassetid://123"); empty = silent
-C.Sounds = { Pump = "", Dump = "", Hop = "", Engine = "" }
+C.Sounds = { Pump = "", Dump = "", Hop = "", Engine = "", Skid = "" } -- Skid: looped tyre squeal (NCTyreFX)
 
 ---------------------------------------------------------------------------------------------------- the tuning menu
 -- Everything you can change is one "mod": a look key with a list of options. The shop UI, the server's checks and

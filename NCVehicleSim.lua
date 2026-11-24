@@ -38,7 +38,8 @@ function Sim.State(car)
 	local s = state[car]
 	if not s then
 		s = { e = {}, target = {}, spin = {}, vis = {}, ground = {}, landed = {}, steer = 0, mode = "ride", threeWheel = nil, dance = false,
-			charge = 0, charging = false, lastSend = 0, hopPeak = nil, frontAirT = 0 }
+			charge = 0, charging = false, lastSend = 0, hopPeak = nil, frontAirT = 0,
+			drift = 0, wspin = {}, slip = {} }
 		for _, c in CORNERS do
 			s.e[c], s.target[c], s.spin[c], s.vis[c], s.ground[c], s.landed[c] = 0, 0, 0, 0, false, -1
 		end
@@ -118,7 +119,8 @@ function Sim.Pose(car, s, origin, casts, steerAngle, fwdSpeed, dt)
 			local cast = casts[c]
 			-- ease the visual so a missed ray doesn't snap
 			s.vis[c] = s.vis[c] + (cast.d - s.vis[c]) * math.min(1, dt * 30)
-			s.spin[c] = (s.spin[c] + fwdSpeed / R * dt) % (math.pi * 2)
+			local rate = (s.wspin and s.wspin[c]) or fwdSpeed / R -- burnouts spin the wheels faster than the road, the handbrake locks them
+			s.spin[c] = (s.spin[c] + rate * dt) % (math.pi * 2)
 			local isRight = rest.X > 0
 			local steer = rest.Z < 0 and steerAngle or 0
 			local local_ = ch.Origin.CFrame * CFrame.new(rest.X, rest.Y - s.vis[c], rest.Z) * CFrame.Angles(0, -steer, 0)
@@ -159,12 +161,9 @@ function Sim.Step(car, s, dt, input, noPose)
 		end
 	end
 
-	-- steering eases in; less lock at speed
 	local eng = Config.Engine(car:GetAttribute("Engine"))
 	local topSpeed, accel = D.TopSpeed * eng.speed, D.Accel * eng.accel
 	local speedFrac = math.clamp(math.abs(fwdSpeed) / topSpeed, 0, 1)
-	local maxSteer = math.rad(D.SteerMax + (D.SteerFast - D.SteerMax) * speedFrac)
-	s.steer = s.steer + (input.steer * maxSteer - s.steer) * math.min(1, dt * 8)
 
 	local casts = Sim.Cast(car, s, origin, rp, sp)
 	local F, T = Vector3.zero, Vector3.zero
@@ -174,10 +173,49 @@ function Sim.Step(car, s, dt, input, noPose)
 			grounded += 1
 		end
 	end
+
+	-- tricks. gas / brake are the raw pedals (both at once = burnout); handbrake locks the rear wheels.
+	--   burnout       gas + brake from a stop: the fronts hold, the rears spin and smoke
+	--   donut         burnout + steer: the rear swings round the front wheels (spinning burnout)
+	--   drift         tap the handbrake into a turn: the rear lets go, and staying on the gas keeps it sliding;
+	--                 steer into it for a drifting donut, counter-steer to hold the angle, lift off to catch it
+	local gas = input.gas or math.max(input.throttle, 0)
+	local brk = input.brake or math.max(-input.throttle, 0)
+	local hb = input.handbrake == true
+	local absV = math.abs(fwdSpeed)
+	local burnout = gas > 0.5 and brk > 0.5 and absV < 14 and grounded >= 2 and not input.park
+	local donut = burnout and math.abs(input.steer) > 0.2 and not s.bike
+	local rearZ = s.REST.RL.Z
+	local vr = ch:GetVelocityAtPosition(origin:PointToWorldSpace(Vector3.new(0, 0, rearZ)))
+	local slipAngle = math.atan2(math.abs(vr:Dot(right)), math.max(math.abs(vr:Dot(fwd)), 1))
+	local driftWant = 0
+	if (hb and absV > 10) or (s.drift > 0.15 and gas > 0.4 and slipAngle > 0.07 and absV > 8) then
+		driftWant = 1
+	end
+	if s.bike or grounded < 2 then
+		driftWant = 0
+	end
+	s.drift += (driftWant - s.drift) * math.min(1, dt * (driftWant > s.drift and 4 or 1.6))
+	s.burnout, s.donut, s.handbrake = burnout, donut, hb
+	local rearMul = 1 - 0.55 * s.drift -- rear grip left while sliding
+	if hb then
+		rearMul = math.min(rearMul, 0.3)
+	end
+	if donut then
+		rearMul = 0.12
+	end
+
+	-- steering eases in; less lock at speed (full lock back while drifting, for counter-steer)
+	local maxSteer = math.rad(D.SteerMax + (D.SteerFast - D.SteerMax) * speedFrac * (1 - s.drift))
+	s.steer = s.steer + (input.steer * maxSteer - s.steer) * math.min(1, dt * 8)
+	s.wspin = s.wspin or {}
+	s.slip = s.slip or {}
 	for _, c in CORNERS do
 		local cast = casts[c]
 		local rest = REST[c]
 		local disabled = s.threeWheel == c
+		s.slip[c] = 0
+		s.wspin[c] = nil
 		if cast.grounded and not disabled then
 			local contact = cast.hit.Position
 			local attach = origin:PointToWorldSpace(Vector3.new(rest.X, rest.Y, rest.Z))
@@ -199,11 +237,27 @@ function Sim.Step(car, s, dt, input, noPose)
 			local vLat = cv:Dot(wr)
 			local vLong = cv:Dot(wf)
 			local share = mass / math.max(grounded, 1)
-			local grip = (isFront and D.Grip or D.RearGrip) * share
+			local mul = isFront and 1 or rearMul
+			local grip = (isFront and D.Grip or D.RearGrip) * share * mul
 			local mu = 1.15 * N
-			local lat = math.clamp(-vLat * grip, -mu, mu)
+			local muLat = mu * (0.4 + 0.6 * mul)
+			local lat = math.clamp(-vLat * grip, -muLat, muLat)
 			local long = 0
-			if input.throttle > 0.05 then
+			local R = s.R
+			local spinSlip = 0
+			if burnout then
+				if isFront then
+					long = donut and 0 or -vLong * share * 10 -- straight: the front brakes hold it; donut: they roll round
+				else
+					long = donut and mass * accel * 0.35 / 2 or 0
+					s.wspin[c] = 48
+					spinSlip = 1
+				end
+			elseif hb and not isFront then
+				long = -math.sign(vLong) * math.min(math.abs(vLong) * share * 4, mu * 0.7) -- locked: sliding
+				s.wspin[c] = 0
+				spinSlip = math.clamp((math.abs(vLong) - 3) / 20, 0, 1)
+			elseif input.throttle > 0.05 then
 				if not isFront and fwdSpeed < topSpeed then
 					long = mass * accel * input.throttle / 2
 				end
@@ -221,8 +275,13 @@ function Sim.Step(car, s, dt, input, noPose)
 			else
 				long = -math.sign(vLong) * math.min(math.abs(vLong) * share * 2, mass * D.Coast / 4)
 			end
+			if not isFront and s.drift > 0.3 and gas > 0.3 and not hb then
+				s.wspin[c] = vLong / R + 22 * gas * s.drift -- spinning up on the gas through the slide
+				spinSlip = 0.5 * s.drift
+			end
 			long = math.clamp(long, -mu, mu)
 			f += wr * lat + wf * long
+			s.slip[c] = math.clamp(math.max((math.abs(vLat) - 5) / 12, spinSlip), 0, 1)
 			F += f
 			T += (contact - com):Cross(f)
 		end
@@ -274,8 +333,17 @@ function Sim.Step(car, s, dt, input, noPose)
 
 	-- a little yaw damping so it doesn't spin out at a standstill
 	local yawRate = ch.AssemblyAngularVelocity:Dot(up)
-	if grounded >= 3 and math.abs(input.steer) < 0.05 then
+	if grounded >= 3 and math.abs(input.steer) < 0.05 and s.drift < 0.3 then
 		T += up * (-yawRate * mass * 4)
+	end
+	-- drifting: past ~20 degrees of slide the yaw is damped, so a held drift doesn't snap round into a spin
+	if s.drift > 0 and not donut then
+		T += up * (-yawRate * mass * 14 * s.drift * math.max(0, slipAngle - 0.35) / 0.35)
+	end
+	-- donut: swing the tail round at a steady rate (steer > 0 = clockwise from above)
+	if donut and grounded >= 3 then
+		local want = -input.steer * 2.6
+		T += up * math.clamp(mass * 90 * (want - yawRate), -mass * 320, mass * 320)
 	end
 
 	drive.Force = F

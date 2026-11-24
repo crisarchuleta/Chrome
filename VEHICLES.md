@@ -54,6 +54,13 @@ that vehicle's `defaults` in NCVehicles.lua.
   `VehicleWindow`, handled in LowriderService). Glass that is taller than the door stops short so it never pokes out.
 - **A turning steering wheel** (`Car.Steer`, `Kit.SetSteer`) and a dash **P R N D L** readout (`Kit.SetGear`) next
   to the live speedometer.
+- **Driving tricks** (NCVehicleSim, every car and truck): **W+S** from a stop = burnout (the front brakes hold,
+  the rear tyres spin and smoke); burnout **+ steer** = donut / spinning burnout; **Shift** (gamepad L1; Space on
+  cars without hydraulics) = handbrake, which locks the rear and kicks it out; stay on the gas to hold the drift,
+  keep steering into it for drifting donuts, lift off to catch it. Phones get BURNOUT and E-BRAKE buttons.
+  **Tyre smoke + skid marks** (NCTyreFX, ReplicatedStorage): a smoke emitter and a flat Trail at every tyre, driven
+  by how hard it slips. The driver reports slip to the server (LowriderState), which sets SlipF / SlipR so everyone
+  sees it. Tyre squeal plays once a sound id is put in `Config.Sounds.Skid`.
 - **An open cabin** (seats, dash, door cards show through the glass) and **an engine bay** under the hood.
 - **Swappable parts:** front / rear bumper, grille, headlights, taillights, hood, spoiler, side skirts / running
   boards, mirrors, exhaust, roof (sunroof, rack, light bar), underglow, truck bed (cover, roll bar, rack), seats,

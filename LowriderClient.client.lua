@@ -48,6 +48,7 @@ end
 ---------------------------------------------------------------------------------------------------- per-car state + physics
 -- the driving model lives in NCVehicleSim (shared with the server's AI cars)
 local Sim = require(RS:WaitForChild("NCVehicleSim"))
+local TyreFX = require(RS:WaitForChild("NCTyreFX"))
 local st, susp, rayParams, castWheels, poseWheels = Sim.State, Sim.Susp, Sim.RayParams, Sim.Cast, Sim.Pose
 
 local function simulate(car, s, dt, input)
@@ -55,12 +56,33 @@ local function simulate(car, s, dt, input)
 	-- tell the server my corner heights (other players' wheels follow them)
 	if os.clock() - s.lastSend > 0.1 then
 		s.lastSend = os.clock()
-		StateRE:FireServer(car, s.e.FL, s.e.FR, s.e.RL, s.e.RR, s.threeWheel and ("3w" .. s.threeWheel) or (s.dance and "dance" or s.mode))
+		local sl = s.slip or {}
+		StateRE:FireServer(car, s.e.FL, s.e.FR, s.e.RL, s.e.RR, s.threeWheel and ("3w" .. s.threeWheel) or (s.dance and "dance" or s.mode),
+			Vector2.new(sl.FL or 0, sl.FR or 0), Vector2.new(sl.RL or 0, sl.RR or 0))
 	end
 end
 
 ---------------------------------------------------------------------------------------------------- controls
-local held = { up = false, down = false, left = false, right = false }
+local held = { up = false, down = false, left = false, right = false, handbrake = false, burn = false }
+
+-- the raw pedals (the seat's ThrottleFloat cancels to 0 when gas and brake are both down, which is a burnout)
+local function trigger(key)
+	local ok, list = pcall(UserInputService.GetGamepadState, UserInputService, Enum.UserInputType.Gamepad1)
+	if ok then
+		for _, io in list do
+			if io.KeyCode == key then
+				return io.Position.Z
+			end
+		end
+	end
+	return 0
+end
+local function pedals(seat)
+	local th = seat.ThrottleFloat
+	local gas = math.max(th, UserInputService:IsKeyDown(Enum.KeyCode.W) and 1 or 0, trigger(Enum.KeyCode.ButtonR2), held.burn and 1 or 0)
+	local brk = math.max(-th, UserInputService:IsKeyDown(Enum.KeyCode.S) and 1 or 0, trigger(Enum.KeyCode.ButtonL2), held.burn and 1 or 0)
+	return gas, brk
+end
 local myCar = nil -- the car I'm driving
 local danceT = 0
 
@@ -211,17 +233,20 @@ local function bind()
 			s.wheelie = b or (si == Enum.UserInputState.Change and s.wheelie) -- bikes: hold Space to wheelie
 			return
 		end
+		if susp(myCar).hop <= 0 then
+			held.handbrake = b or (si == Enum.UserInputState.Change and held.handbrake) -- no hydraulics: Space is the handbrake
+			return
+		end
 		if b then
-			if susp(myCar).hop > 0 then
-				s.charging, s.charge = true, 0
-			else
-				hop(myCar, s, "front")
-			end
+			s.charging, s.charge = true, 0
 		elseif si == Enum.UserInputState.End and s.charging then
 			s.charging = false
 			hop(myCar, s, "front")
 		end
 	end, Enum.KeyCode.Space, Enum.KeyCode.ButtonA)
+	act("LR_Handbrake", function(b, si)
+		held.handbrake = b or (si == Enum.UserInputState.Change and held.handbrake)
+	end, Enum.KeyCode.LeftShift, Enum.KeyCode.ButtonL1)
 	act("LR_BodyHop", function(b)
 		if b and myCar then
 			local s = st(myCar)
@@ -413,6 +438,8 @@ end, function()
 		end
 	end
 end)
+tbutton("E-BRAKE", UDim2.fromOffset(152, 100), function() held.handbrake = true end, function() held.handbrake = false end)
+tbutton("BURNOUT", UDim2.fromOffset(16, 100), function() held.burn = true end, function() held.burn = false end)
 tbutton("3-WHEEL", UDim2.fromOffset(16, 150), function()
 	if myCar then
 		local s = st(myCar)
@@ -446,6 +473,7 @@ local function updateHud(car, s)
 	local spd = math.floor(math.abs(s.fwdSpeed or 0) / 1.15 * 0.6818 + 0.5)
 	modeL.Text = ("%s · %d mph"):format(mode, spd)
 	local lines = { "Arrows: lift front/back/sides", "X: ride / laid / lifted", "F: get out" }
+	local tricks = "W+S: burnout (+steer: donut)  SHIFT: handbrake / drift"
 	if sp.hop > 0 then
 		table.insert(lines, 1, "SPACE: hop (hold, let go)  B: body hop")
 	end
@@ -458,6 +486,7 @@ local function updateHud(car, s)
 	if sp.kit == "none" then
 		lines = { "Stock springs.", "Get bags or hydraulics at Low & Slow Kustoms.", "F: get out" }
 	end
+	table.insert(lines, 1, tricks)
 	help.Text = table.concat(lines, "\n")
 	for _, c in CORNERS do
 		local span = math.max(sp.lift + sp.drop, 0.01)
@@ -571,6 +600,9 @@ RunService.PreSimulation:Connect(function(dt)
 	for _, c in cars() do
 		local ch = c.PrimaryPart
 		if not (ch and c:GetAttribute("NCLowrider")) or ch.Anchored then
+			if ch then
+				TyreFX.Quiet(c)
+			end
 			continue -- parked world cars sit anchored until someone gets in
 		end
 		local s = st(c)
@@ -579,19 +611,28 @@ RunService.PreSimulation:Connect(function(dt)
 			if c == myCar then
 				input.throttle = seat.ThrottleFloat
 				input.steer = seat.SteerFloat
+				input.gas, input.brake = pedals(seat)
+				input.handbrake = held.handbrake
 				updateTargets(c, s, dt)
 			else
 				-- parked: keep its last ride height, drop out of three-wheel and dancing
 				s.threeWheel, s.dance, s.charging = nil, false, false
 			end
 			simulate(c, s, dt, input)
+			if (ch.Position - camPos).Magnitude < 350 then
+				TyreFX.Update(c, s, s.slip or {}, dt)
+			else
+				TyreFX.Quiet(c)
+			end
 			if c == myCar then
 				updateHud(c, s)
 				hopMeter(c, s, dt)
 			end
 			Kit.SetSpeed(c, math.abs(s.fwdSpeed or 0) / 1.15 * 0.6818) -- studs/s -> mph
 			dashLive(c, s, c == myCar and seat or nil, s.fwdSpeed or 0)
-		elseif (ch.Position - camPos).Magnitude < 350 then
+		elseif (ch.Position - camPos).Magnitude >= 350 then
+			TyreFX.Quiet(c)
+		else
 			-- someone else's car: follow their corner heights and pose the wheels from my own rays
 			local f, r = c:GetAttribute("HydF") or Vector2.zero, c:GetAttribute("HydR") or Vector2.zero
 			local tgt = { FL = f.X, FR = f.Y, RL = r.X, RR = r.Y }
@@ -603,7 +644,18 @@ RunService.PreSimulation:Connect(function(dt)
 			local ds = c:FindFirstChild("DriveSeat")
 			local steer = (ds and ds.SteerFloat or 0) * math.rad(24)
 			local v = ch.AssemblyLinearVelocity:Dot(origin.LookVector)
+			-- their tyres: smoke and marks from the slip the driver reports; a burnout spins the rear wheels in place
+			local sf, sr = c:GetAttribute("SlipF") or Vector2.zero, c:GetAttribute("SlipR") or Vector2.zero
+			local slip = { FL = sf.X, FR = sf.Y, RL = sr.X, RR = sr.Y }
+			s.wspin = s.wspin or {}
+			local burning = math.abs(v) < 10 and math.max(sr.X, sr.Y) > 0.6
+			s.wspin.RL, s.wspin.RR = burning and 48 or nil, burning and 48 or nil
+			s.vis = s.vis or {}
+			for _, k in CORNERS do
+				s.ground[k] = casts[k].grounded
+			end
 			poseWheels(c, s, origin, casts, steer, v, dt)
+			TyreFX.Update(c, s, slip, dt)
 			if (ch.Position - camPos).Magnitude < 40 then
 				Kit.SetSpeed(c, math.abs(v) / 1.15 * 0.6818)
 				dashLive(c, s, ds, v)

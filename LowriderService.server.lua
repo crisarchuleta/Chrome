@@ -419,7 +419,7 @@ end
 
 ---------------------------------------------------------------------------------------------------- corner heights + hops
 local lastState = {}
-StateRE.OnServerEvent:Connect(function(player, carModel, fl, fr, rl, rr, mode)
+StateRE.OnServerEvent:Connect(function(player, carModel, fl, fr, rl, rr, mode, slipF, slipR)
 	local car = cars[player]
 	if carModel ~= car or not car then
 		-- passengers' clients never send; a driver of someone else's car is refused at the seat. The city's cars
@@ -442,6 +442,20 @@ StateRE.OnServerEvent:Connect(function(player, carModel, fl, fr, rl, rr, mode)
 	car:SetAttribute("HydF", Vector2.new(clamp(fl), clamp(fr)))
 	car:SetAttribute("HydR", Vector2.new(clamp(rl), clamp(rr)))
 	car:SetAttribute("HydMode", type(mode) == "string" and mode:sub(1, 12) or "")
+	-- how hard each tyre is slipping (0..1): everyone else's clients draw the smoke and skid marks from it
+	local function slip(v)
+		if typeof(v) ~= "Vector2" or v.X ~= v.X or v.Y ~= v.Y then
+			return Vector2.zero
+		end
+		return Vector2.new(math.floor(math.clamp(v.X, 0, 1) * 20 + 0.5) / 20, math.floor(math.clamp(v.Y, 0, 1) * 20 + 0.5) / 20)
+	end
+	local sf, sr = slip(slipF), slip(slipR)
+	if car:GetAttribute("SlipF") ~= sf then
+		car:SetAttribute("SlipF", sf)
+	end
+	if car:GetAttribute("SlipR") ~= sr then
+		car:SetAttribute("SlipR", sr)
+	end
 end)
 
 local function updateBoards()
