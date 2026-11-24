@@ -326,6 +326,8 @@ local function spawnCar(player, vid)
 		hood = { "Pop the hood", "Close the hood" },
 		fuel = { "Open the gas door", "Close the gas door" },
 		door = { "Open the door", "Close the door" },
+		seat = { "Lift the seat", "Close the seat" },
+		cap = { "Open the gas cap", "Close the gas cap" },
 	}
 	local panels = Kit.Panels(car)
 	for name, root in panels do

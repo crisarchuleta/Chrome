@@ -149,9 +149,21 @@ V.List = {
 			part_Dash = "Classic", part_Steering = "Sport", part_Shifter = "THandle", part_Rim = "Steelie", part_KO = "Cap",
 			part_Tire = "Offroad", ww = "" },
 	},
-	-- bikes need their own riding physics; listed so they keep their names when they're rebuilt
-	{ id = "DirtBike", name = "Dirt Bike", price = 2000, class = "bike", bike = true, blurb = "Light dirt bike." },
-	{ id = "SportBike", name = "Sport Bike", price = 6500, class = "bike", bike = true, blurb = "Fast sport bike." },
+	-- bikes (build_bikes.py): two wheels, the driving script balances them and leans them into turns; Space = wheelie
+	{
+		id = "DirtBike", name = "Dirt Bike", price = 2000, class = "bike", bike = true, blurb = "Light dirt bike.",
+		suspensions = { "stock" },
+		drive = { TopSpeed = 70, Accel = 34, Grip = 11, RearGrip = 9, SteerMax = 30, SteerFast = 10, SpringSag = 0.4, Damping = 0.5 },
+		defaults = { part_Bars = "Moto", part_Fender = "High", part_Fairing = "Plate", part_Seats = "Racing", part_Headlights = "Square",
+			part_Taillights = "Slim", part_Exhaust = "Side", part_Rim = "Wire100", part_KO = "", part_Tire = "Offroad", ww = "" },
+	},
+	{
+		id = "SportBike", name = "Sport Bike", price = 6500, class = "bike", bike = true, blurb = "Fast sport bike.",
+		suspensions = { "stock" },
+		drive = { TopSpeed = 100, Accel = 44, Grip = 13, RearGrip = 11, SteerMax = 28, SteerFast = 7, SpringSag = 0.3 },
+		defaults = { part_Bars = "Clip", part_Fender = "Low", part_Fairing = "Race", part_Seats = "Racing", part_Headlights = "Dual",
+			part_Taillights = "Slim", part_Exhaust = "Dual", part_Rim = "Split", part_KO = "", part_Tire = "Classic", ww = "" },
+	},
 }
 -- data module + GLB prefix default to the id: NCVehicleData_<id>, <id>.glb with pieces <id>_* / <id>Wheel_*
 for _, v in V.List do

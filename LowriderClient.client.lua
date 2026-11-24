@@ -61,8 +61,9 @@ local function st(car)
 		local vd = Vehicles.Data(vid) or Vehicles.Data(Vehicles.Default)
 		s.R = vd.Car.WheelRadius
 		s.REST = {}
+		s.bike = vd.Car.Bike == true -- two wheels: FL = front, RL = rear; each spring runs twice on the centre line
 		for _, c in CORNERS do
-			local p = vd.Car.Wheels[c]
+			local p = vd.Car.Wheels[c] or (s.bike and vd.Car.Wheels[c:sub(1, 1) .. "L"])
 			s.REST[c] = Vector3.new(p[1], p[2], p[3])
 		end
 		local fb = vd.Car.FrontBumper or { 0, vd.Car.Wheels.FL[2], vd.Car.Wheels.FL[3] - 3 }
@@ -263,6 +264,29 @@ local function simulate(car, s, dt, input)
 		T += axis * math.clamp(torque, -inertia * 60, inertia * 60)
 	end
 
+	-- bikes: stay upright and lean into turns. The target "up" is gravity plus the turn's centripetal pull, so the
+	-- bike leans exactly as far as the corner needs; Space holds a wheelie
+	if s.bike then
+		local wv = ch.AssemblyAngularVelocity
+		local yaw = wv:Dot(Vector3.yAxis)
+		local flatFwd = Vector3.new(fwd.X, 0, fwd.Z)
+		flatFwd = flatFwd.Magnitude > 0.01 and flatFwd.Unit or fwd
+		local flatRight = flatFwd:Cross(Vector3.yAxis)
+		local lean = math.clamp(-yaw * fwdSpeed / g, -0.75, 0.75) -- tan of the lean angle
+		local want = (Vector3.yAxis + flatRight * lean).Unit
+		local rollErr = up:Cross(want):Dot(fwd)
+		local inertia = mass * 3
+		T += fwd * math.clamp(inertia * (40 * rollErr - 9 * wv:Dot(fwd)), -inertia * 80, inertia * 80)
+		if grounded >= 2 and math.abs(input.steer) < 0.05 then
+			T += Vector3.yAxis * (-yaw * mass * 3)
+		end
+		if s.wheelie and casts.RL.grounded and fwdSpeed > 4 then
+			local pitch = math.asin(math.clamp(fwd.Y, -1, 1)) -- nose up = positive
+			local target = math.rad(22)
+			T += right * math.clamp(inertia * (14 * (target - pitch) - 5 * wv:Dot(right)), -inertia * 30, inertia * 30)
+		end
+	end
+
 	-- a little yaw damping so it doesn't spin out at a standstill
 	local yawRate = ch.AssemblyAngularVelocity:Dot(up)
 	if grounded >= 3 and math.abs(input.steer) < 0.05 then
@@ -438,6 +462,10 @@ local function bind()
 			return
 		end
 		local s = st(myCar)
+		if s.bike then
+			s.wheelie = b or (si == Enum.UserInputState.Change and s.wheelie) -- bikes: hold Space to wheelie
+			return
+		end
 		if b then
 			if susp(myCar).hop > 0 then
 				s.charging, s.charge = true, 0

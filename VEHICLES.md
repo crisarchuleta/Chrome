@@ -24,10 +24,19 @@ paint / vinyl / parts / interior / lights options, saved per vehicle. All names 
 | ShorelineSix | Shoreline Six | six-seat van | 4 | liftgate |
 | ArmoredTruck | Coast Patrol Armored Truck | armored truck (blind box body) | 2 | liftgate |
 | GeneralsCart | Generals Cart | open utility cart (canopy, two benches) | none (open sides) | tailgate + small bed |
+| DirtBike | Dirt Bike | motocross bike (build_bikes.py) | none | lifting seat + gas cap |
+| SportBike | Sport Bike | sport bike with a race fairing (build_bikes.py) | none | lifting seat + gas cap |
 
 These replace the old CarTemplates under the same names. A spec with `doors=0, opentop=True` gets
-open step-in sides with trim, a canopy on posts and a second bench (the cart). Still to come: DirtBike and SportBike
-(they need their own riding physics).
+open step-in sides with trim, a canopy on posts and a second bench (the cart).
+
+**Bikes** are built by `build_bikes.py` (`NC_BIKE=DirtBike` or `SportBike`) with the same outputs. Their data has
+`Car.Bike = true` and only FL (front) / RL (rear) wheels. The driving script runs each spring twice on the centre line,
+holds the bike upright, leans it into turns exactly as far as the corner needs, and Space holds a wheelie (bikes have
+no hydraulics). Bike parts: handlebars (`part_Bars`), front fender (`part_Fender`), fairing / number plate
+(`part_Fairing`), seat, headlight, taillight, exhaust, underglow and every wheel option. The seat lifts on a hinge
+(storage tray under it) and the gas cap flips open. Riders use the normal seated pose for now; a riding animation
+would look better.
 
 A spec can set its own stock parts with `stock={...}` (merged over its flavour's defaults); the same parts go in
 that vehicle's `defaults` in NCVehicles.lua.
