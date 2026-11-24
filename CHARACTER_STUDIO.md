@@ -161,7 +161,9 @@ that hugs the skin, so it looks like part of the skin, not a sticker.
   2. `python tools/ink/build_ink.py rig.blend <out>` makes the layers.
   3. `python tools/ink/make_lua_catalog.py` makes the Lua catalog.
   4. `tools/ink/export_rigid.py` writes the rigid FBXs and `tools/ink/ink_fit.py` the `Ink.FIT` numbers, both from
-     the layer blend that build_ink.py saves.
+     the layer blend that build_ink.py saves. `ink_fit.py` must measure against the same rig blend the Studio bodies were
+     imported from (the part split changes between rig builds), or the ink sits off; `NCInk.Attach` warns if a part's
+     size differs from `Ink.PART_SIZE`, and `NCInk.Debug(character)` prints each layer's placement.
   4. `tools/ink/build_swatches.py` makes the swatch file.
   5. `tools/ink/review.sh <Body>` renders every tattoo on a body to check it.
 
