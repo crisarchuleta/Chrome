@@ -119,7 +119,7 @@ def headlights():
             scyl(kind(S, "Dual", "Chrome"), (x + dx, y + 0.08, zc), (x + dx, y - 0.05, zc), 0.24, seg=20)
             scyl(kind(S, "Dual", "Head"), (x + dx, y - 0.05, zc), (x + dx, y - 0.09, zc), 0.19, seg=20)
         if SMOOTH:  # swept lamps over the nose corners, running back along the fender tops (cast onto the skin)
-            pts = [(0.44, L0 + 0.12), (0.86, L0 + 0.55), (0.87, L0 + 1.12), (0.47, L0 + 0.46)]
+            pts = [(0.46, L0 + 0.16), (0.88, L0 + 0.85), (0.89, L0 + 1.55), (0.52, L0 + 0.5)]
             P = lambda k, g: (s * (W * pts[k][0] + g * (1 if k in (1, 2) else -1)), pts[k][1] + g * (1 if k in (2, 3) else -1), 8.0)
             decal(kind(S, "Slim", "Dark"), P(0, 0.07), P(1, 0.07), P(2, 0.07), P(3, 0.07), (0, 0, -1), nu=12, nv=3, out=0.02, inn=0.06)
             decal(kind(S, "Slim", "Head"), P(0, 0.0), P(1, 0.0), P(2, 0.0), P(3, 0.0), (0, 0, -1), nu=12, nv=3, out=0.04, inn=0.02)

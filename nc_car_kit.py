@@ -3,6 +3,13 @@
 # Needs from the caller: bpy, bmesh, math, os, json, Vector, Matrix, COLORS, lin, OUT, and mat_color (the parts file).
 # ------------------------------------------------------------------ object kit (objects joined per material at the end)
 OBJS = []
+# smooth normals of a surface before it was cut into pieces: position key -> corner normals. Pieces cut from it
+# take these back on join so a seam between two pieces (paint panels on a curved body) shades as one surface
+SMOOTH_REF = {}
+
+
+def nkey(co):
+    return (round(co[0], 4), round(co[1], 4), round(co[2], 4))
 
 
 def new_obj(bm, kind, style="Lowrider", smooth=0.0):
@@ -248,6 +255,19 @@ def join_style(style, prefix):
                 me.set_sharp_from_angle(angle=math.radians(smooth))
             except Exception:
                 pass
+            if SMOOTH_REF:
+                own = [Vector(c.vector) for c in me.corner_normals]
+                cn_out, hit = [], 0
+                for li, lp in enumerate(me.loops):
+                    cand = SMOOTH_REF.get(nkey(me.vertices[lp.vertex_index].co))
+                    best = max(cand, key=lambda c: c.dot(own[li])) if cand else None
+                    if best is not None and best.dot(own[li]) > 0.6:
+                        cn_out.append(best)
+                        hit += 1
+                    else:
+                        cn_out.append(own[li])
+                if hit:
+                    me.normals_split_custom_set(cn_out)
         ob = bpy.data.objects.new(name, me)
         bpy.context.scene.collection.objects.link(ob)
         ob["style"] = style

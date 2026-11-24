@@ -121,8 +121,8 @@ SPECS = {
     "VireoE": dict(name="Vireo E", flavour="sports", W=3.7, L0=-9.6, L1=9.15, WB=11.17, WR=1.4, WX=3.15, TW=1.0,
                    ZB=0.75, BELT=3.45, NOSE=2.5, HOOD=3.47, TAIL=3.6, CROWN=0.02, HCROWN=-0.3,
                    A0=-3.6, A1=-0.1, C0=3.4, C1=7.3, ROOF=5.35, TUCK=0.75, B=1.0, Q=3.9, doors=4, rear="hatch",
-                   electric=True, lowpro=0.5, smooth=True, rim_dark=True,
-                   stock={"Exhaust": "", "Spoiler": "", "Rim": "Mesh", "Top": "", "Seats": "Buckets", "Grille": "", "FrontBumper": "", "RearBumper": "",
+                   electric=True, lowpro=0.24, smooth=True, rim_dark=True,
+                   stock={"Exhaust": "", "Spoiler": "", "Rim": "Split", "KO": "Cap", "Top": "", "Seats": "Buckets", "Grille": "", "FrontBumper": "", "RearBumper": "",
                                          "Dash": "Digital", "Steering": "Sport"}, paint=(0.025, 0.025, 0.03)),
 }
 # ------------------------------------------------------------------ real-world proportions (vehicle QA, 2026-11-24)
@@ -853,11 +853,38 @@ def build_frunk():
     fl = ZB + 0.55
     y0, y1 = L0 + 0.8, A0 - 0.15
     top = min(deck_z(0, y0), deck_z(0, y1)) - 0.2
-    sbox("Under", -ap, y0, fl - 0.05, ap, y1, fl)
-    for s in (-1, 1):
-        sbox("Under", s * (ap - 0.05), y0, fl, s * ap, y1, top)
-    for yy in (y0, y1 - 0.05):
-        sbox("Under", -ap, yy, fl, ap, yy + 0.05, top)
+    if S.get("smooth"):
+        # the hood opening is wider than the tub and its skin curves, so the tub is a liner swept under the whole
+        # opening: floor, walls up to just under the hood, and gutters out to the hood's edges (no gaps to the
+        # ground or the cabin with the hood open)
+        uz = lambda x, y: deck_z(abs(x), y) - 0.12
+        xo = lambda y: min(0.8 * station_w(y), W - 0.12)
+        def sect(y):
+            e, a = xo(y), ap
+            return [(-e, uz(e, y)), (-a, uz(a, y)), (-a, fl), (a, fl), (a, uz(a, y)), (e, uz(e, y))]
+        n = 16
+        ys = [y0 + (y1 - y0) * j / n for j in range(n + 1)]
+        O, I = [], []
+        for y in ys:
+            sc = sect(y)
+            O.append([Vector((x, y, z)) for x, z in sc])
+            I.append([Vector((x + (0.04 if x > 0 else -0.04) * (1 if abs(x) <= ap + 1e-6 else 0), y,
+                              z - (0.04 if (abs(x) > ap + 1e-6 or z <= fl + 1e-6) else 0))) for x, z in sc])
+        solid_grid("Under", O, I, [(j, i) for j in range(n) for i in range(5)], smooth=40.0)
+        m = 14
+        for yy, dy in ((y0, -0.05), (y1, 0.05)):      # front wall and firewall, shaped to the hood above them
+            e = xo(yy)
+            xs = [-e + 2 * e * i / m for i in range(m + 1)]
+            bot = lambda x: fl - 0.05 if abs(x) <= ap else uz(x, yy) - 0.06
+            O = [[Vector((x, yy, bot(x))) for x in xs], [Vector((x, yy, uz(x, yy) + 0.02)) for x in xs]]
+            I = [[v + Vector((0, dy, 0)) for v in row] for row in O]
+            solid_grid("Under", O, I, [(0, i) for i in range(m)], smooth=40.0)
+    else:
+        sbox("Under", -ap, y0, fl - 0.05, ap, y1, fl)
+        for s in (-1, 1):
+            sbox("Under", s * (ap - 0.05), y0, fl, s * ap, y1, top)
+        for yy in (y0, y1 - 0.05):
+            sbox("Under", -ap, yy, fl, ap, yy + 0.05, top)
     sbox("Carpet", -(ap - 0.06), y0 + 0.06, fl, ap - 0.06, y1 - 0.06, fl + 0.04)
     sbox("Dark", -0.5, y1 - 0.4, fl + 0.04, 0.5, y1 - 0.08, fl + 0.3, bev=0.04)          # charger bag
 
@@ -1043,6 +1070,8 @@ def smooth_details():
             xa, xb_ = s_ * hx(ya), s_ * hx(yb)
             decal("Seam", (xa - 0.012, ya, 9), (xa + 0.012, ya, 9), (xb_ + 0.012, yb, 9), (xb_ - 0.012, yb, 9), (0, 0, -1),
                   nu=1, nv=2, out=0.006, inn=0.05)
+    decal("Seam", (-hx(y1h), y1h - 0.012, 9), (hx(y1h), y1h - 0.012, 9), (hx(y1h), y1h + 0.012, 9), (-hx(y1h), y1h + 0.012, 9),
+          (0, 0, -1), nu=24, nv=1, out=0.006, inn=0.05)
     decal("Seam", (-hx(y0h), y0h - 0.012, 9), (hx(y0h), y0h - 0.012, 9), (hx(y0h), y0h + 0.012, 9), (-hx(y0h), y0h + 0.012, 9),
           (0, 0, -1), nu=24, nv=1, out=0.006, inn=0.05)
     # hatch: a body-colour sill on the lid under the glass's lower edge, so the opened hatch has no gap
@@ -1096,6 +1125,17 @@ def set_uv(ob, panel):
 def split_panels():
     body = [o for o in OBJS if o.get("loft")][0]
     bake(body)
+    if S.get("smooth"):                                    # remember the uncut body's shading for the seams
+        me = body.data
+        for poly in me.polygons:
+            poly.use_smooth = True
+        me.set_sharp_from_angle(angle=math.radians(SMOOTH_ANGLE))
+        for lp, cn in zip(me.loops, me.corner_normals):
+            k = nkey(me.vertices[lp.vertex_index].co)
+            lst = SMOOTH_REF.setdefault(k, [])
+            v = Vector(cn.vector)
+            if all(v.dot(u) < 0.999 for u in lst):
+                lst.append(v)
     regions = {}
     for f in body.data.polygons:
         c, n = f.center, f.normal
@@ -1351,7 +1391,32 @@ shot("side", (Lr * 2.6, 0.0, ROOF * 0.6), (0, 0, fz))
 if S.get("smooth"):                                      # the reference photo's angle: front left, standing height
     lens = cam.data.lens
     cam.data.lens = 26
+    gloss = {}                                           # the photo's car is glossy black: clear-coat the paint
+    for ob in scene.objects:
+        if ob.type == "MESH" and ob.data.materials and ob.data.materials[0] and ob.get("pkind", "") in ("Body", "RoofBody") + tuple(PANEL_OF):
+            m = ob.data.materials[0]
+            b_ = m.node_tree.nodes.get("Principled BSDF") if m.node_tree else None
+            if b_ and m.name not in gloss:
+                gloss[m.name] = (b_, b_.inputs["Roughness"].default_value)
+                b_.inputs["Roughness"].default_value = 0.12
+                if "Coat Weight" in b_.inputs:
+                    b_.inputs["Coat Weight"].default_value = 1.0
+    lot = bpy.data.objects.get("Ground")                  # and it stands on dark asphalt under an overcast sky
+    lot_m = lot.data.materials[0] if lot and lot.data.materials else None
+    lot_old = None
+    if lot_m is not None:
+        lot_m.use_nodes = True
+        lb = lot_m.node_tree.nodes.get("Principled BSDF")
+        if lb:
+            lot_old = tuple(lb.inputs["Base Color"].default_value)
+            lb.inputs["Base Color"].default_value = (0.035, 0.035, 0.038, 1)
     shot("photo", (Lr * 1.05, -Lr * 1.6, 5.8), (Lr * 0.1, -Lr * 0.12, 2.4))
+    if lot_old:
+        lb.inputs["Base Color"].default_value = lot_old
+    for b_, r_ in gloss.values():
+        b_.inputs["Roughness"].default_value = r_
+        if "Coat Weight" in b_.inputs:
+            b_.inputs["Coat Weight"].default_value = 0.0
     cam.data.lens = lens
 for i, (nm, b, liv, paint) in enumerate(SHOWCASE):
     show(b, liv, paint)
@@ -1363,6 +1428,8 @@ shot("open_rear34", (Lr * 1.6, Lr * 2.0, ROOF * 1.8 + 3), (0, 1.5, fz))
 if os.environ.get("NC_DEBUG_SHOTS"):
     pose(0.0)
     shot("dbg_hood", (-Lr * 0.55, -Lr * 1.15, ROOF * 1.5), (0, L0 + 2.5, BELT - 0.6))
+    shot("dbg_cornerA", (W + 3.5, L0 - 3.5, 2.6), (W - 1.0, L0 + 1.0, 1.9))
+    shot("dbg_cornerB", (-W - 3.5, L0 - 3.5, 2.6), (-W + 1.0, L0 + 1.0, 1.9))
     shot("dbg_hood_side", (-Lr * 1.1, -Lr * 0.55, BELT + 0.8), (0, (L0 + A0) / 2, BELT - 0.5))
     HINGES_SAVE = {k: v["open"] for k, v in HINGES.items()}
     for k in HINGES:
