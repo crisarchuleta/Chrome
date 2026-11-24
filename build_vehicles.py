@@ -250,8 +250,8 @@ def make_stations():
         hc = S.get("HCROWN", CROWN)
         ye = A0 - 0.6
         st = []
-        for i in range(13):
-            u = (i / 12) ** 1.7
+        for i in range(19):
+            u = (i / 18) ** 1.5
             y = L0 + (ye - L0) * u
             d = y - L0
             e = math.sqrt(max(0.0, 1 - (1 - min(1.0, d / 2.6)) ** 2))
@@ -278,7 +278,7 @@ def make_stations():
     if S.get("smooth"):
         def lift(y, bl, tp):
             dy = abs(y - WY_F)
-            need = WR + math.sqrt(max(0.0, (ARCH + 0.2) ** 2 - dy * dy)) + 0.14
+            need = WR + math.sqrt(max(0.0, (ARCH + 0.08) ** 2 - dy * dy)) + 0.1
             bl2 = max(bl, need)
             return bl2, max(tp, bl2 + 0.06)
         st = [(y, w, zb, *lift(y, bl, tp), cr) for (y, w, zb, bl, tp, cr) in st]
@@ -314,12 +314,22 @@ def deck_z(x, y):
     return STATIONS[-1][4]
 
 
+def station_w(y):
+    for a, b in zip(STATIONS, STATIONS[1:]):
+        if a[0] <= y <= b[0]:
+            return a[1] + (b[1] - a[1]) * (y - a[0]) / (b[0] - a[0])
+    return W
+
+
 def belt_at(y):
     for a, b in zip(STATIONS, STATIONS[1:]):
         if a[0] <= y <= b[0]:
             t = (y - a[0]) / (b[0] - a[0])
             return a[3] + (b[3] - a[3]) * t
     return BELT
+
+
+SMOOTH_ANGLE = 60.0 if S.get("smooth") else 35.0   # modern bodies are all curves: shade them smooth
 
 
 def loft_body():
@@ -342,7 +352,7 @@ def loft_body():
     bm.faces.new(list(reversed(rings[0])))
     bm.faces.new(rings[-1])
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-    return new_obj(bm, "Body", style=PREFIX, smooth=35.0)
+    return new_obj(bm, "Body", style=PREFIX, smooth=SMOOTH_ANGLE)
 
 
 def sbox(kind, *a, **k):
@@ -538,7 +548,7 @@ def liner(x0, x1, wy):
 
 
 def hinge_panel_shell(bm, kind, t, hinge):
-    new_obj(shell(bm, t), kind, style=PREFIX, smooth=35.0)
+    new_obj(shell(bm, t), kind, style=PREFIX, smooth=SMOOTH_ANGLE)
     HINGE_OF[kind] = hinge
 
 
@@ -552,8 +562,8 @@ def build_doors(src):
         drop = [f for f in bm.faces if not (y0 < f.calc_center_median().y < y1 and f.calc_center_median().z > DOOR_Z0 and s * f.calc_center_median().x > xin)]
         bmesh.ops.delete(bm, geom=drop, context="FACES")
         sd = nm[4:]
-        new_obj(shell(bm, 0.12), "DoorJamb" + sd, style=PREFIX, smooth=35.0)
-        new_obj(bm, "PanelDoor" + sd, style=PREFIX, smooth=35.0)
+        new_obj(shell(bm, 0.12), "DoorJamb" + sd, style=PREFIX, smooth=SMOOTH_ANGLE)
+        new_obj(bm, "PanelDoor" + sd, style=PREFIX, smooth=SMOOTH_ANGLE)
         HINGE_OF["PanelDoor" + sd] = HINGE_OF["DoorJamb" + sd] = nm
         for yy in (y0 - 0.015, y1 + 0.015) if not S.get("smooth") else ():     # shut lines (smooth: smooth_details)
             sbox("Seam", s * (W - 0.25), yy - 0.012, DOOR_Z0 - 0.03, s * (W - 0.01), yy + 0.012, belt_at(yy) + 0.05)
@@ -655,7 +665,7 @@ def solid_grid(kind, O, I, cells, smooth=30.0):
 def gh_frame():
     zb = BELT + 0.05
     yend = C1 + 0.17
-    zend = max(zb + 0.04, deck_z(0, yend) + 0.02)
+    zend = max(zb + 0.04, deck_z(0, yend) - 0.02)
     pk = A1 + (C0 - A1) * 0.45
     mws = (ROOF + 0.02 - zb) / (A1 - A0)
     mrear = (zend - (ROOF - 0.1)) / (yend - C0)
@@ -1023,6 +1033,18 @@ def smooth_details():
             z0, z1 = DOOR_Z0 - 0.03, belt_at(yy) + 0.02
             decal("Seam", (xs, yy - 0.012, z0), (xs, yy + 0.012, z0), (xs, yy + 0.012, z1), (xs, yy - 0.012, z1), (-s_, 0, 0),
                   nu=1, nv=12, out=0.006, inn=0.05)
+    # hood shut lines: along the fender peaks' inner edge and across behind the nose cone
+    y0h, y1h = L0 + 0.95, A0 - 0.1
+    hx = lambda y: 0.744 * station_w(y)
+    n = 10
+    for k in range(n):
+        ya, yb = y0h + (y1h - y0h) * k / n, y0h + (y1h - y0h) * (k + 1) / n
+        for s_ in (-1, 1):
+            xa, xb_ = s_ * hx(ya), s_ * hx(yb)
+            decal("Seam", (xa - 0.012, ya, 9), (xa + 0.012, ya, 9), (xb_ + 0.012, yb, 9), (xb_ - 0.012, yb, 9), (0, 0, -1),
+                  nu=1, nv=2, out=0.006, inn=0.05)
+    decal("Seam", (-hx(y0h), y0h - 0.012, 9), (hx(y0h), y0h - 0.012, 9), (hx(y0h), y0h + 0.012, 9), (-hx(y0h), y0h + 0.012, 9),
+          (0, 0, -1), nu=24, nv=1, out=0.006, inn=0.05)
     # hatch: a body-colour sill on the lid under the glass's lower edge, so the opened hatch has no gap
     if REAR == "hatch":
         yb = GH_YEND
@@ -1079,7 +1101,9 @@ def split_panels():
         c, n = f.center, f.normal
         if abs(n.x) > 0.5 and abs(c.x) > W - 0.35:
             r = "PanelSideL" if c.x > 0 else "PanelSideR"
-        elif n.z > 0.5 and L0 + 0.05 < c.y < A0 - 0.08 and abs(c.x) < W - 0.2:
+        elif S.get("smooth") and n.z > 0.3 and L0 + 0.95 < c.y < A0 - 0.08 and abs(c.x) < 0.75 * station_w(c.y):
+            r = "PanelHood"                               # the hood: between the fender peaks, behind the nose cone
+        elif not S.get("smooth") and n.z > 0.5 and L0 + 0.05 < c.y < A0 - 0.08 and abs(c.x) < W - 0.2:
             r = "PanelHood"
         else:
             r = "Body"
@@ -1092,13 +1116,13 @@ def split_panels():
         bm.from_mesh(body.data)
         bm.faces.ensure_lookup_table()
         bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.index not in idx], context="FACES")
-        ob = new_obj(bm, r, style=PREFIX, smooth=35.0)
+        ob = new_obj(bm, r, style=PREFIX, smooth=SMOOTH_ANGLE)
         set_uv(ob, PANEL_OF[r])
         moved |= idx
         if r == "PanelHood":
             hb = bmesh.new()
             hb.from_mesh(ob.data)
-            new_obj(shell(hb, 0.08), "HoodInner", style=PREFIX, smooth=35.0)
+            new_obj(shell(hb, 0.08), "HoodInner", style=PREFIX, smooth=SMOOTH_ANGLE)
             hb.free()
     bm = bmesh.new()
     bm.from_mesh(body.data)
@@ -1337,6 +1361,17 @@ pose(1.0)
 shot("open_front34", (-Lr * 1.7, -Lr * 1.9, ROOF * 1.8 + 3), (0, -1.0, fz))
 shot("open_rear34", (Lr * 1.6, Lr * 2.0, ROOF * 1.8 + 3), (0, 1.5, fz))
 if os.environ.get("NC_DEBUG_SHOTS"):
+    pose(0.0)
+    shot("dbg_hood", (-Lr * 0.55, -Lr * 1.15, ROOF * 1.5), (0, L0 + 2.5, BELT - 0.6))
+    shot("dbg_hood_side", (-Lr * 1.1, -Lr * 0.55, BELT + 0.8), (0, (L0 + A0) / 2, BELT - 0.5))
+    HINGES_SAVE = {k: v["open"] for k, v in HINGES.items()}
+    for k in HINGES:
+        if k != "Hood":
+            HINGES[k]["open"] = 0
+    pose(1.0)
+    shot("dbg_hood_open", (-Lr * 0.8, -Lr * 1.2, ROOF * 1.4), (0, (L0 + A0) / 2, BELT - 0.5))
+    for k, v in HINGES_SAVE.items():
+        HINGES[k]["open"] = v
     shot("dbg_rear_right", (-Lr * 0.9, Lr * 1.3, ROOF * 0.9), (-W * 0.5, L1 - 1.5, TAIL - 0.6))
     pose(1.0)
     shot("dbg_hatch_open", (Lr * 0.5, Lr * 1.25, ROOF * 1.6), (0, C1, BELT))
