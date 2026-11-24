@@ -68,6 +68,7 @@ C.COLLECTIONS = {
 	{ id = "hero", name = "Heroes & Villains", blurb = "Capes, masks, suits in your colours." },
 	{ id = "spooky", name = "Spooky", blurb = "Horror-night masks, vampires, monsters." },
 	{ id = "cute", name = "Cute", blurb = "Coquette bows, ears, unicorns, soft colours." },
+	{ id = "emo", name = "Emo", blurb = "2026 emo revival: band tees, stripes, plaid, studs, platform boots, side fringes." },
 }
 
 ---------------------------------------------------------------------------------------------------- palettes
@@ -277,6 +278,13 @@ I("top_trooper_armor", "Top", "Orbital Trooper Armor", 700, "armor", { scifi = t
 I("top_sequin_dress", "Top", "Red Sequin Party Dress", 450, "dress", { len = 1.2, sequin = true, sleeve = true }, F, "#B3122E", F, "#B3122E", { "retro", "business" })
 I("top_slip_dress", "Top", "Satin Midi Dress", 300, "dress", { len = 1.6, sleeve = true }, F, "#E8DCC0", F, "#E8DCC0", { "tiktok", "cute" })
 I("top_animal_top", "Top", "Red & Black Animal Stripe Top", 220, "tee", { sleeve = "long", stripe = true }, F, "#B3122E", F, "#111111", { "tiktok", "spooky" }, TN)
+-- emo revival (TikTok 2025-26): made-up band names only, no real bands or logos
+I("top_emo_band_tee", "Top", "\"Midnight Static\" Band Tee", 120, "tee", { text = "MIDNIGHT STATIC" }, F, "#111111", F, "#F5F5F2", { "emo", "retro" }, TN)
+I("top_emo_band_tee2", "Top", "\"Paper Hearts\" Tour Tee", 120, "tee", { text = "PAPER HEARTS" }, F, "#111111", F, "#E0447A", { "emo" }, TN)
+I("top_emo_stripe_ls", "Top", "Striped Long Sleeve", 90, "tee", { sleeve = "long", stripes = true }, F, "#111111", F, "#F5F5F2", { "emo", "retro" }, T)
+I("top_emo_layered", "Top", "Band Tee over Stripes", 160, "tee", { layered = true, stripes = true, text = "NIGHT DRIVE" }, F, "#111111", F, "#F5F5F2", { "emo" }, TN)
+I("top_emo_thumb_hoodie", "Top", "Thumbhole Zip Hoodie", 170, "hoodie", { zip = true, thumb = true }, F, "#111111", F, "#2B2B2B", { "emo" }, T)
+I("top_emo_knit", "Top", "Oversized Dark Knit", 140, "sweater", { chunky = true }, F, "#2B2B2B", nil, nil, { "emo" })
 
 ------------------------------------------------------------------ outerwear
 I("out_puffer", "Outer", "Cropped Puffer", 350, "jacket", { puffer = true, open = false, collar = "stand", zip = true }, F, "#111111", F, "#111111", { "hood", "street" }, T)
@@ -354,6 +362,9 @@ I("bot_pleated_skirt", "Bottom", "Pleated Tennis Skirt", 160, "skirt", { len = 0
 I("bot_mini_skirt", "Bottom", "A-Line Skirt", 140, "skirt", { len = 0.9 }, F, "#111111", nil, nil, { "retro", "cute" })
 I("bot_pencil_skirt", "Bottom", "Pencil Skirt", 180, "skirt", { len = 1.1, flare = 0, tights = true }, F, "#2B2B2B", F, "#111111", { "business", "tiktok" }, T)
 I("bot_maxi_skirt", "Bottom", "Flowing Maxi Skirt", 180, "skirt", { len = 1.9, flare = 6 }, F, "#5C3A21", nil, nil, { "tiktok", "fantasy" })
+I("bot_emo_skinny", "Bottom", "Distressed Skinny Black Jeans", 150, "pants", { rips = true, skinny = true }, D, "#111418", nil, nil, { "emo" }, T)
+I("bot_emo_plaid_pants", "Bottom", "Red Plaid Skinny Pants", 160, "pants", { plaid = true, skinny = true }, F, "#B3122E", F, "#111111", { "emo", "retro" }, T)
+I("bot_emo_plaid_skirt", "Bottom", "Plaid Skirt over Leggings", 170, "skirt", { len = 0.9, pleats = true, plaid = true, tights = true }, F, "#B3122E", F, "#111111", { "emo" }, TN)
 I("bot_leggings", "Bottom", "Sculpt Leggings", 100, "leggings", {}, F, "#111111", nil, nil, { "sport", "tiktok" })
 I("bot_overalls", "Bottom", "Denim Overalls", 180, "overalls", {}, D, "#4C6F9E", nil, nil, { "retro", "work", "cute" })
 
@@ -376,6 +387,9 @@ I("shoe_work_boots", "Shoes", "Wheat Work Boots", 300, "shoes", { boot = 0.6, m 
 I("shoe_combat", "Shoes", "Combat Boots", 280, "shoes", { boot = 0.8, m = "leather", sole = 0.2 }, "leather", "#111111", S, "#111111", { "military", "heist" })
 I("shoe_desert_boots", "Shoes", "Desert Tactical Boots", 280, "shoes", { boot = 0.8, m = "leather", sole = 0.2 }, "leather", "#C8963E", S, "#B98A5E", { "military" })
 I("shoe_cowboy", "Shoes", "Stitched Cowboy Boots", 320, "shoes", { boot = 1.0, m = "leather", heel = 0.2 }, "leather", "#6B3E22", "leather", "#4A2C1A", { "western" })
+I("shoe_emo_platform", "Shoes", "Platform Combat Boots", 320, "shoes", { boot = 0.8, m = "leather", sole = 0.5 }, "leather", "#111111", S, "#111111", { "emo" }, TN)
+I("shoe_emo_knee_canvas", "Shoes", "Knee-High Canvas Sneakers", 220, "shoes", { boot = 1.3, laces = true }, F, "#111111", S, "#F5F5F2", { "emo" }, T)
+I("shoe_emo_canvas_low", "Shoes", "Black Canvas Low-Tops", 90, "shoes", { laces = true }, F, "#111111", S, "#F5F5F2", { "emo" })
 I("shoe_oxford", "Shoes", "Polished Oxfords", 220, "shoes", { m = "leather", sole = 0.1 }, "leather", "#111111", "leather", "#111111", { "business" })
 I("shoe_loafer", "Shoes", "Suede Loafers", 220, "shoes", { m = "leather", sole = 0.1 }, "leather", "#8B5A2B", "leather", "#4A2C1A", { "business", "tiktok" }, T)
 I("shoe_heels", "Shoes", "Classic Heels", 240, "shoes", { m = "leather", heel = 0.35, sole = 0.06 }, "leather", "#111111", "leather", "#111111", { "business", "retro" })
@@ -534,6 +548,8 @@ I("brace_iced", "Wrist2", "Iced Tennis Bracelet", 900, "bracelet", { iced = true
 I("brace_both", "Wrist2", "Iced Bracelets (Both Wrists)", 1600, "bracelet", { iced = true, both = true }, M, "#E2B240", G, "#ECF6FF", { "rap", "hood" })
 I("brace_beads", "Wrist2", "Bead Bracelet", 60, "bracelet", { beads = true }, F, "#111111", nil, nil, { "street", "coast" })
 I("brace_pearls", "Wrist2", "Pearl Bracelet", 200, "bracelet", { beads = true }, M, "#F0EAE0", nil, nil, { "cute", "tiktok" })
+I("brace_emo_spikes", "Wrist2", "Spiked Wristbands", 90, "bracelet", { spikes = true, both = true }, "leather", "#111111", M, "#D4D6DC", { "emo" }, T)
+I("brace_emo_rubber", "Wrist2", "Stacked Rubber Bracelets", 40, "bracelet", { rubber = true }, "bright", "#111111", "bright", "#FF2BD6", { "emo" })
 I("rings_gold", "Rings", "Gold Rings", 300, "rings", { n = 2 }, M, "#E2B240", G, "#ECF6FF", { "rap", "business" })
 I("rings_iced", "Rings", "Iced Pinky Rings", 900, "rings", { n = 2, iced = true, both = true }, M, "#D4D6DC", G, "#ECF6FF", { "rap", "hood" }, T)
 I("rings_stack", "Rings", "Silver Ring Stack", 250, "rings", { n = 3 }, M, "#D4D6DC", G, "#ECF6FF", { "street", "spooky" })
@@ -544,6 +560,7 @@ I("glove_tactical", "Hands", "Tactical Gloves", 140, "gloves", {}, F, "#4B5320",
 I("glove_driving", "Hands", "Driving Gloves", 160, "gloves", { leather = true }, "leather", "#8B5A2B", nil, nil, { "heist", "retro" })
 I("glove_white", "Hands", "White Gloves", 80, "gloves", {}, F, "#F5F5F2", nil, nil, { "business", "spooky" })
 I("glove_medical", "Hands", "Medical Gloves", 20, "gloves", {}, F, "#4F7CC2", nil, nil, { "work" })
+I("glove_emo_warmers", "Hands", "Striped Arm Warmers", 60, "gloves", { warmers = true, stripes = true }, F, "#111111", F, "#F5F5F2", { "emo" }, T)
 I("belt_leather", "Waist", "Leather Belt", 60, "belt", {}, "leather", "#111111", M, "#D4D6DC", { "business", "street" })
 I("belt_gold_plate", "Waist", "Gold Plate Belt", 500, "belt", { big = true }, "leather", "#111111", M, "#E2B240", { "rap" }, T)
 I("belt_iced", "Waist", "Iced Buckle Belt", 1200, "belt", { big = true, iced = true }, "leather", "#111111", M, "#D4D6DC", { "rap" })
@@ -551,6 +568,8 @@ I("belt_utility", "Waist", "Utility Belt", 200, "utility", {}, F, "#2B2B2B", M, 
 I("belt_bag", "Waist", "Cross-Body Belt Bag", 160, "beltbag", {}, F, "#111111", M, "#D4D6DC", { "street", "tiktok" }, T)
 I("belt_pocket_bandana", "Waist", "Back-Pocket Bandana", 0, "pocketbandana", {}, F, "#B3122E", nil, nil, { "hood", "western", "street" })
 I("belt_wallet_chain", "Waist", "Wallet Chain", 160, "walletchain", {}, M, "#D4D6DC", nil, nil, { "retro", "street" })
+I("belt_emo_studded", "Waist", "Pyramid Stud Belt", 120, "belt", { studs = true }, "leather", "#111111", M, "#D4D6DC", { "emo", "retro" }, T)
+I("belt_emo_checker", "Waist", "Checkered Belt", 80, "belt", { checker = true }, F, "#111111", F, "#F5F5F2", { "emo" })
 I("back_duffel", "Back", "Heist Duffel Bag", 300, "duffel", {}, F, "#111111", M, "#8C8C8C", { "heist", "hood" }, T)
 I("back_backpack", "Back", "School Backpack", 120, "backpack", {}, F, "#2E4A7A", F, "#111111", { "street", "cute" })
 I("back_mini_pack", "Back", "Mini Backpack", 140, "backpack", { mini = true }, F, "#F4A6C8", F, "#F5F5F2", { "cute", "tiktok" })
@@ -648,6 +667,13 @@ C.LOOKS = {
 		Face = e("eye_tiny_oval") }, T),
 	look("tiktok_hockey", "Rink Romance", "tiktok", { Hair = e("hair_long_curtains"), Top = e("top_jersey_hockey"), Bottom = e("bot_slim"), Shoes = e("shoe_white_low"),
 		Head = e("hat_beanie") }, TN),
+	-- Emo
+	look("emo_classic", "Side Fringe Classic", "emo", { Hair = e("hair_long_curtains", "#0B0908"), Top = e("top_emo_band_tee"), Bottom = e("bot_emo_skinny"),
+		Shoes = e("shoe_emo_canvas_low"), Waist = e("belt_emo_studded"), Wrist2 = e("brace_emo_spikes"), Neck = e("neck_stud_choker") }, TN),
+	look("emo_scene", "Scene Queen", "emo", { Hair = e("hair_wolf_cut", "#0B0908"), Top = e("top_emo_layered"), Bottom = e("bot_emo_plaid_skirt"),
+		Shoes = e("shoe_emo_platform"), Waist = e("belt_emo_checker"), Hands = e("glove_emo_warmers"), Wrist2 = e("brace_emo_rubber") }, TN),
+	look("emo_hoodie", "Thumbholes & Plaid", "emo", { Hair = e("hair_fluffy_fringe", "#0B0908"), Top = e("top_emo_thumb_hoodie"), Bottom = e("bot_emo_plaid_pants"),
+		Shoes = e("shoe_emo_knee_canvas"), Waist = e("belt_wallet_chain"), Head = e("hat_beanie") }, T),
 	look("street_varsity", "Varsity Star", "street", { Hair = e("hair_curly_top"), Top = e("top_tee"), Outer = e("out_varsity"), Bottom = e("bot_baggy"),
 		Shoes = e("shoe_hightop") }, T),
 	look("street_hooper", "Courtside", "sport", { Hair = e("hair_cornrows"), Top = e("top_jersey_hoop"), Bottom = e("bot_shorts_hoop"), Shoes = e("shoe_hightop"),

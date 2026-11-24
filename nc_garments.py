@@ -2238,38 +2238,65 @@ def skin_to_rig(o):
 
 
 def build_skirt(o, name, length=0.45, flare=0.25, color=(0.1, 0.1, 0.12), accent=None, pleats=0, thick=0.003):
-    """A skirt (or the lower half of a dress): hip band from the body, then a flared tube to the hem."""
+    """A skirt (or the lower half of a dress) that HANGS from the waist like cloth: a waistband ring, then rings
+    whose radius never gets smaller going down (the fabric drapes over the hips and seat, it never follows the
+    crotch or the buttock crease), then the flare to the hem. Pleats are knife folds round the hem."""
     b = o.low; k = b.k; J = b.J; P0 = b.co; reg = b.reg
     pel = J["pelvis"][2]
-    z_waist = pel + 0.05 * k
-    z_low = b.crotch_z + 0.05 * k
-    f = np.ones(len(P0))
-    m = _isin(reg, ("Torso", "ULeg"))
-    f[m] = np.maximum(P0[m, 2] - z_waist, z_low - P0[m, 2])
-    P, F, R = _start(b, f)
-    X = P + vnormals(P, F) * 0.009 * k
-    X = o.col_noarm.push(X, 0.006 * k)
-    loops = sorted(boundary_loops(F), key=len, reverse=True)[:2]
-    low = min(loops, key=lambda l: X[l, 2].mean())
-    base = X[low].copy(); c = base.mean(0)
-    phi = np.arctan2(base[:, 1] - c[1], base[:, 0] - c[0])
-    r0 = np.hypot(base[:, 0] - c[0], base[:, 1] - c[1])
-    drop = c[2] - (b.floor + (1 - length) * (c[2] - b.floor))
-    nr = max(3, int(drop / (0.012 * k)))
+    z_waist = pel + 0.1 * k  # over the top of the base-layer shorts
+    cx, cy = b.cx, b.yc
+    na = 120
+    phi = np.linspace(-np.pi, np.pi, na, endpoint=False)
+    body = np.vstack([P0[_isin(reg, ("Torso", "ULeg"))], o.col_noarm.P])  # the body plus layers already on (leggings)
+    body = body[np.hypot(body[:, 0] - cx, body[:, 1] - cy) < 0.3 * k]
+    ab = np.arctan2(body[:, 1] - cy, body[:, 0] - cx)
+    rb = np.hypot(body[:, 0] - cx, body[:, 1] - cy)
+    drop = length * (z_waist - b.floor)
+    z_hem = z_waist - drop
+    nz = max(12, int(drop / (0.01 * k)))
+    zs = np.linspace(z_waist, z_hem, nz)
+    ease = 0.009 * k
     rings = []
-    for i in range(1, nr + 1):
-        t = i / nr
-        rr = r0 * (1 + flare * t) + 0.004 * k
+    rprev = None
+    z_flare0 = None
+    for zi, z in enumerate(zs):
+        sel = np.abs(body[:, 2] - z) < 0.008 * k
+        r = np.zeros(na)
+        if sel.any():
+            idx = np.clip(((ab[sel] + np.pi) / (2 * np.pi) * na).astype(int), 0, na - 1)
+            np.maximum.at(r, idx, rb[sel])
+        for _ in range(2):  # fill empty bins (the gap between the legs) from the neighbours
+            r = np.maximum(r, 0.5 * (np.roll(r, 1) + np.roll(r, -1)) * (r == 0))
+        r = r + ease
+        rs = r.copy()
+        for _ in range(8):  # cloth bridges the dips: smooth, but never inside the body
+            rs = np.maximum(r, 0.5 * rs + 0.25 * (np.roll(rs, 1) + np.roll(rs, -1)))
+        r = rs
+        if rprev is not None:
+            r = np.maximum(r, rprev)  # never tucks back in
+        rprev = r
+        rings.append(r)
+    rings = np.array(rings)
+    # flare: below the fullest point the skirt opens out toward the hem
+    full = int(np.argmax(zs < pel - 0.02 * k))  # flare opens below the seat
+    for zi in range(nz):
+        t = max(0.0, (zi - full) / max(nz - 1 - full, 1))
+        rr = rings[zi] * (1 + flare * t ** 1.3)
         if pleats:
-            rr = rr * (1 + 0.035 * t * np.sign(np.sin(phi * pleats)) * np.abs(np.sin(phi * pleats)) ** 0.5)
-        pts = np.stack([c[0] + np.cos(phi) * rr, c[1] + np.sin(phi) * rr, base[:, 2] - drop * t], 1)
-        rings.append(pts)
-    X, F, R, _ = _extend_loop(X, F, low, None, rings, R, "Skirt")
-    E = edges_of(F)
-    X = laplace(X, E, 2, taubin=True)
-    X = o.col_noarm.push(X, 0.006 * k)
-    vcol = None
-    ob = make_object(b, b.obj.name + "_" + name, X, F, [material(name + "_Main", tuple(color[:3]) + (1,))], None, vcol, thick=thick)
+            saw = (phi * pleats / (2 * np.pi)) % 1.0
+            rr = rr * (1 + 0.03 * t * (saw - 0.5))
+        rings[zi] = rr
+    X = np.array([[cx + np.cos(phi) * rings[zi], cy + np.sin(phi) * rings[zi], np.full(na, zs[zi])] for zi in range(nz)])
+    X = X.transpose(0, 2, 1).reshape(-1, 3)
+    F = [[zi * na + j, zi * na + (j + 1) % na, (zi + 1) * na + (j + 1) % na, (zi + 1) * na + j] for zi in range(nz - 1) for j in range(na)]
+    fc = X[np.array(F)].mean(1)
+    fn = np.cross(X[[f[1] for f in F]] - X[[f[0] for f in F]], X[[f[2] for f in F]] - X[[f[0] for f in F]])
+    if np.mean(np.einsum("ij,ij->i", fn, fc - np.array([cx, cy, fc[:, 2].mean()]))) < 0:
+        F = [f[::-1] for f in F]
+    mi = np.array([1 if X[f[0], 2] > z_waist - 0.03 * k and X[f[2], 2] > z_waist - 0.031 * k else 0 for f in F])
+    acc = accent or color
+    mats = [material(name + "_Main", tuple(color[:3]) + (1,)), material(name + "_Band", tuple(acc[:3]) + (1,))]
+    ob = make_object(b, b.obj.name + "_" + name, X, F, mats, mi, None, thick=thick)
     o.objs.append(ob)
     o.layer(X, F, thick)
     return ob
@@ -2316,6 +2343,12 @@ SHOE_STYLES = {
     "slip_on": dict(collar=0.002, sole=0.022, kind="vulc", laces=0, gores=True, tongue_up=0.0),
     # canvas high-top: rubber toe cap and foxing stripe on a vulcanised sole, metal eyelets
     "canvas_high": dict(collar=0.085, sole=0.024, kind="vulc", laces=8, rubber_toe=True, tongue_up=0.012),
+    # platform combat boot: tall laced shaft to mid-calf on a thick lug platform, toe cap and heel counter
+    "combat_platform": dict(collar=0.02, shaft=0.17, sole=0.055, kind="cup", laces=11, toe=True, tongue_up=0.0),
+    # knee-high canvas sneaker: canvas high-top whose laced shaft runs up to just under the knee
+    "canvas_knee": dict(collar=0.02, shaft=0.36, sole=0.026, kind="vulc", laces=20, rubber_toe=True, tongue_up=0.008),
+    # canvas low-top: vulcanised sole, rubber toe cap and foxing stripe, metal eyelets
+    "canvas_low": dict(collar=0.012, sole=0.024, kind="vulc", laces=6, rubber_toe=True, tongue_up=0.012),
     # retro runner: wedge midsole, slimmer toe, mudguard and heel overlays
     "runner_retro": dict(collar=0.008, sole=0.03, kind="wedge", laces=6, heel=True, mudguard=True, pointy=True,
                          tongue_up=0.014),
@@ -2341,7 +2374,7 @@ def build_shoe(o, name, style="court_high", color=(0.95, 0.95, 0.94), accent=Non
     acc = accent or color
     outsole = outsole or tuple(np.array(sole[:3]) * 0.8)
     lace = lace or color
-    lining = lining or tuple(np.array(acc[:3]) * 0.85)
+    lining = lining or (tuple(color[:3]) if S.get("shaft") else tuple(np.array(acc[:3]) * 0.85))
     up_parts, up_cols, sole_parts, lace_parts = [], [], [], []
     for side in ("l", "r"):
         ank = J[side + "-ankle"]
@@ -2454,7 +2487,8 @@ def build_shoe(o, name, style="court_high", color=(0.95, 0.95, 0.94), accent=Non
         a = np.linspace(0, 2 * np.pi, na, endpoint=False)
         T2 = np.maximum(T, z_top + 0.03 * k)
         heelzone = t < 0.42
-        T2 = np.where(heelzone, np.maximum(T2, z_col_base + 0.03 * k), T2)
+        if not S.get("shaft"):  # a boot shaft takes over above the ankle
+            T2 = np.where(heelzone, np.maximum(T2, z_col_base + 0.03 * k), T2)
         for i in range(nu):
             zb = z_top[i] - 0.004 * k
             hz = (T2[i] - zb) / 2
@@ -2498,6 +2532,8 @@ def build_shoe(o, name, style="court_high", color=(0.95, 0.95, 0.94), accent=Non
         topside = prm[:, 2] > 0.55
         g2 = np.minimum.reduce([wth - np.abs(latoff), tt - t_th0 + 0.04, t_th1 - tt, np.where(topside, 1.0, -1.0) * 0.05 * k])
         g = np.maximum(g1, g2)
+        if S.get("shaft"):  # boots: the shaft makes the heel and ankle, the shoe upper keeps the vamp and toe
+            g = np.maximum(g, 0.31 - tt)
         Pq, Fq, A = clip(Vu, Fu, g, {"prm": prm})
         Pq, Fq, A = keep_big(Pq, Fq, A, frac=0.5)
         prq = A["prm"]
@@ -2571,7 +2607,7 @@ def build_shoe(o, name, style="court_high", color=(0.95, 0.95, 0.94), accent=Non
         Pq_all = Pq
         # ---- padded collar roll along the opening edge
         loops = boundary_loops(Fq)
-        if loops:
+        if loops and not S.get("shaft"):  # a boot shaft covers the collar instead
             lp = max(loops, key=len)
             Lp = Pq[lp]
             ltt = prq[lp, 0]
@@ -2594,7 +2630,7 @@ def build_shoe(o, name, style="court_high", color=(0.95, 0.95, 0.94), accent=Non
                 zb = z_top[i] - 0.004 * k
                 hz = (T2[i] - zb) / 2 * (0.35 + 0.65 * rnd[i] ** 0.5)
                 ztop = zb + 2 * hz - 0.003 * k
-                if t_ < t_th0 + 0.02:
+                if t_ < t_th0 + 0.02 and not S.get("shaft"):
                     ztop = max(ztop, z_col_base + (S.get("tongue_up", 0.012) * k) * (t_th0 + 0.02 - t_) / 0.05)
                 row = []
                 for x_ in np.linspace(-1, 1, 9):
@@ -2644,12 +2680,15 @@ def build_shoe(o, name, style="court_high", color=(0.95, 0.95, 0.94), accent=Non
                     path = np.array([p0, 0.5 * (p0 + mid), mid, 0.5 * (mid + p1), p1])
                     Vt, Ft = make_tube(path, 0.0021 * k, nseg=6)
                     lace_parts.append((Vt, Ft, 0))
-            # top bar + short bow loops
+            # top bar + short bow loops (boots: the laces carry on up the shaft instead)
             p0, p1 = pts[-1][0], pts[1][0]
-            mid = 0.5 * (p0 + p1) + np.array([0, 0, 0.006 * k])
-            Vt, Ft = make_tube(np.array([p0, mid, p1]), 0.0021 * k, nseg=6)
-            lace_parts.append((Vt, Ft, 0))
-            for sg in (-1, 1):
+            if S.get("shaft"):
+                p0 = p1 = None
+            if p0 is not None:
+                mid = 0.5 * (p0 + p1) + np.array([0, 0, 0.006 * k])
+                Vt, Ft = make_tube(np.array([p0, mid, p1]), 0.0021 * k, nseg=6)
+                lace_parts.append((Vt, Ft, 0))
+            for sg in ((-1, 1) if p0 is not None else ()):
                 loop = [mid + np.array([0, 0, 0.002 * k]) + 0.012 * k * (np.cos(q) * sg * np.r_[lat, 0] * 0.9 + np.sin(q) * np.r_[d, 0] * 0.5)
                         + np.array([0, 0, 0.004 * k]) * np.sin(q) for q in np.linspace(0, 2 * np.pi, 10, endpoint=False)]
                 loop = np.array(loop) + sg * np.r_[lat, 0] * 0.008 * k
@@ -2677,3 +2716,120 @@ def build_shoe(o, name, style="court_high", color=(0.95, 0.95, 0.94), accent=Non
         pass
     o.layer(Vu, Fu, 0.003 * k)
     return out
+
+
+def build_boot_shaft(o, name, height=0.16, color=(0.04, 0.04, 0.045), lace=None, trim=None, canvas=False, sole=0.026):
+    """Tall laced shaft for boots and knee-high sneakers, added over a high-top shoe: a sleeve cut from each lower
+    leg (so it hugs the calf instead of standing off it like a box), a front lacing gap with a tongue under it,
+    eyelets and criss-cross laces up to the top, and a padded (or folded canvas) collar roll."""
+    b = o.low; k = b.k; J = b.J
+    lace = lace or color
+    trim = trim or color
+    out = []
+    for side in ("l", "r"):
+        ank, knee = J[side + "-ankle"], J[side + "-knee"]
+        z0 = ank[2] - 0.004 * k  # starts below the shoe collar so the join is covered
+        z1 = min(ank[2] + height * k, knee[2] - 0.05 * k)
+        m = (b.reg == "LLeg") & (b.side(b.co) == side)
+        m |= (b.reg == "Foot") & (b.side(b.co) == side) & (b.co[:, 1] > ank[1] - 0.075 * k)  # heel and ankle down to the sole
+        f = np.ones(len(b.co))
+        z_sole = b.floor + sole * k + 0.003 * k
+        zlo = z0 - (z0 - z_sole) * np.clip((b.co[:, 1] - (ank[1] - 0.075 * k)) / (0.035 * k), 0, 1)
+        f[m] = np.maximum(zlo[m] - b.co[m, 2], b.co[m, 2] - z1)
+        P, F, A = _start(b, f)
+        X = P + vnormals(P, F) * 0.01 * k
+        E = edges_of(F)
+        low_ = np.clip((z0 + 0.035 * k - P[:, 2]) / (0.035 * k), 0, 1)  # sits just over the top edge of the shoe upper
+        gapz = 0.0085 * k + 0.004 * k * low_
+        for _ in range(4):
+            X = laplace(X, E, 3, taubin=True)
+            X = o.col.push(X, 0.0085 * k)
+        X = X + vnormals(X, F) * (gapz - 0.0085 * k)[:, None]
+        X = laplace(X, E, 2, taubin=True)
+        # leg centre line for the angle round the leg (0 = straight ahead)
+        def ctr(z):
+            tt = np.clip((z - ank[2]) / (knee[2] - ank[2]), 0, 1)[:, None]
+            return ank[None, :2] * (1 - tt) + knee[None, :2] * tt
+        def ang(Q):
+            cq = ctr(Q[:, 2]); return np.arctan2(Q[:, 0] - cq[:, 0], -(Q[:, 1] - cq[:, 1]))
+        # lacing gap down the front
+        wgap = 0.012 * k
+        cq = ctr(X[:, 2]); rr = np.hypot(X[:, 0] - cq[:, 0], X[:, 1] - cq[:, 1])
+        gap = wgap - np.abs(ang(X)) * rr
+        Pq, Fq, _ = clip(X, F, gap, {})
+        Pq, Fq, _ = keep_big(Pq, Fq, {}, frac=0.5)
+        Eq = edges_of(Fq)
+        mats = [material(name + "_Main", tuple(color[:3]) + (1,), rough=0.85 if canvas else 0.5),
+                material(name + "_Trim", tuple(trim[:3]) + (1,), rough=0.7),
+                material(name + "_Lace", tuple(lace[:3]) + (1,), rough=0.8),
+                material(name + "_Eyelet", (0.75, 0.75, 0.78, 1), rough=0.3)]
+        parts = [(Pq, Fq, 0)]
+        # tongue: the gap strip, a little under the shaft
+        tong = np.maximum(gap, -1)  # keep where the gap was
+        Pt, Ft, _ = clip(X, F, -gap - 0.006 * k, {})
+        if len(Ft):
+            Pt, Ft, _ = keep_big(Pt, Ft, {}, frac=0.5)
+            Pt = Pt - vnormals(Pt, Ft) * 0.0015 * k
+            parts.append((Pt, Ft, 0))
+        # eyelets and criss-cross laces
+        loops = sorted(boundary_loops(Fq), key=len, reverse=True)
+        zz = np.arange(z0 + 0.012 * k, z1 - 0.01 * k, 0.021 * k)
+        prev = None
+        for i, z in enumerate(zz):
+            pts = []
+            for sg in (1, -1):
+                cz = ctr(np.array([z]))[0]
+                aa = sg * (wgap * 1.35) / max(np.median(rr), 1e-6)
+                q = np.array([[cz[0] + np.sin(aa) * 0.2 * k, cz[1] - np.cos(aa) * 0.2 * k, z]])
+                dirv = q[0, :2] - cz; dirv /= np.linalg.norm(dirv)
+                # march inward to the shaft surface
+                cand = Pq[np.abs(Pq[:, 2] - z) < 0.006 * k]
+                if len(cand) == 0:
+                    continue
+                aq = ang(cand)
+                j = np.argmin(np.abs(aq - aa))
+                p = cand[j] + np.r_[dirv, 0] * 0.001 * k
+                pts.append(p)
+                ring = np.array([p + (np.r_[dirv, 0] * 0.0012 * k) + 0.0028 * k * (np.cos(t) * np.array([0, 0, 1.0]) + np.sin(t) * np.r_[-dirv[1], dirv[0], 0])
+                                 for t in np.linspace(0, 2 * np.pi, 11)[:-1]])
+                Ve, Fe = make_tube(ring, 0.0009 * k, nseg=5, closed=True)
+                parts.append((Ve, Fe, 3))
+            if len(pts) == 2:
+                if prev is not None:
+                    for a_, b_ in ((prev[0], pts[1]), (prev[1], pts[0])):
+                        mid = (a_ + b_) / 2; cz = ctr(np.array([mid[2]]))[0]
+                        dv = mid[:2] - cz; dv /= np.linalg.norm(dv)
+                        mid = mid + np.r_[dv, 0] * 0.003 * k
+                        Vl, Fl = make_tube(np.array([a_, mid, b_]), 0.0016 * k, nseg=6)
+                        parts.append((Vl, Fl, 2))
+                prev = pts
+        # collar roll round the top
+        top = max(loops, key=lambda l: Pq[l, 2].mean())
+        tl = Pq[top]
+        if len(tl) > 8:
+            Vt, Ft2 = make_tube(tl, (0.0045 if not canvas else 0.0035) * k, nseg=8, closed=False)
+            parts.append((Vt, Ft2, 1))
+        Vd, Fd, md = merge_parts(parts)
+        ob = make_object(b, f"{b.obj.name}_{name}_{side.upper()}", Vd, Fd, mats, md, None, thick=0.003 * k, subsurf=1)
+        out.append(ob)
+        # tuck the shoe upper under the shaft wherever the shaft covers it (no edges poking out at the join)
+        for so in o.objs:
+            if not so.data.materials or not so.data.materials[0].name.endswith("_Upper"):
+                continue
+            co = np.array([v.co for v in so.data.vertices])
+            if len(co) == 0:
+                continue
+            sel = (b.side(co) == side) & (co[:, 2] > z_sole - 0.002 * k) & (co[:, 2] < z1) & \
+                  (co[:, 1] > ank[1] - 0.06 * k) & (co[:, 2] > np.interp(co[:, 1], [ank[1] - 0.075 * k, ank[1] - 0.04 * k], [z0, z_sole]) - 0.004 * k)
+            if not sel.any():
+                continue
+            _, j = o.col.tree.query(co[sel])
+            Pn, Nn = o.col.P[j], o.col.N[j]
+            dd = np.einsum("ij,ij->i", co[sel] - Pn, Nn)
+            lim = 0.0062 * k
+            newc = co[sel] - Nn * np.maximum(dd - lim, 0)[:, None]
+            co[sel] = newc
+            for vi, c_ in zip(np.where(sel)[0], newc):
+                so.data.vertices[vi].co = c_
+    o.objs.extend(out)
+    return out[0]

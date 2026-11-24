@@ -169,6 +169,24 @@ that hugs the skin, so it looks like part of the skin, not a sticker.
      from the washed PNGs (half the files in each).
   6. `tools/ink/review.sh <Body>` renders every tattoo on a body to check it.
 
+## Emo collection (Nov 2026)
+
+Researched from the 2025-26 TikTok emo revival (notes: project files `character-studio/emo/emo_trends_2026.md`).
+Made-up band names only, no real bands or logos.
+- **Items.** Band tees, a striped long sleeve, a band tee layered over stripes, a thumbhole zip hoodie, an oversized
+  knit, distressed skinny black jeans, red plaid skinny pants, a plaid skirt over opaque leggings, platform combat
+  boots, knee-high canvas sneakers, black canvas low-tops, a pyramid stud belt, a checkered belt, spiked wristbands,
+  rubber bracelets and striped arm warmers. There are three preset looks.
+- **Patterns.** `stripes` / `plaid` params are cut into the garment mesh along the pattern lines (bmesh bisect in
+  `apply_pattern`, nc_catalog3d.py) and coloured by face material, so edges stay crisp after game decimation. Each
+  colour imports as its own MeshPart.
+- **Skirts.** `build_skirt` hangs from the waist (pelvis + 0.1k, over the base shorts): ring radii never shrink going
+  down, so the fabric drapes over the hips and seat and never shows the body's contours. `tights = true` builds
+  opaque leggings first.
+- **Boots.** Shoe styles with `shaft` (combat_platform, canvas_knee) add `build_boot_shaft`: a laced sleeve cut
+  from the lower leg and heel down to the sole, so it hugs the calf. The shoe upper keeps only the vamp and toe.
+- **Still open.** Emo hair and an eyeliner/makeup slot go on the heads (rig thread).
+
 ## How the 3D pieces work
 
 `NCLookBuilder` builds every item from plain parts (balls, blocks, cylinders, wedges) welded to the body part they sit
