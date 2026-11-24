@@ -121,7 +121,7 @@ C.CustomizeRadius = 40 -- your car must be this close to the shop to customize i
 C.Sounds = {
 	backfire_1 = "", backfire_2 = "", backfire_3 = "", door_close = "",
 	door_open = "", engine_diesel_high = "", engine_diesel_low = "", engine_diesel_mid = "",
-	engine_electric = "", engine_i4_high = "", engine_i4_low = "", engine_i4_mid = "",
+	engine_electric = "", engine_ev = "", engine_i4_high = "", engine_i4_low = "", engine_i4_mid = "",
 	engine_off = "", engine_single_high = "", engine_single_low = "", engine_single_mid = "",
 	engine_sport4_high = "", engine_sport4_low = "", engine_sport4_mid = "", engine_start = "",
 	engine_truck_high = "", engine_truck_low = "", engine_truck_mid = "", engine_v8_high = "",

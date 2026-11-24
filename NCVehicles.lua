@@ -149,6 +149,16 @@ V.List = {
 			part_Dash = "Classic", part_Steering = "Sport", part_Shifter = "THandle", part_Rim = "Steelie", part_KO = "Cap",
 			part_Tire = "Offroad", ww = "" },
 	},
+	{
+		id = "VireoE", name = "Vireo E", price = 8500, class = "ev", engine = "ev",
+		blurb = "Electric liftback. Silent, and quicker off the line than anything with an engine.",
+		drive = { TopSpeed = 96, Accel = 48, Grip = 13, RearGrip = 12, SteerMax = 32, SpringSag = 0.26 },
+		suspensions = { "stock", "bags" },
+		defaults = { part_FrontBumper = "Sport", part_RearBumper = "Sport", part_Grille = "Mesh", part_Headlights = "Slim", part_Taillights = "Slim",
+			part_Mirrors = "Sport", part_Hood = "", part_Spoiler = "", part_Exhaust = "", part_Top = "Sunroof", part_Seats = "Buckets",
+			part_Doors = "Smooth", part_Dash = "Digital", part_Steering = "Sport", part_Shifter = "THandle", part_Rim = "Mesh", part_KO = "Cap",
+			part_Tire = "Classic", ww = "", paint = "midnight", fin_Rim = "satin", fin_Spokes = "satin", tint = "dark" },
+	},
 	-- bikes (build_bikes.py): two wheels, the driving script balances them and leans them into turns; Space = wheelie
 	{
 		id = "DirtBike", name = "Dirt Bike", price = 2000, class = "bike", bike = true, blurb = "Light dirt bike.",

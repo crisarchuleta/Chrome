@@ -224,8 +224,8 @@ local function rig(car, s)
 	r = { made = {}, rpm = 0.15, gear = 1, prevThrottle = 0, nextPop = 0, blinkT = 0, sirenT = 0 }
 	r.engine = v.engine or ENGINE_BY_ID[v.id] or (v.bike and "single") or ENGINE_OF[v.class] or "v8"
 	r.horn = makeSound(ch, HORN_OF[v.class] or "horn_car", true, 0, 14, 300)
-	if r.engine == "electric" then
-		r.loops = { makeSound(ch, "engine_electric", true, 0, 8, 120) }
+	if r.engine == "electric" or r.engine == "ev" then
+		r.loops = { makeSound(ch, r.engine == "ev" and "engine_ev" or "engine_electric", true, 0, 8, 140) }
 	else
 		r.loops = {}
 		for i, tag in { "low", "mid", "high" } do
@@ -301,7 +301,7 @@ local function engine(car, r, info, dt)
 	local rpm = rpmFrom(r, speedFrac, throttle, info.burnout, dt)
 	local starting = r.startT and os.clock() - r.startT < 1.0 and running
 	local vol = (running and not starting) and (0.45 + 0.4 * throttle) or 0
-	if r.engine == "electric" then
+	if r.engine == "electric" or r.engine == "ev" then
 		local s = r.loops[1]
 		if s then
 			s.PlaybackSpeed = 0.5 + 1.6 * speedFrac
@@ -330,7 +330,7 @@ local function engine(car, r, info, dt)
 	local lift = r.prevThrottle > 0.7 and throttle < 0.1 and rpm > 0.65
 	r.prevThrottle = throttle
 	local now = os.clock()
-	if running and r.engine ~= "electric" and (lift or r.shiftPop) and now > r.nextPop then
+	if running and r.engine ~= "electric" and r.engine ~= "ev" and (lift or r.shiftPop) and now > r.nextPop then
 		r.shiftPop = false
 		r.nextPop = now + 0.12
 		local pops = lift and math.random(1, 3) or 1

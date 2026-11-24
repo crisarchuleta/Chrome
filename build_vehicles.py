@@ -112,6 +112,16 @@ SPECS = {
                          BED=(2.95, 6.4), opentop=True,
                          stock={"FrontBumper": "Stock", "RearBumper": "Stock", "Grille": "Mesh", "Headlights": "Square", "Seats": "Rolls",
                                 "Rim": "Steelie", "Tire": "Classic", "Skirts": ""}, paint=(0.12, 0.36, 0.22)),
+    # electric liftback sedan (original design, proportions taken from a reference photo of a real full-size electric
+    # sedan; no badges or brand details): drawn at real size (no FIT): 16.3 ft long, 6.4 ft wide, 4.7 ft tall,
+    # 9.7 ft wheelbase. Low rounded nose with a closed face and a low intake, raked windshield, strong tumblehome,
+    # long glass roof into a liftback, big multi-spoke wheels, no exhaust; a front trunk where the engine would be and
+    # a charge port where the gas door would be
+    "VireoE": dict(name="Vireo E", flavour="sports", W=3.7, L0=-9.6, L1=9.15, WB=11.17, WR=1.3, WX=3.15, TW=1.0,
+                   ZB=0.75, BELT=3.05, NOSE=2.2, HOOD=2.95, TAIL=3.15, CROWN=0.02,
+                   A0=-3.6, A1=-0.1, C0=3.4, C1=7.3, ROOF=5.25, TUCK=0.75, B=1.0, Q=3.9, doors=4, rear="hatch",
+                   electric=True, lowpro=0.5, smooth=True, stock={"Exhaust": "", "Spoiler": "", "Rim": "Mesh", "Top": "Sunroof", "Seats": "Buckets",
+                                         "Dash": "Digital", "Steering": "Sport"}, paint=(0.025, 0.025, 0.03)),
 }
 # ------------------------------------------------------------------ real-world proportions (vehicle QA, 2026-11-24)
 # The specs above were drawn a little squat. Against real cars of each class (at the world's 1.15 studs per foot, the
@@ -215,8 +225,13 @@ def ztop(x, top, crown, w):
 def section(w, zb, belt, top, crown):
     top = max(top, belt + 0.06)
     sh = min(0.3, (belt - zb) * 0.2)
-    half = [(0.0, zb), (w * 0.86, zb), (w * 0.965, zb + 0.15), (w, zb + 0.45), (w, belt - sh), (w * 0.99, belt - sh * 0.35),
-            (w * 0.965, belt + 0.02)]
+    if S.get("smooth"):  # modern body: a gently barrelled side and a rounder shoulder
+        mid = zb + 0.45 + (belt - sh - zb - 0.45) * 0.45
+        half = [(0.0, zb), (w * 0.84, zb), (w * 0.94, zb + 0.1), (w * 0.98, zb + 0.32), (w, mid), (w * 0.99, belt - sh),
+                (w * 0.97, belt - sh * 0.3), (w * 0.94, belt + 0.03)]
+    else:
+        half = [(0.0, zb), (w * 0.86, zb), (w * 0.965, zb + 0.15), (w, zb + 0.45), (w, belt - sh), (w * 0.99, belt - sh * 0.35),
+                (w * 0.965, belt + 0.02)]
     for k in range(5):
         x = w * 0.93 * (1 - k / 5)
         half.append((x, ztop(x, top, crown, w) - (0.03 if k == 0 else 0.0)))
@@ -227,16 +242,33 @@ def section(w, zb, belt, top, crown):
 def make_stations():
     """y, half width, rocker, belt, deck, crown from the nose to the tail"""
     nb = NOSE - 0.25
-    st = [(L0, W - 0.5, ZB + 0.35, nb - 0.2, nb - 0.12, 0.0), (L0 + 0.2, W - 0.22, ZB + 0.15, nb, NOSE - 0.05, CROWN * 0.4),
-          (L0 + 0.8, W - 0.05, ZB, nb + 0.05, NOSE + (HOOD - NOSE) * 0.1, CROWN), (A0 - 0.6, W, ZB, BELT - 0.1, HOOD - 0.02, CROWN),
-          (A0, W, ZB, BELT, HOOD, CROWN)]
+    if S.get("smooth"):
+        # a rounded nose: plan and profile both follow a quarter ellipse over the first 2.2 studs
+        st = []
+        for i in range(7):
+            u = i / 6
+            e = math.sqrt(max(0.0, 1 - (1 - u) ** 2))
+            top = NOSE - 0.25 * (1 - e) + (HOOD - NOSE) * 0.18 * e
+            st.append((L0 + 2.2 * u, W * (0.88 + 0.12 * e), ZB + 0.3 * (1 - e), top - 0.1 - 0.35 * (1 - e), top, CROWN * e))
+        st += [(A0 - 0.6, W, ZB, HOOD - 0.12, HOOD - 0.02, CROWN), (A0, W, ZB, BELT, HOOD, CROWN)]
+    else:
+        st = [(L0, W - 0.5, ZB + 0.35, nb - 0.2, nb - 0.12, 0.0), (L0 + 0.2, W - 0.22, ZB + 0.15, nb, NOSE - 0.05, CROWN * 0.4),
+              (L0 + 0.8, W - 0.05, ZB, nb + 0.05, NOSE + (HOOD - NOSE) * 0.1, CROWN), (A0 - 0.6, W, ZB, BELT - 0.1, HOOD - 0.02, CROWN),
+              (A0, W, ZB, BELT, HOOD, CROWN)]
     # over the front wheel the fender has to clear the arch (low wedge noses would otherwise dip under it)
     yf = WY_F - ARCH - 0.3
-    if st[2][0] + 0.3 < yf < st[3][0] - 0.3:
-        t = (yf - st[2][0]) / (st[3][0] - st[2][0])
-        lerp = lambda i: st[2][i] + (st[3][i] - st[2][i]) * t
-        belt = max(lerp(3), WR + ARCH + 0.14)
-        st.insert(3, (yf, W, ZB, belt, max(lerp(4), belt + 0.06), CROWN))
+    for i in range(len(st) - 1):
+        a, b = st[i], st[i + 1]
+        if a[0] + 0.3 < yf < b[0] - 0.3:
+            t = (yf - a[0]) / (b[0] - a[0])
+            lerp = lambda k: a[k] + (b[k] - a[k]) * t
+            belt = max(lerp(3), WR + ARCH + 0.14)
+            st.insert(i + 1, (yf, lerp(1) if S.get("smooth") else W, ZB, belt, max(lerp(4), belt + 0.06), CROWN))
+            break
+    # (smooth noses: a station already over the arch is lifted the same way)
+    if S.get("smooth"):
+        st = [(y, w, zb, max(bl, WR + ARCH + 0.14) if abs(y - WY_F) < ARCH + 0.6 else bl,
+              max(tp, max(bl, WR + ARCH + 0.14) + 0.06) if abs(y - WY_F) < ARCH + 0.6 else tp, cr) for (y, w, zb, bl, tp, cr) in st]
     cab_end = C1 if REAR != "liftgate" else L1 - 0.8
     st.append(((A0 + cab_end) / 2, W, ZB, BELT, BELT + 0.1, CROWN * 0.6))
     if REAR in ("trunk", "hatch"):
@@ -244,6 +276,14 @@ def make_stations():
     else:
         st += [(L1 - 0.8, W - 0.02, ZB, BELT, BELT + 0.06, CROWN)]
     tb = (TAIL if REAR in ("trunk", "hatch") else BELT) - 0.2
+    if S.get("smooth"):  # a rounded tail with a small lip
+        y0 = st[-1][0]
+        for i in range(1, 6):
+            u = i / 5
+            e = math.sqrt(max(0.0, 1 - u ** 2))
+            st.append((y0 + (L1 - y0) * u, W * (0.9 + 0.1 * e) - 0.03, ZB + 0.25 * (1 - e), tb + 0.15 - 0.35 * (1 - e),
+                       TAIL - 0.3 * (1 - e) ** 2, CROWN * e))
+        return st
     st += [(L1 - 0.2, W - 0.2, ZB + 0.12, tb, tb + 0.12, CROWN * 0.4), (L1, W - 0.45, ZB + 0.3, tb - 0.15, tb - 0.05, 0.0)]
     return st
 
@@ -329,7 +369,8 @@ HINGE_SLOTS = {"Hood": "Hood", "Spoiler": "Lid"}
 for (nm, s, y0, y1) in DOORS:
     HINGES[nm] = {"pivot": (s * (W - 0.02), y0, (DOOR_Z0 + BELT) / 2), "axis": (0, 0, 1), "open": -s * 66, "kind": "door"}
 HINGES["Hood"] = {"pivot": (0.0, A0 - 0.05, deck_z(0, A0 - 0.05)), "axis": (1, 0, 0), "open": -55 if FLAV != "sports" else -50, "kind": "hood"}
-HINGES["Fuel"] = {"pivot": (W + 0.03, FUEL_Y[0], sum(FUEL_Z) / 2), "axis": (0, 0, 1), "open": -80, "kind": "fuel"}
+HINGES["Fuel"] = {"pivot": (W + 0.03, FUEL_Y[0], sum(FUEL_Z) / 2), "axis": (0, 0, 1), "open": -80,
+                  "kind": "charge" if S.get("electric") else "fuel"}
 
 
 def cutters_and_body():
@@ -632,8 +673,29 @@ def build_fuel_door():
     y0, y1 = FUEL_Y
     z0, z1 = FUEL_Z
     sbox("Under", W - 0.04, y0 + 0.06, z0 + 0.06, W - 0.005, y1 - 0.06, z1 - 0.06)
-    scyl("Chrome", (W - 0.005, (y0 + y1) / 2, (z0 + z1) / 2), (W + 0.01, (y0 + y1) / 2, (z0 + z1) / 2), 0.15, seg=16)
+    c = (W - 0.005, (y0 + y1) / 2, (z0 + z1) / 2)
+    if S.get("electric"):                                  # charge port: a socket with two pins
+        scyl("Dark", c, (W + 0.012, c[1], c[2]), 0.17, seg=16)
+        for dz in (-0.05, 0.05):
+            scyl("Chrome", (W, c[1], c[2] + dz), (W + 0.02, c[1], c[2] + dz), 0.03, seg=8)
+    else:
+        scyl("Chrome", c, (W + 0.01, c[1], c[2]), 0.15, seg=16)
     sbox("PanelFuel", W + 0.015, y0, z0, W + 0.035, y1, z1, bev=0.03)
+
+
+def build_frunk():
+    """electric: a carpeted front trunk under the hood instead of an engine"""
+    ap = WX - TW / 2 - 0.3
+    fl = ZB + 0.55
+    y0, y1 = L0 + 0.8, A0 - 0.15
+    top = min(deck_z(0, y0), deck_z(0, y1)) - 0.2
+    sbox("Under", -ap, y0, fl - 0.05, ap, y1, fl)
+    for s in (-1, 1):
+        sbox("Under", s * (ap - 0.05), y0, fl, s * ap, y1, top)
+    for yy in (y0, y1 - 0.05):
+        sbox("Under", -ap, yy, fl, ap, yy + 0.05, top)
+    sbox("Carpet", -(ap - 0.06), y0 + 0.06, fl, ap - 0.06, y1 - 0.06, fl + 0.04)
+    sbox("Dark", -0.5, y1 - 0.4, fl + 0.04, 0.5, y1 - 0.08, fl + 0.3, bev=0.04)          # charger bag
 
 
 def build_engine_bay():
@@ -810,7 +872,10 @@ bpy.data.meshes.remove(src)
 greenhouse()
 build_rear()
 build_fuel_door()
-build_engine_bay()
+if S.get("electric"):
+    build_frunk()
+else:
+    build_engine_bay()
 build_parts()
 if S.get("fins"):                                         # 60s tail fins along the rear fenders
     for s_ in (-1, 1):

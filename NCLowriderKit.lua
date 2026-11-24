@@ -937,7 +937,7 @@ local function panelSound(parent, name, vol)
 	snd:Play()
 	game:GetService("Debris"):AddItem(snd, 3)
 end
-local CLOSE_SOUND = { door = "door_close", hood = "hood_close", fuel = "panel_click", cap = "panel_click", seat = "panel_click" }
+local CLOSE_SOUND = { door = "door_close", hood = "hood_close", fuel = "panel_click", charge = "panel_click", cap = "panel_click", seat = "panel_click" }
 function Kit.Panels(car)
 	local out = {}
 	for _, m in car:GetChildren() do
@@ -1001,6 +1001,7 @@ local PROMPT = {
 	tailgate = { "Drop the tailgate", "Close the tailgate" },
 	hood = { "Pop the hood", "Close the hood" },
 	fuel = { "Open the gas door", "Close the gas door" },
+	charge = { "Open the charge port", "Close the charge port" },
 	door = { "Open the door", "Close the door" },
 	seat = { "Lift the seat", "Close the seat" },
 	cap = { "Open the gas cap", "Close the gas cap" },
@@ -1020,7 +1021,7 @@ function Kit.AddPanelPrompts(car, canUse)
 		tp.ActionText = text[1]
 		tp.ObjectText = title
 		tp.HoldDuration = 0.15
-		tp.MaxActivationDistance = (kind == "fuel" or kind == "cap") and 5 or 7
+		tp.MaxActivationDistance = (kind == "fuel" or kind == "charge" or kind == "cap") and 5 or 7
 		tp.RequiresLineOfSight = false
 		tp.Parent = at
 		root:GetAttributeChangedSignal("Amount"):Connect(function()

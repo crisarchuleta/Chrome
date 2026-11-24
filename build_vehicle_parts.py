@@ -5,6 +5,7 @@
 # as the lowrider: Chrome, Body, Dark, Glass, Head, Tail, Light, Seat, SeatTrim, Wood, Dash, Neon, Carpet).
 # Variant ids reuse the lowrider's where they mean the same thing, so one tuning menu covers every vehicle.
 TRUCKISH = FLAV in ("truck", "suv")
+SMOOTH = S.get("smooth", False)                   # rounded modern nose / tail (see make_stations)
 BZ0 = ZB + 0.05                                   # bumper zone
 BZ1 = ZB + (0.75 if TRUCKISH else 0.55)
 NOSE_FACE = L0 + 0.02
@@ -26,6 +27,8 @@ def front_bumpers():
     S = "FrontBumper"
     y0, y1 = L0 - 0.28, L0 + 0.35
     x = W - 0.3
+    if SMOOTH:  # the rounded nose is narrower at the tip: the bumper follows it
+        y0, y1, x = L0 - 0.12, L0 + 0.45, W * 0.88 - 0.2
     sbox(kind(S, "Stock", "Body"), -x, y0, BZ0, x, y1, BZ1, bev=0.12)
     sbox(kind(S, "Stock", "Dark"), -x + 0.6, y0 - 0.02, BZ0 + 0.08, x - 0.6, y0 + 0.1, BZ0 + 0.22)
     sbox(kind(S, "Sport", "Body"), -x, y0 - 0.05, BZ0 + 0.08, x, y1, BZ1, bev=0.14)
@@ -56,6 +59,8 @@ def rear_bumpers():
     S = "RearBumper"
     y0, y1 = L1 - 0.35, L1 + 0.28
     x = W - 0.3
+    if SMOOTH:
+        y0, y1, x = L1 - 0.45, L1 + 0.12, W * 0.9 - 0.25
     sbox(kind(S, "Stock", "Body"), -x, y0, BZ0, x, y1, BZ1, bev=0.12)
     sbox(kind(S, "Sport", "Body"), -x, y0, BZ0 + 0.1, x, y1, BZ1, bev=0.12)
     for i in range(7):                                                                    # diffuser fins
@@ -486,6 +491,30 @@ def build_wheels(ox):
         if ob.get("style") == st:
             bake(ob)
             ob.data.transform(m)
+    # low-profile tyres (a spec's lowpro = how much sidewall is left, e.g. 0.5): the tyre wall shrinks toward the
+    # tread and the rims grow to meet it, so the wheel looks like a big modern rim on a thin tyre
+    lp = S.get("lowpro")
+    if lp:
+        rho_in = 0.70 * sr
+        f = (WR - (WR - rho_in) * lp) / rho_in
+        for ob in list(OBJS):
+            if ob.get("style") != st:
+                continue
+            slot = WHEEL_INFO.get(ob["kind"], {}).get("slot")
+            if slot not in ("Rim", "Tire", "Band"):
+                continue
+            for v in ob.data.vertices:
+                y, z = v.co.y - c.y, v.co.z - c.z
+                r = math.hypot(y, z)
+                if r < 1e-6:
+                    continue
+                if slot == "Rim":
+                    r2 = r * f
+                elif r < WR:
+                    r2 = WR - (WR - r) * lp
+                else:
+                    continue
+                v.co.y, v.co.z = c.y + y * r2 / r, c.z + z * r2 / r
 
 
 # ================================================================================================ previews

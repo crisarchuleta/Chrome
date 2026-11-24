@@ -142,6 +142,13 @@ t = np.arange(n) / SR
 x = sum(np.sin(2 * np.pi * f * t) * a for f, a in ((220, 1), (440, .35), (660, .15), (1320, .08)))
 x += 0.15 * band(rng.standard_normal(n), 2000, 6000)
 save("engine_electric", x, loop=True)
+# electric car: a smooth motor hum under a soft inverter whine (pitch follows speed in game), seamless
+n = int(2.0 * SR)
+t = np.arange(n) / SR
+x = 0.8 * np.sin(2 * np.pi * 110 * t) + 0.35 * np.sin(2 * np.pi * 220.5 * t) + 0.25 * np.sin(2 * np.pi * 330 * t)
+x += 0.22 * np.sin(2 * np.pi * 880 * t) * (0.8 + 0.2 * np.sin(2 * np.pi * 1.5 * t)) + 0.1 * np.sin(2 * np.pi * 1760.5 * t)
+x += 0.12 * band(rng.standard_normal(n), 400, 3000)
+save("engine_ev", x, loop=True)
 
 # ------------------------------------------------------------------ tyres
 n = int(1.2 * SR)
