@@ -5,6 +5,7 @@
 # as the lowrider: Chrome, Body, Dark, Glass, Head, Tail, Light, Seat, SeatTrim, Wood, Dash, Neon, Carpet).
 # Variant ids reuse the lowrider's where they mean the same thing, so one tuning menu covers every vehicle.
 TRUCKISH = FLAV in ("truck", "suv")
+LAMPZ = S.get("LAMPZ", 0.0)                       # lift the smooth lamps up the nose corners
 SMOOTH = S.get("smooth", False)                   # rounded modern nose / tail (see make_stations)
 BZ0 = ZB + 0.05                                   # bumper zone
 BZ1 = ZB + (0.75 if TRUCKISH else 0.55)
@@ -120,13 +121,14 @@ def headlights():
             scyl(kind(S, "Dual", "Head"), (x + dx, y - 0.05, zc), (x + dx, y - 0.09, zc), 0.19, seg=20)
         if SMOOTH:  # the reference's lamps: big swept units on the nose corners, cast from the front so they wrap
             yc = L0 - 2.0
+            LZ = LAMPZ
             q = lambda pts, g=0.0: [(s * (a * W + g * (1 if a > 0.6 else -1)), yc, b + g * (1 if k in (0, 1) else -1)) for k, (a, b) in enumerate(pts)]
             # a swept teardrop: low pointed inner tip, the top edge curving up the fender to a rounded outer end
             def ztop(u):
-                return 2.15 + 0.17 * min(1.0, u / 0.12) ** 0.5 + 0.56 * u ** 1.5 - 0.12 * max(0.0, (u - 0.88) / 0.12) ** 2
+                return LZ + 2.15 + 0.2 * min(1.0, u / 0.12) ** 0.5 + 0.5 * u ** 1.5 - 0.12 * max(0.0, (u - 0.88) / 0.12) ** 2
             def zbot(u):
-                return 2.14 + 0.1 * u + 0.36 * max(0.0, (u - 0.7) / 0.3) ** 2
-            xu = lambda u: 0.45 + 0.47 * u
+                return LZ + 2.14 - 0.06 * math.sin(math.pi * min(1.0, u / 0.8)) + 0.08 * u + 0.3 * max(0.0, (u - 0.7) / 0.3) ** 2
+            xu = lambda u: 0.41 + 0.51 * u
             def strip(kd, f0, f1, g, out, inn, u0=0.0, u1=1.0, n=16):
                 for k in range(n):
                     a, b = u0 + (u1 - u0) * k / n, u0 + (u1 - u0) * (k + 1) / n

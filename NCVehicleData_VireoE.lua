@@ -67,7 +67,7 @@ return {
 				Axis = {-1, 0, 0},
 				Kind = "hood",
 				Open = -50,
-				Pivot = {-0.0, 3.627, -3.65},
+				Pivot = {-0.0, 3.946, -3.65},
 			},
 			Lid = {
 				Axis = {-1, 0, 0},
@@ -79,7 +79,7 @@ return {
 				Axis = {-1, 0, 0},
 				Kind = "sunroof",
 				Open = 2.5,
-				Pivot = {-0.0, 5.26, -0.635},
+				Pivot = {-0.0, 5.272, -0.635},
 				Slide = {-0.0, 0.1, 1.81},
 			},
 		},
@@ -959,12 +959,12 @@ return {
 		Windows = {
 			DoorL = {
 				Dir = {0, -1, 0},
-				Drop = 1.354,
+				Drop = 1.317,
 				Piece = "RoofGlass__WinDoorL",
 			},
 			DoorR = {
 				Dir = {0, -1, 0},
-				Drop = 1.354,
+				Drop = 1.317,
 				Piece = "RoofGlass__WinDoorR",
 			},
 			DoorRL = {

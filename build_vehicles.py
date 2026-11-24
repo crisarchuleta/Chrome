@@ -121,7 +121,7 @@ SPECS = {
     "VireoE": dict(name="Vireo E", flavour="sports", W=3.8, L0=-9.6, L1=9.15, WB=11.17, WR=1.33, WX=3.18, TW=1.0,
                    ZB=0.62, BELT=3.4, NOSE=2.95, HOOD=3.8, TAIL=4.0, CROWN=0.02, HCROWN=-0.42,
                    A0=-3.6, A1=-0.1, C0=3.8, C1=7.9, ROOF=5.35, TUCK=0.75, B=1.0, Q=3.9, doors=4, rear="hatch",
-                   electric=True, LEAN=0.1, LONGGLASS=True, PLAN=True, NOSEDROP=1.25, FLEAN=0.08, GH_IN=0.06, GH_N=3.0, GH_TH=0.24, QWIN=(2.5, 1.9), DLO=dict(tip=5.9, kick=10.0), SQUARE=1.0, TDROP=1.3, WS_BACK=1.4, FUEL_DY=-0.25, FUEL_DZ=-0.2, SKYLIGHT=dict(front=0.15, rear=0.07, width=0.9), lowpro=0.24, smooth=True, rim_dark=True, RIM_TWIN=True,
+                   electric=True, LEAN=0.1, LONGGLASS=True, PLAN=True, NOSEDROP=1.25, FLEAN=0.08, GH_IN=0.06, GH_N=3.0, GH_TH=0.24, QWIN=(2.5, 1.9), DLO=dict(tip=5.9, kick=10.0), SQUARE=1.0, TDROP=1.3, LAMPZ=0.3, WS_Z=0.2, WS_BACK=1.4, FUEL_DY=-0.25, FUEL_DZ=-0.2, SKYLIGHT=dict(front=0.15, rear=0.07, width=0.9), lowpro=0.24, smooth=True, rim_dark=True, RIM_TWIN=True,
                    stock={"Exhaust": "", "Spoiler": "", "Rim": "Split", "KO": "", "Top": "", "Seats": "Buckets", "Grille": "", "FrontBumper": "", "RearBumper": "",
                                          "Dash": "Digital", "Steering": "Sport"}, paint=(0.025, 0.025, 0.03)),
 }
@@ -292,7 +292,10 @@ def make_stations():
                 g = min(1.0, max(0.0, (y - (A0 - 3.0)) / 2.4))
                 bl = min(bl, bl + (BELT + 0.04 - bl) * g * g * (3 - 2 * g)) if bl > BELT else bl
             st.append((y, W * pf, ZB + 0.1 * (1 - e), bl, top, hc * f))
-        st.append((A0, W, ZB, BELT, HOOD + 0.06, hc * 0.5))
+        wz = S.get("WS_Z", 0.0)                         # the hood's back edge rises to meet a raised windshield base
+        if wz:
+            st[-1] = st[-1][:4] + (st[-1][4] + 0.3 * wz, st[-1][5] * 0.6)
+        st.append((A0, W, ZB, BELT, HOOD + 0.06 + 0.9 * wz, hc * (0.15 if wz else 0.5)))
     else:
         st = [(L0, W - 0.5, ZB + 0.35, nb - 0.2, nb - 0.12, 0.0), (L0 + 0.2, W - 0.22, ZB + 0.15, nb, NOSE - 0.05, CROWN * 0.4),
               (L0 + 0.8, W - 0.05, ZB, nb + 0.05, NOSE + (HOOD - NOSE) * 0.1, CROWN), (A0 - 0.6, W, ZB, BELT - 0.1, HOOD - 0.02, CROWN),
@@ -861,7 +864,7 @@ def gh_frame():
     pk = A1 + (C0 - A1) * 0.45
     mws = (ROOF + 0.02 - zb) / (A1 - A0)
     mrear = (zend - (ROOF - 0.1)) / (yend - C0)
-    z0_ = max(zb, HOOD - 0.05) if S.get("smooth") else zb       # the windshield rises from the cowl (hood height)
+    z0_ = max(zb, HOOD - 0.05 + S.get("WS_Z", 0.0)) if S.get("smooth") else zb       # the windshield rises from the cowl (hood height)
     knots = [(A0, z0_, 1.2 * mws), (A1, ROOF + 0.02, 0.35 * mws), (pk, ROOF + 0.14, 0.0), (C0, ROOF - 0.1, 0.8 * mrear),
              (yend, zend, 1.15 * mrear)]
     return zb, yend, knots
@@ -1602,8 +1605,8 @@ def smooth_details():
             m_ = 8                                       # nose wing: from the lamp's inner tip in a shallow arc to the middle
             for k in range(m_):
                 ua, ub = k / m_, (k + 1) / m_
-                zw = lambda u: 2.04 + 0.12 * u ** 1.6
-                xa, xb_ = s_ * W * 0.44 * ua, s_ * W * 0.44 * ub
+                zw = lambda u: S.get("LAMPZ", 0.0) + 2.04 + 0.12 * u ** 1.6
+                xa, xb_ = s_ * W * 0.41 * ua, s_ * W * 0.41 * ub
                 decal("Chrome", (xa, yF, zw(ua) - 0.03), (xb_, yF, zw(ub) - 0.03), (xb_, yF, zw(ub) + 0.01), (xa, yF, zw(ua) + 0.01),
                       (0, 1, 0), nu=2, nv=1, out=0.035, inn=0.02)
     else:
