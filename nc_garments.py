@@ -441,6 +441,10 @@ def drape_envelope(b, P, sel, z_top, ease, add, hang_from, nb=72, flare=0.0):
     """Cylindrical envelope around the torso axis. Above hang_from it follows the body (bin max x ease), below it the
     cloth hangs: the radius never shrinks going down (boxy fit). Returns new radius per point (only lifts)."""
     th, r = torso_cyl(b, P)
+    at_ = getattr(b, "armish_tree", None)
+    if at_ is not None:  # posed build: the side stretched out under a raised arm must not set the hang radius
+        d_, _ = at_.query(P)
+        sel = sel & (d_ > 0.03 * b.k)
     dz = 0.012 * b.k
     z0 = P[sel, 2].min() - dz
     nz = int((z_top - z0) / dz) + 2
@@ -570,6 +574,28 @@ def _isin(reg, names):
     return np.isin(reg, list(names))
 
 
+def under_jacket_points(b, X):
+    """True where a top is hidden by any jacket worn over it: everything but the centre-front strip an open jacket
+    shows and the neckline. Those parts ("-under") are left off in game under a jacket, together with the sleeves,
+    so a top can never poke through a jacket however the two bend."""
+    X = np.asarray(X)
+    front = (X[:, 1] < b.yc) & (np.abs(X[:, 0] - b.cx) < 0.075 * b.k)
+    neck = X[:, 2] > b.J["neck"][2] - 0.07 * b.k
+    return ~(front | neck)
+
+
+def arm_points(b, X):
+    """True where a garment point lies over the arm (nearest body vertex is upper arm, forearm or hand). A top's
+    sleeve faces (all corners over the arm) are its "-arm" parts, hidden in game under a jacket; jackets are built
+    over the under-layer with exactly those points left out, so the two agree."""
+    if getattr(b, "_armtree", None) is None:
+        bi = b.body_idx
+        b._armtree = (cKDTree(b.co[bi]), _isin(b.reg[bi], ARMS + ("Hand",)))
+    t, m = b._armtree
+    _, j = t.query(np.asarray(X))
+    return m[j]
+
+
 def _start(b, f, sub=0, smooth=2):
     P, F, A = clip(b.co, b.faces, f, {"reg": b.reg})
     P, F, A = keep_big(P, F, A)
@@ -641,6 +667,8 @@ class Outfit:
     @property
     def low(self):
         """Same body without arms (for pants, skirts and shoes: hands resting on the hips can't fuse into them)."""
+        if self._low is None and getattr(self.b, "low_body", None) is not None:
+            self._low = self.b.low_body
         if self._low is None:
             if isinstance(self.b, RigBody):
                 self._low = RigBody(self.b.obj, self.b.arm, exclude_arms=True)
@@ -686,6 +714,13 @@ def _cover_tank(b, f, front_open=False, margin=0.014, armzone=None):
     return np.minimum(f, g)
 
 
+
+
+def _dbg(tag, X, F):
+    import os
+    d = os.environ.get("NC_DBG")
+    if d:
+        np.savez(os.path.join(d, tag + ".npz"), X=np.asarray(X), F=np.asarray([list(f)[:3] for f in F]))
 
 
 def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, sleeve_ease=0.13, color=(0.05, 0.05, 0.055),
@@ -810,6 +845,7 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
     X = X0 + D
     X = laplace(X, E, 8, taubin=True)
     X = o.col.push(X, 0.006 * k)
+    _dbg('s4', X, F)
     # 5. hem: hang straight down past the hips, finishing in a rib band
     loops = boundary_loops(F)
     lz = [X[l, 2].mean() for l in loops]
@@ -834,10 +870,12 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
         pts[:, 1] = b.yc + (pts[:, 1] - b.yc) * sc
         rings.append(pts)
     X, F, R, last = _extend_loop(X, F, waist, None, rings, R, "Hem")
+    _dbg('s5', X, F)
     isarm = _isin(R, ARMS)
     E = edges_of(F)
     X = laplace(X, E, 3, taubin=True)
     X = rehang(b, X, F, ~isarm, chest_z)
+    _dbg('s6', X, F)
     # collar: rib band (tee / hoodie), stand collar (puffer, track), turtleneck, shirt collar, lapel
     nl = neck_loop
     c = X[nl].mean(0)
@@ -870,9 +908,31 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
     E = edges_of(F)
     X = laplace(X, E, 2, taubin=True)
     X = o.col.push(X, 0.006 * k)
+    if kind == "jacket" and len(o.objs) > 0:
+        # over other clothes: smooth-then-push a few times so the sleeve bridges an under-layer's hem step (a tee's
+        # short sleeve) instead of tracing a ledge round the arm
+        armv_ = _isin(R, ARMS)
+        for _ in range(6):
+            X = laplace(X, E, 3, mask=armv_)
+            X = o.col.push(X, 0.006 * k)
+    if UNDERARM_SMOOTH:
+        # the body panel under a hanging arm: pushing it off the arm crumpled it into flakes, hidden at rest but torn
+        # open as soon as the arm moves. Smooth it against the body only (the sleeve covers it at rest).
+        bi = b.body_idx; am_ = _isin(b.reg[bi], ARMS + ("Hand",))
+        if am_.any():
+            d_, _ = cKDTree(b.co[bi][am_]).query(X)
+            near = ~_isin(R, ARMS) & (d_ < 0.06 * k) & (X[:, 2] < J["l-shoulder"][2] - 0.16 * k)
+            if near.any():
+                for _ in range(20):
+                    X = laplace(X, E, 3, mask=near)
+                    X[near] = o.col_noarm.push(X[near], 0.006 * k)  # (the panel only: pushing the sleeves off the
+                    # torso without the arm made the shoulders boxy)
     if front_open:  # open front (overshirts, coats): split the centre front, leave the collar ends apart
         neck_pts = X[nl].copy()
-        fo = np.where(X[:, 1] < b.yc, 0.0075 * k - np.abs(X[:, 0] - b.cx), -1.0)  # 0.006k sat exactly on mesh columns -> bridges
+        # worn open: the fronts hang ~7 cm apart below the chest (a hairline slit read as a zip), closing up to the
+        # collar; 0.0075k (not 0.006k) so the cut never sits exactly on a mesh column (that left bridges)
+        hw_ = 0.0075 * k + 0.028 * k * np.clip((neck_z - 0.06 * k - X[:, 2]) / (0.14 * k), 0, 1)
+        fo = np.where(X[:, 1] < b.yc, hw_ - np.abs(X[:, 0] - b.cx), -1.0)
         X, F, A_ = clip(X, F, fo, {"reg": R})
         R = A_["reg"]
         X, F, A_ = keep_big(X, F, {"reg": R}, frac=0.3)
@@ -880,7 +940,7 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
         _, nl_ = cKDTree(X).query(neck_pts)
         nl = list(nl_)
         hood = False; pocket = False
-    if hasattr(b, "whole_co"):
+    if hasattr(b, "whole_co") and not getattr(b, "no_liner", False):
         X, F, R = _crevice_liner(b, X, F, R)
     # 6. colours: main / accent (rib, zip) / print or camo through vertex colours
     reg_out = R
@@ -915,7 +975,7 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
     if vcol is not None and camo_pal is not None:
         # rib bands keep a solid colour
         pass
-    ob = make_object(b, b.obj.name + "_" + name, X, F, mats, mi, vcol, thick=thick, arm_flag=_isin(R, ARMS))
+    ob = make_object(b, b.obj.name + "_" + name, X, F, mats, mi, vcol, thick=thick, arm_flag=_isin(R, ARMS + ("Hand",)))
     o.objs.append(ob)
     N = o.layer(X, F, thick)
     o.top = (X, N, F, nl, z_hem)
@@ -1144,7 +1204,7 @@ def build_strings(o, name, X, N, nl, rgba):
         sx = b.cx + sgn * 0.035 * k
         cand = np.argsort(np.abs(L[:, 0] - sx) + 3 * np.maximum(L[:, 1] - c[1], 0))[0]
         st = L[cand] + np.array([0, -0.012 * k, -0.004 * k])
-        path = surface_path(o, X, N, st, (0.17 + 0.03 * (sgn > 0)) * k, 0.008 * k, 0.012 * k)
+        path = surface_path(o, X, N, st, (0.17 + 0.03 * (sgn > 0)) * k, 0.0045 * k, 0.012 * k)  # lie on the fabric (a jacket over it must clear them)
         rr = np.full(len(path), 0.0032 * k); rr[-3:] = 0.0042 * k
         V, F = tube(path, rr, 8)
         ob = make_object(b, b.obj.name + "_" + name + "_String" + ("L" if sgn > 0 else "R"), V, F,
@@ -2348,16 +2408,18 @@ def skin_to_rig(o):
             # garment cloth that is not a sleeve never follows the arm below the shoulder
             arm_cols = [names.index(g) for g in names if g in ("LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm",
                                                                "NC_TwistL", "NC_TwistR", "LeftHand", "RightHand")]
-            am = nonarm & (P[:, 2] < b.J["l-shoulder"][2] - 0.12 * b.k)
+            # (faded in below the armpit: a hard cut at the armpit tore the side seam off the sleeve when arms rise)
+            fz = np.clip((b.J["l-shoulder"][2] - ARMCUT_Z0 * b.k - P[:, 2]) / (ARMCUT_W * b.k), 0, 1)
+            am = nonarm & (fz > 0)
             if am.any() and arm_cols:
-                Wg[np.ix_(am, arm_cols)] = 0
+                Wg[np.ix_(am, arm_cols)] *= (1 - fz[am])[:, None]
                 rs = Wg[am].sum(1)
                 Wg[am] = np.where(rs[:, None] > 1e-6, Wg[am] / np.maximum(rs, 1e-9)[:, None], 0)
                 Wg[am & (Wg.sum(1) < 1e-6), lt] = 1.0
             # crotch / seat seam: a garment vertex on the centre line must not snap fully to one leg (the two
             # sides would tear apart when one leg swings). Blend left- and right-side weights across a band.
             skirt = "skirt" in ob.name.lower() and "Leggings" not in ob.name and "Tights" not in ob.name
-            band = (0.16 if skirt else 0.07) * b.k   # a skirt is one panel: blend across its whole front and back
+            band = (0.16 if skirt else CROTCH_BAND) * b.k   # a skirt is one panel: blend across its whole front and back
             bm = nonarm & (np.abs(P[:, 0] - b.cx) < band) & (P[:, 2] > (-1e9 if skirt else b.crotch_z - 0.2 * b.k)) & \
                  (P[:, 2] < b.crotch_z + 0.25 * b.k)
             if bm.any():
@@ -2372,12 +2434,24 @@ def skin_to_rig(o):
                 Wb = s_[:, None] * WS[0] + (1 - s_)[:, None] * WS[1]
                 # right on the seam the cloth hangs from the pelvis; leg influence grows away from it
                 t_ = np.clip(np.abs(P[bm, 0] - b.cx) / band, 0, 1); f_ = 0.3 + 0.7 * t_ * t_ * (3 - 2 * t_)
+                if skirt: f_ = np.maximum(f_, SKIRT_LEG)  # the panel over a thigh goes forward with it (leggings poked through)
                 lw = Wb[:, leg_cols].sum(1)
                 Wb[:, leg_cols] *= f_[:, None]; Wb[:, lt] += lw * (1 - f_)
                 Wb /= np.maximum(Wb.sum(1, keepdims=True), 1e-9)
                 gz = np.clip((P[bm, 2] - (b.crotch_z - 0.2 * b.k)) / (0.08 * b.k), 0, 1)[:, None]  # fade down the inseam
                 if skirt: gz[:] = 1.0
                 Wg[bm] = gz * Wb + (1 - gz) * Wg[bm]
+        if "skirt" in ob.name.lower() and "Leggings" not in ob.name and "Tights" not in ob.name and \
+                "LeftUpperLeg" in names and "RightUpperLeg" in names:
+            # a skirt is a cone off the hips: waistband on the pelvis, everything from the crotch down on the thighs
+            # (the body's blended hip weights let a striding thigh push through the panel in front of it)
+            zt = P[:, 2].max()
+            t = np.clip((zt - P[:, 2]) / max(zt - b.crotch_z, 1e-6), 0, 1); t = t * t * (3 - 2 * t)
+            sl = np.clip(0.5 + (P[:, 0] - b.cx) / (0.1 * b.k), 0, 1); sl = sl * sl * (3 - 2 * sl)
+            Wg[:] = 0
+            Wg[:, lt] = 1 - t
+            Wg[:, names.index("LeftUpperLeg")] = t * sl
+            Wg[:, names.index("RightUpperLeg")] = t * (1 - sl)
         if any(t in ob.name for t in RIGID_HEAD):  # caps, beanies, shades, masks move as one piece with the head
             Wg[:] = 0; Wg[:, names.index("Head")] = 1.0
         else:
@@ -2392,10 +2466,30 @@ def skin_to_rig(o):
                                   shape=(len(P), len(P))).tocsr()
                 deg = np.asarray(A.sum(1)).ravel(); deg[deg == 0] = 1
                 upper = P[:, 2].max() > upper_cut
-                its = 0 if "Gloves" in ob.name else (10 if upper or ("skirt" in ob.name.lower() and "Leggings" not in ob.name) else 2)  # pants: keep the two legs apart
+                its = 0 if "Gloves" in ob.name else (TOP_DIFFUSE if upper or ("skirt" in ob.name.lower() and "Leggings" not in ob.name) else PANTS_DIFFUSE)  # pants: keep the two legs apart
                 for _ in range(its):
                     Wg = 0.5 * Wg + 0.5 * (A @ Wg) / deg[:, None]
                 Wg /= np.maximum(Wg.sum(1, keepdims=True), 1e-9)
+            if HEM_LEG > 0 and upper and "LeftUpperLeg" in names and \
+                    not any(t in ob.name for t in ("_Hood", "_String", "_ZipPull", "_Pocket")):
+                # a long hem moves with the body right under it (as the trousers there do), not with the waist:
+                # a striding or lifted thigh cut straight through a hem that hung from the pelvis
+                hz = b.J["l-upper-leg"][2]
+                th = HEM_LEG * np.clip((hz + HEM_Z0 * b.k - P[:, 2]) / (HEM_RAMP * b.k), 0, 1)
+                th = th * th * (3 - 2 * th)
+                if "nc_arm" in ob.data.attributes:
+                    th = th * ~flag
+                if (th > 0).any():
+                    db, jb = tree.query(P, k=6)
+                    wb = 1 / np.maximum(db, 1e-4) ** 2; wb /= wb.sum(1, keepdims=True)
+                    Wb = np.einsum("nk,nkg->ng", wb, W[jb])
+                    acols = [names.index(g) for g in names if g in ("LeftUpperArm", "RightUpperArm", "LeftLowerArm",
+                             "RightLowerArm", "NC_TwistL", "NC_TwistR", "LeftHand", "RightHand") or g.startswith(
+                             ("NC_Thumb", "NC_Index", "NC_Middle", "NC_Ring", "NC_Pinky"))]
+                    Wb[:, acols] = 0  # (the hip skin under a resting hand carries hand weights)
+                    Wb[Wb.sum(1) < 1e-6, lt] = 1.0
+                    Wb /= np.maximum(Wb.sum(1, keepdims=True), 1e-9)
+                    Wg = (1 - th)[:, None] * Wg + th[:, None] * Wb
         for gi, gname in enumerate(names):
             col = Wg[:, gi]
             idx = np.where(col > 0.01)[0]
@@ -2485,7 +2579,40 @@ def build_skirt(o, name, length=0.45, flare=0.25, color=(0.1, 0.1, 0.12), accent
 
 # ----------------------------------------------------------------------------------------------- game export
 PATTERN_HOOK = None  # set by nc_catalog3d: re-cuts a pattern on the decimated mesh
+PANTS_DIFFUSE = 2
+UNDERARM_SMOOTH = True
+ARMCUT_Z0 = 0.18  # body cloth loses arm weights from this far below the shoulder joint (k) ...
+TOP_DIFFUSE = 10
+HEM_LEG = 1.0  # share of body weights a top's hem takes near the hip joint (a lifted or striding thigh cut through it)
+HEM_Z0 = 0.0   # the blend starts at the hip joint height ...
+HEM_RAMP = 0.08  # ... and is full this far below it (k)
+ARMCUT_W = 0.14  # ... fading out over this height
+SKIRT_LEG = 0.85
+CROTCH_BAND = 0.0  # pants crotch L/R weight blend half-width (k). 0: the cloth follows the body exactly there; any
+# blend (it hung the seam from the pelvis) let the base shorts show through the inner thigh when running
 GAME_TRIS = {"Chain": 6000, "Gloves": 3000, "default": 7000, "small": 1500}
+
+
+def limit_influences(ob, n=4):
+    """Roblox skins with at most 4 bones a vertex: keep the 4 strongest and renormalise here, so the game bends
+    exactly like the preview instead of the importer dropping weights its own way."""
+    vgs = ob.vertex_groups
+    if not len(vgs):
+        return
+    drop = {}
+    for v in ob.data.vertices:
+        gs = sorted(((g.weight, g.group) for g in v.groups if g.weight > 0), reverse=True)
+        keep = gs[:n]; tot = sum(w for w, _ in keep)
+        for w, gi in gs[n:]:
+            drop.setdefault(gi, []).append(v.index)
+        for g in v.groups:
+            if g.weight <= 0:
+                drop.setdefault(g.group, []).append(v.index)
+        if tot > 0:
+            for w, gi in keep:
+                vgs[gi].add([v.index], w / tot, "REPLACE")
+    for gi, idx in drop.items():
+        vgs[gi].remove(idx)
 
 
 def game_ready(ob):
@@ -3038,3 +3165,176 @@ def build_boot_shaft(o, name, height=0.16, color=(0.04, 0.04, 0.045), lace=None,
                 so.data.vertices[vi].co = c_
     o.objs.extend(out)
     return out[0]
+
+
+# ----------------------------------------------------------------------------------------------- posed build
+# Clothes are modelled on the body with the arms raised part way (BUILD_ARM_RAD), where the armpit is open, then put
+# back into the rest pose through the inverse of their own skinning. In rest the cloth under the arm folds the way
+# the skin does, and when an animation lifts the arms it opens back to the clean modelled shape (building in the rest
+# pose crumpled that cloth between arm and side, and raised arms tore it open).
+BUILD_ARM_RAD = 0.7
+
+
+def _best_rot(arm, bn, score, ang):
+    import bpy
+    pb = arm.pose.bones[bn]; pb.rotation_mode = "XYZ"; best = None
+    for ax in range(3):
+        for sg in (1, -1):
+            r = [0, 0, 0]; r[ax] = sg * ang; pb.rotation_euler = r
+            bpy.context.view_layer.update(); s = score()
+            if best is None or s > best[0]:
+                best = (s, tuple(r))
+    pb.rotation_euler = best[1]; bpy.context.view_layer.update()
+
+
+def set_build_pose(arm, on=True):
+    import bpy
+    for pb in arm.pose.bones:
+        pb.rotation_mode = "XYZ"; pb.rotation_euler = (0, 0, 0)
+    bpy.context.view_layer.update()
+    if on and BUILD_ARM_RAD > 0:
+        for s in ("Left", "Right"):
+            _best_rot(arm, s + "UpperArm", lambda: (arm.matrix_world @ arm.pose.bones[s + "Hand"].head).z, BUILD_ARM_RAD)
+
+
+def posed_rig(whole, arm):
+    """(whole_p, arm_p): copies of the body and armature with the build pose made their rest pose."""
+    import bpy
+    set_build_pose(arm, True)
+    wp = whole.copy(); wp.data = whole.data.copy(); wp.name = whole.name + "_Posed"
+    for c in whole.users_collection:
+        c.objects.link(wp)
+    if wp.data.shape_keys:  # (a locked shape key blocks applying the armature)
+        wp.shape_key_clear()
+    for mod in list(wp.modifiers):
+        if mod.type == "ARMATURE":
+            mod.object = arm
+            with bpy.context.temp_override(object=wp, active_object=wp):
+                bpy.ops.object.modifier_apply(modifier=mod.name)
+        else:
+            wp.modifiers.remove(mod)
+    ap = arm.copy(); ap.data = arm.data.copy(); ap.name = arm.name + "_Posed"
+    for c in arm.users_collection:
+        c.objects.link(ap)
+    for pb in ap.pose.bones:
+        src = arm.pose.bones[pb.name]; pb.rotation_mode = src.rotation_mode; pb.rotation_euler = src.rotation_euler
+    bpy.context.view_layer.update()
+    for ob in bpy.context.view_layer.objects:
+        ob.select_set(False)
+    ap.select_set(True); bpy.context.view_layer.objects.active = ap
+    bpy.ops.object.mode_set(mode="POSE")
+    bpy.ops.pose.armature_apply(selected=False)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    set_build_pose(arm, False)
+    return wp, ap
+
+
+def unpose(objs, arm, whole=None):
+    """Put garments modelled in the build pose back into the rest pose of `arm` (inverse linear blend skinning with
+    each garment's own weights) and point their Armature modifier at `arm`."""
+    import bpy
+    from mathutils import Matrix
+    set_build_pose(arm, True)
+    mw = arm.matrix_world; mwi = mw.inverted()
+    D = {pb.name: np.array(mw @ pb.matrix @ pb.bone.matrix_local.inverted() @ mwi) for pb in arm.pose.bones}
+    for ob in objs:
+        me = ob.data; n = len(me.vertices)
+        P = np.array([v.co[:] for v in me.vertices])
+        O = np.array(ob.matrix_world); Oi = np.linalg.inv(O)
+        Pw = (O @ np.c_[P, np.ones(n)].T).T
+        gn = {g.index: g.name for g in ob.vertex_groups}
+        Mb = np.zeros((n, 4, 4)); ws = np.zeros(n)
+        for v in me.vertices:
+            for g in v.groups:
+                nm = gn.get(g.group)
+                if nm in D and g.weight > 0:
+                    Mb[v.index] += g.weight * D[nm]; ws[v.index] += g.weight
+        ok = ws > 1e-6
+        Mb[ok] /= ws[ok][:, None, None]
+        Mb[~ok] = np.eye(4)
+        R = np.linalg.solve(Mb, Pw[:, :, None])[:, :, 0]
+        L = (Oi @ R.T).T[:, :3]
+        me.vertices.foreach_set("co", L.ravel()); me.update()
+        for mod in ob.modifiers:
+            if mod.type == "ARMATURE":
+                mod.object = arm
+    set_build_pose(arm, False)
+
+
+def posed_body(rb, arm, wp, ap):
+    """A RigBody `rb` (built in the rest pose) carried into the build pose: its shell deformed by the body's own
+    skinning (a voxel remesh of the posed mesh falls apart), joints from the posed armature `ap`, the posed body mesh
+    `wp` as its object. The rest body stays on .rest."""
+    import copy as _copy
+    whole = rb.obj
+    names = [g.name for g in whole.vertex_groups]
+    W = np.zeros((len(rb.whole_co), len(names)))
+    for v in whole.data.vertices:
+        for g in v.groups:
+            W[v.index, g.group] = g.weight
+    set_build_pose(arm, True)
+    mw = arm.matrix_world; mwi = mw.inverted()
+    D = np.zeros((len(names), 4, 4))
+    for gi, nm in enumerate(names):
+        pb = arm.pose.bones.get(nm)
+        D[gi] = np.array(mw @ pb.matrix @ pb.bone.matrix_local.inverted() @ mwi) if pb else np.eye(4)
+    set_build_pose(arm, False)
+    O = np.array(whole.matrix_world); Oi = np.linalg.inv(O)
+    tree = cKDTree(rb.whole_co)
+    acols_ = [gi for gi, nm in enumerate(names) if any(t in nm for t in ("UpperArm", "LowerArm", "Hand", "Twist",
+              "Thumb", "Index", "Middle", "Ring", "Pinky"))]
+    zcut = rb.J["l-shoulder"][2] - 0.12 * rb.k
+    def deform(X, reg=None):
+        if X is None or not len(X):
+            return X
+        d, j = tree.query(X, k=4)
+        w = 1 / np.maximum(d, 1e-5) ** 2; w /= w.sum(1, keepdims=True)
+        Wx = np.einsum("nk,nkg->ng", w, W[j])
+        if reg is None:
+            reg = rb.whole_reg[j[:, 0]]
+        # hip skin under a resting hand carries hand weights (MakeHuman bleed): raising the arm dragged the hips out
+        bad = ~np.isin(np.asarray(reg), ["UArm", "LArm", "Hand"]) & (X[:, 2] < zcut)
+        Wx[np.ix_(bad, acols_)] = 0
+        s_ = Wx.sum(1, keepdims=True)
+        Wx = np.where(s_ > 1e-6, Wx / np.maximum(s_, 1e-9), 0)
+        M = np.einsum("ng,gij->nij", Wx, D); M[s_[:, 0] <= 1e-6] = np.eye(4)
+        Xw = (O @ np.c_[X, np.ones(len(X))].T).T
+        Y = np.einsum("nij,nj->ni", M, Xw)
+        return (Oi @ Y.T).T[:, :3]
+    pb_ = _copy.copy(rb)
+    pb_.rest = rb
+    pb_.co = deform(rb.co, rb.reg)
+    acols = [gi for gi, nm in enumerate(names) if any(t in nm for t in ("UpperArm", "LowerArm", "Hand", "Twist",
+             "Thumb", "Index", "Middle", "Ring", "Pinky"))]
+    d, j = tree.query(rb.co, k=4)
+    w = 1 / np.maximum(d, 1e-5) ** 2; w /= w.sum(1, keepdims=True)
+    aw = np.einsum("nk,nk->n", w, W[j][:, :, acols].sum(2))
+    pb_.armish_tree = cKDTree(pb_.co[aw > 0.05]) if (aw > 0.05).any() else None
+    pb_.whole_co = deform(rb.whole_co, rb.whole_reg)
+    wp.data.vertices.foreach_set("co", pb_.whole_co.ravel()); wp.data.update()
+    pb_.tank_co = deform(rb.tank_co)
+    pb_.N = vnormals(pb_.co, pb_.faces)
+    bones = ap.data.bones; h = lambda n: np.array(bones[n].head_local[:])
+    J = dict(rb.J)
+    for s_, S in (("l", "Left"), ("r", "Right")):
+        J[s_ + "-shoulder"] = h(S + "UpperArm"); J[s_ + "-elbow"] = h(S + "LowerArm"); J[s_ + "-hand"] = h(S + "Hand")
+    pb_.J = J
+    if hasattr(rb, "tree"):
+        pb_.tree = cKDTree(pb_.co[rb.body_idx])
+    pb_.obj = wp; pb_.arm = ap
+    pb_.G = {}
+    for at in ("_armtree", "_armonly"):
+        if hasattr(pb_, at):
+            delattr(pb_, at)
+    return pb_
+
+
+def build_bodies(whole, arm):
+    """(rest RigBody, posed RigBody) for a posed build; the posed one carries .rest and .low_body."""
+    rb = RigBody(whole, arm)
+    wp, ap = posed_rig(whole, arm)
+    pb = posed_body(rb, arm, wp, ap)
+    # the lower-body shell has no arms (they're swung away before the remesh), so the arm pose doesn't change it
+    pb.low_body = RigBody(whole, arm, exclude_arms=True)
+    wp.hide_set(True)
+    return rb, pb

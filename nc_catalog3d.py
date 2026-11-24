@@ -299,7 +299,10 @@ def build_item(o, it):
     f, p, c1 = it["fam"], it["p"], it["c1"]
     c2 = it["c2"] or c1
     nm = it["id"]
-    camo = CAMO if p.get("camo") else None
+    # camo takes the item's own two colours (pink camo, woodland ...): c1, the mix, c2 and a darker c2, so a player
+    # recolour maps straight onto the patches (NCClothes3D keys c1 / mix / c2 / dk2)
+    camo = ([tuple(c1[:3]), tuple(0.5 * np.array(c1[:3]) + 0.5 * np.array(c2[:3])), tuple(c2[:3]), tuple(0.55 * np.array(c2[:3]))]
+            if p.get("camo") else None)
     n0 = len(o.objs)
     ok = _build_item(o, it, f, p, c1, c2, nm, camo)
     if ok and camo:
@@ -323,7 +326,7 @@ def _build_item(o, it, f, p, c1, c2, nm, camo):
                      band=None,
                      neck_drop=0.05 if sl == "none" else 0)
     elif f == "hoodie":
-        NG.build_top(o, nm, color=(1, 1, 1) if camo else c1, accent=c2 if not camo else (0.2, 0.22, 0.14), camo_pal=camo,
+        NG.build_top(o, nm, color=(1, 1, 1) if camo else c1, accent=c2, camo_pal=camo,
                      zip_front=bool(p.get("zip")), pocket=not p.get("zip"), band=c2 if p.get("text") or p.get("puff") else None)
     elif f == "sweater":
         coll = "turtle" if p.get("turtle") else ("stand" if p.get("qzip") else "rib")
@@ -413,6 +416,49 @@ def _build_item(o, it, f, p, c1, c2, nm, camo):
     return True
 
 
+def build_bottom_ref(o, items):
+    """Tops and jackets are exported on their own but worn over trousers: build them over jeans (the usual waist)
+    so the hem sits over the waistband instead of being cut by it. Returns how many objects it added."""
+    n0 = len(o.objs)
+    if "bot_jeans" in items:
+        rest = getattr(o.b, "rest", None)
+        if rest is None:
+            build_item(o, items["bot_jeans"])
+        else:  # posed build: trousers are made on the rest body (the arm pose doesn't move them) and only collide
+            r = NG.Outfit(rest); build_item(r, items["bot_jeans"])
+            for ob in r.objs:
+                X = np.array([v.co[:] for v in ob.data.vertices])
+                F = np.array([p.vertices[:] for p in ob.data.polygons if len(p.vertices) == 3] or np.zeros((0, 3), int))
+                Fq = [p.vertices[:] for p in ob.data.polygons if len(p.vertices) != 3]
+                tri = [list(f) for f in F] + [[q[0], q[i], q[i + 1]] for q in Fq for i in range(1, len(q) - 1)]
+                o.layer(X, np.array(tri), 0.003 * o.b.k)
+                o.objs.append(ob)
+    return len(o.objs) - n0
+
+
+def build_under_ref(o, items):
+    """The bulkiest top a jacket can go over: a hoodie (pocket, hood, strings) and a tee, minus their sleeves. In
+    game a top's sleeves ("-arm" parts) are hidden under a jacket, so the jacket sleeve only has to clear the arm
+    and stays a clean tube. Returns how many objects it added; callers drop them after building the jacket."""
+    n0 = len(o.objs)
+    lay = o.layer
+    def layer(X, F, thick):
+        N = NG.vnormals(X, F)
+        keep = ~NG.arm_points(o.b, X)
+        o.col.add((X + N * thick)[keep], N[keep])
+        o.col_noarm.add((X + N * thick)[keep], N[keep])
+        return N
+    build_bottom_ref(o, items)
+    o.layer = layer
+    try:
+        for i in ("top_hoodie", "top_tee"):
+            if i in items:
+                build_item(o, items[i])
+    finally:
+        o.layer = lay
+    return len(o.objs) - n0
+
+
 def build_items(o, ids, path="/home/user/Chrome/NCLookCatalog.lua"):
     items = {it["id"]: it for it in load(path)}
     # inner layers first, like the looks: a later piece is pushed out over the earlier ones (pants built after a tee
@@ -467,17 +513,42 @@ def _repattern(ob, target_tris):
             bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 4])
         bm.to_mesh(low); bm.free()
     _pattern_mesh(b, low, spec["kind"], spec["c1"], spec["c2"], spec["arms_only"], spec["skirt"])
-    # bone weights from the nearest vertex of the full-res skinned mesh
+    # bone weights from the nearest vertices of the full-res skinned mesh
     hi = ob.data
     H = np.array([v.co[:] for v in hi.vertices]); L = np.array([v.co[:] for v in low.vertices])
-    _, nn = cKDTree(H).query(L)
-    groups = [[(g.group, g.weight) for g in hi.vertices[int(j)].groups] for j in nn]
     names = [g.name for g in ob.vertex_groups]
+    WH = np.zeros((len(H), len(names)), np.float32)
+    for v in hi.vertices:
+        for g in v.groups:
+            WH[v.index, g.group] = g.weight
+    WL = np.zeros((len(L), len(names)), np.float32)
+    fh = np.zeros(len(H), np.int32); fl = np.zeros(len(L), np.int32)
+    if "nc_arm" in hi.attributes and "nc_arm" in low.attributes:
+        # sleeve only from sleeve, body only from body: a sleeve resting on the hip must not take the hem's weights
+        hi.attributes["nc_arm"].data.foreach_get("value", fh); low.attributes["nc_arm"].data.foreach_get("value", fl)
+    for f in (0, 1):
+        hm = np.where((fh > 0) == bool(f))[0]; lm = (fl > 0) == bool(f)
+        if len(hm) and lm.any():
+            d, j = cKDTree(H[hm]).query(L[lm], k=min(4, len(hm)))
+            d = d.reshape(lm.sum(), -1); j = j.reshape(lm.sum(), -1)
+            w = 1 / np.maximum(d, 1e-5) ** 2; w /= w.sum(1, keepdims=True)
+            WL[lm] = np.einsum("nk,nkg->ng", w, WH[hm[j]])
+    # a couple of diffusion steps over the low mesh: its long edges must not jump from one bone to another
+    import scipy.sparse as sp
+    Ed = np.array([e.vertices[:] for e in low.edges])
+    if len(Ed):
+        A = sp.coo_matrix((np.ones(2 * len(Ed)), (np.r_[Ed[:, 0], Ed[:, 1]], np.r_[Ed[:, 1], Ed[:, 0]])),
+                          shape=(len(L), len(L))).tocsr()
+        deg = np.asarray(A.sum(1)).ravel(); deg[deg == 0] = 1
+        for _ in range(3):
+            WL = 0.5 * WL + 0.5 * (A @ WL) / deg[:, None]
+    WL /= np.maximum(WL.sum(1, keepdims=True), 1e-9)
     ob.data = low  # vertex group names live on the mesh: make them again on the new one
     vgs = [ob.vertex_groups.get(n) or ob.vertex_groups.new(name=n) for n in names]
-    for vi, gs in enumerate(groups):
-        for gi, wt in gs:
-            vgs[gi].add([vi], wt, "REPLACE")
+    for gi, vg in enumerate(vgs):
+        idx = np.where(WL[:, gi] > 1e-4)[0]
+        for vi in idx:
+            vg.add([int(vi)], float(WL[vi, gi]), "REPLACE")
     for p in low.polygons:
         p.use_smooth = True
     return True
