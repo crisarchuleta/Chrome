@@ -88,14 +88,35 @@ class RigBody(Body):
         tmp.matrix_world = whole.matrix_world.copy()
         for mod in list(tmp.modifiers):
             tmp.modifiers.remove(mod)
+        disp = None
         if exclude_arms:  # lower-body shell: swing the arms far out so the hands can't fuse to the hips
             armv = np.isin(regw, ["LArm", "Hand"]) | ((regw == "UArm") & (cw[:, 2] < J["l-shoulder"][2] - 0.1 * (cw[:, 2].max() - cw[:, 2].min()) / REF_H * 0 - 0.4))
             moved = cw.copy()
             moved[armv, 0] += np.sign(moved[armv, 0]) * 3.0
             moved[armv, 2] += 1.5
+            if LEG_OUT_DEG > 0:
+                # spread the legs before fusing too: touching thighs fused into a web between the legs, and the
+                # pants inherited it (a membrane that stretched 30x when the legs parted). Undone after the remesh.
+                wl = {"l": np.zeros(len(cw)), "r": np.zeros(len(cw))}
+                for v in me.vertices:
+                    for g in v.groups:
+                        gn = names[g.group]
+                        if gn in ("LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "NC_ToesL"): wl["l"][v.index] += g.weight
+                        if gn in ("RightUpperLeg", "RightLowerLeg", "RightFoot", "NC_ToesR"): wl["r"][v.index] += g.weight
+                ldisp = np.zeros_like(cw)
+                for sd, sg in (("l", 1.0), ("r", -1.0)):
+                    S_ = J[sd + "-upper-leg"]; th = np.radians(LEG_OUT_DEG) * sg
+                    c_, s_ = np.cos(th), np.sin(th)
+                    q = cw - S_
+                    rot = np.c_[c_ * q[:, 0] - s_ * q[:, 2], q[:, 1], s_ * q[:, 0] + c_ * q[:, 2]] + S_
+                    ldisp += (rot - cw) * np.clip(wl[sd], 0, 1)[:, None]
+                ldisp[armv] = 0
+                moved = moved + ldisp
+                disp = ldisp
             tmp.data.vertices.foreach_set("co", moved.ravel())
             tmp.data.update()
-        disp = None
+        if not exclude_arms:
+            disp = None
         if not exclude_arms:
             # lift the arms out sideways (like posing them) before fusing, so an arm resting on the side never fuses
             # to the body: sleeves stay their own tubes. The shell is put back to the rest pose afterwards.
@@ -734,6 +755,14 @@ def _chk(tag, b, X, R):
     print("CHK", tag, "arm verts", am.sum(), "fore", m.sum(), "R>0.3", (m & (Ra > 0.3)).sum(), "Rmax %.2f" % (Ra[m].max() if m.any() else 0), flush=True)
 
 
+def hip_cut_z(b, P, hip_cut):
+    """Height above which a bottom's cloth is its "-hip" part (hidden under a long 3D top). It rises over the centre
+    front and back (the fly / seat): there the top's hem lifts with the thighs and the base shorts showed between."""
+    c = np.clip(1 - np.abs(P[:, 0] - b.cx) / (HIP_CUT_CW * b.k), 0, 1)
+    c = c * c * (3 - 2 * c)
+    return b.J["l-upper-leg"][2] + (hip_cut + HIP_CUT_CENTRE * c) * b.k
+
+
 def _sleeve_flag(b, X, R):
     """Sleeve vertices (they skin to their arm only): arm-region cloth, plus any cloth past the shoulder whose nearest
     body point is on the arm (a few vertices labelled torso on the female forearm turned into flaps)."""
@@ -856,6 +885,10 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
                 Rt = r_up * (1 + sleeve_ease) * (1 + 0.12 * ss / max(s_end, 1e-3))
             if puffer:
                 Rt = Rt * (1 + 0.06 * np.abs(np.sin(np.pi * ss / 0.11)) ** 0.6)
+            if SLEEVE_ROOT_EASE > 0:
+                # room at the armpit (like a real armhole): with a skin-tight sleeve root the arm skin or the tank
+                # showed through whenever the arm swung forward or across
+                Rt = Rt * (1 + SLEEVE_ROOT_EASE * (1 - smoothstep(0.12, 0.42, ss)))
             Rn = np.maximum(Ra[m], Rt)
             w = smoothstep(0.02, 0.2, ss)
             A_ = J[side + "-shoulder"]; d = J[side + "-hand"] - A_; L = np.linalg.norm(d); d /= L
@@ -972,6 +1005,23 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
     if hasattr(b, "whole_co") and not getattr(b, "no_liner", False):
         X, F, R = _crevice_liner(b, X, F, R)
     # 6. colours: main / accent (rib, zip) / print or camo through vertex colours
+    if ARMPIT_HUG > 0 and sleeve != "none" and o.col.tree is not None:
+        # the armpit hugs the skin (small offset, no bridging web): it then moves exactly like the skin under it (with
+        # ARMPIT_BODY weights), so swinging the arm forward can't open a gap where the arm skin shows
+        fa = np.zeros(len(X))
+        for sd in ("l", "r"):
+            Js = J[sd + "-shoulder"]
+            dd = np.linalg.norm(X - Js, axis=1)
+            t_ = 1 - np.clip((dd - ARMPIT_R0 * k) / ((ARMPIT_R1 - ARMPIT_R0) * k), 0, 1)
+            fa = np.maximum(fa, t_ * t_ * (3 - 2 * t_) * (X[:, 2] < Js[2] - 0.01 * k))
+        fa *= ARMPIT_HUG
+        if (fa > 0).any():
+            _, jn = o.col.tree.query(X)
+            T = o.col.P[jn] + o.col.N[jn] * (0.006 * k)
+            X = X + fa[:, None] * (T - X)
+            E_ = edges_of(F)
+            X = laplace(X, E_, 3, mask=fa > 0.01)
+            X = o.col.push(X, 0.005 * k)
     _chk('pre-obj', b, X, R)
     reg_out = R
     nf = len(F)
@@ -2538,7 +2588,7 @@ def skin_to_rig(o):
                     Js = b.J[sd + "-shoulder"]
                     dd = np.linalg.norm(P - Js, axis=1)
                     t_ = 1 - np.clip((dd - ARMPIT_R0 * b.k) / ((ARMPIT_R1 - ARMPIT_R0) * b.k), 0, 1)
-                    t_ = t_ * t_ * (3 - 2 * t_) * (P[:, 2] < Js[2] + 0.02 * b.k)
+                    t_ = t_ * t_ * (3 - 2 * t_) * ((P[:, 2] < Js[2] + 0.02 * b.k) | (not ARMPIT_ZCUT))
                     fa = np.maximum(fa, t_)
                 fa *= ARMPIT_BODY
                 if (fa > 0).any():
@@ -2550,6 +2600,18 @@ def skin_to_rig(o):
                     Wb[:, hc_] = 0
                     Wb /= np.maximum(Wb.sum(1, keepdims=True), 1e-9)
                     Wg = (1 - fa)[:, None] * Wg + fa[:, None] * Wb
+            if SHOULDER_SHARPEN > 1 and upper and "Gloves" not in ob.name and \
+                    not any(t in ob.name for t in ("_Hood", "_String", "_ZipPull", "_Pocket")):
+                # blending two far-apart bone rotations shrinks the cloth's offset from the skin (linear blend
+                # skinning collapse) and the shoulder skin came through with the arms overhead: sharpen the blend
+                fa = np.zeros(len(P))
+                for sd in ("l", "r"):
+                    dd = np.linalg.norm(P - b.J[sd + "-shoulder"], axis=1)
+                    t_ = 1 - np.clip((dd - SHOULDER_R0 * b.k) / ((SHOULDER_R1 - SHOULDER_R0) * b.k), 0, 1)
+                    fa = np.maximum(fa, t_ * t_ * (3 - 2 * t_))
+                if (fa > 0).any():
+                    Ws = Wg ** SHOULDER_SHARPEN; Ws /= np.maximum(Ws.sum(1, keepdims=True), 1e-9)
+                    Wg = (1 - fa)[:, None] * Wg + fa[:, None] * Ws
             if HEM_LEG > 0 and upper and "LeftUpperLeg" in names and \
                     not any(t in ob.name for t in ("_Hood", "_String", "_ZipPull", "_Pocket")):
                 # a long hem moves with the body right under it (as the trousers there do), not with the waist:
@@ -2582,6 +2644,18 @@ def skin_to_rig(o):
                 if mc.any() and mb.any():
                     print("   s%.1f cloth R p50/p95/max %.3f %.3f %.3f  body R p95/max %.3f %.3f  far %d  far-dirz %.2f" % (lo, np.median(Ra2[mc]), np.percentile(Ra2[mc], 95), Ra2[mc].max(), np.percentile(Rb[mb], 95), Rb[mb].max(), (bad_ & mc).sum(), rd2[bad_ & mc, 2].mean() if (bad_ & mc).any() else 0), flush=True)
             np.save("/tmp/claude-0/render/dbg2_%s.npy" % ob.name[-10:], np.c_[np.where(bad_)[0], P[bad_]])
+        if HIP_SHARPEN > 1 and P[:, 2].max() < upper_cut and "skirt" not in ob.name.lower() and \
+                "LeftUpperLeg" in names:
+            # pants at the hip joints / crotch: a flexed thigh blends two far-apart rotations and the cloth's
+            # offset collapsed (the base shorts came through at the crotch when sitting or jumping)
+            fa = np.zeros(len(P))
+            for sd in ("l", "r"):
+                dd = np.linalg.norm(P - b.J[sd + "-upper-leg"], axis=1)
+                t_ = 1 - np.clip((dd - HIP_R0 * b.k) / ((HIP_R1 - HIP_R0) * b.k), 0, 1)
+                fa = np.maximum(fa, t_ * t_ * (3 - 2 * t_))
+            if (fa > 0).any():
+                Ws = Wg ** HIP_SHARPEN; Ws /= np.maximum(Ws.sum(1, keepdims=True), 1e-9)
+                Wg = (1 - fa)[:, None] * Wg + fa[:, None] * Ws
         for gi, gname in enumerate(names):
             col = Wg[:, gi]
             idx = np.where(col > 0.01)[0]
@@ -3271,8 +3345,22 @@ def build_boot_shaft(o, name, height=0.16, color=(0.04, 0.04, 0.045), lace=None,
 # pose crumpled that cloth between arm and side, and raised arms tore it open).
 BUILD_ARM_RAD = 0.7
 UNPOSE_PUSH = 0.010  # (x k) cloth kept this far off the rest torso in the armpit band after unposing
+UNPOSE_PUSH_BODY_ONLY = True
+SLEEVE_PUSH = 0.008  # (x k) sleeves kept this far off the rest arm after unposing
 SLEEVE_OFF_TANK = True  # _sleeve_flag: sleeve-root cloth over the tank is body panel
+HIP_CUT_CENTRE = 0.08  # hip_cut_z: rise of the cut at the centre front/back (x k)
+HIP_CUT_CW = 0.10
+SLEEVE_ROOT_EASE = 0.15  # build_top: extra sleeve radius at the root (x)
+ARMPIT_HUG = 0.0  # build_top: cloth near the armpit pulled onto the skin
 ARMPIT_BODY = 0.0  # cloth near the armpit takes the skin's own weights (see skin_to_rig)
+SHOULDER_SHARPEN = 2.0
+HIP_SHARPEN = 3.0
+LEG_OUT_DEG = 0.0  # lower-body shell: legs spread this much before the remesh
+HIP_R0 = 0.10
+HIP_R1 = 0.18
+SHOULDER_R0 = 0.10
+SHOULDER_R1 = 0.18
+ARMPIT_ZCUT = True
 ARMPIT_R0 = 0.10
 ARMPIT_R1 = 0.17
 LIFT_MIN_ARM = 0.9  # (arm-labelled shell points with less arm weight than this at rest take the lifted-pose weights)
@@ -3370,6 +3458,22 @@ def unpose(objs, arm, whole=None, rest=None):
                 # (not the tank's own vertices: some of its faces are wound inward and pushed cloth into the body)
             shz = rest.J["l-shoulder"][2]
             band = (Xr[:, 2] < shz - 0.02 * rest.k) & (Xr[:, 2] > shz - 0.36 * rest.k)
+            if UNPOSE_PUSH_BODY_ONLY and "nc_arm" in me.attributes:
+                # (sleeves left alone: pushed off the torso they went into the arm and the skin showed through)
+                fl_ = np.zeros(n, np.int32); me.attributes["nc_arm"].data.foreach_get("value", fl_)
+                band &= fl_ == 0
+            if SLEEVE_PUSH and "nc_arm" in me.attributes:
+                # sleeves: kept off the rest arm the same way (the inner upper sleeve sat on / in the arm skin near the
+                # armpit and the skin showed through when the arm swung forward)
+                fl2 = np.zeros(n, np.int32); me.attributes["nc_arm"].data.foreach_get("value", fl2)
+                sm = fl2 > 0
+                if sm.any():
+                    if not hasattr(rest, "_col_arm"):
+                        bi = rest.body_idx; aa = bi[np.isin(rest.reg[bi], ["LArm", "UArm"])]
+                        rest._col_arm = Collider(); rest._col_arm.dmax = 0.05 * rest.k
+                        rest._col_arm.add(rest.co[aa], rest.N[aa])
+                    Xr[sm] = rest._col_arm.push(Xr[sm], SLEEVE_PUSH * rest.k)
+                    R = (Wm @ np.c_[Xr, np.ones(n)].T).T
             if band.any():
                 Xp = rest._col_torso.push(Xr[band], UNPOSE_PUSH * rest.k)
                 if os.environ.get("NC_DBG2"):

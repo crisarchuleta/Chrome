@@ -76,7 +76,7 @@ def split_by_material(ob, it, n0=0, body=None):
             for fi, c in enumerate(corners):
                 tag[fi] = "-arm" if A[c].all() else ("-under" if U[c].all() else "")
         elif it["slot"] == "Bottom":
-            H = P[:, 2] > body.J["l-upper-leg"][2] + HIP_CUT * body.k
+            H = P[:, 2] > NG.hip_cut_z(body, P, HIP_CUT)
             for fi, c in enumerate(corners):
                 tag[fi] = "-hip" if H[c].all() else ""
     used = sorted({(p.material_index, tag[p.index]) for p in ob.data.polygons})
