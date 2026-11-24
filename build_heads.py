@@ -798,7 +798,7 @@ def build_styles(H):
 
     FLOWS = {"crown": flow_crown, "back": flow_back}
 
-    def make_cards(key, p, cov, T, fade_top=None):
+    def make_cards(key, p, cov, T, fade_top=None, hl_=None):
         cp = p["cards"]
         rng = np.random.default_rng(zlib.crc32(key.encode()))     # (stable: str hash() changes every run)
         flow = FLOWS[cp.get("flow", "crown")]
@@ -826,11 +826,13 @@ def build_styles(H):
                 weight = weight * masks[layer[6]]
             for root, i in sample_roots_(rng, weight, spacing):
                 # (the back of a crop is short: the long top hair is the front and crown, so no bowl-shaped fringe)
-                backness = float(smoothstep(0.15 * H.R, 0.65 * H.R, relc[i, 1]))
+                backness = float(smoothstep(-0.1 * H.R, 0.8 * H.R, relc[i, 1]))   # (a long blend: no step at the crown)
                 length = (cp["len_side"] + (cp["len_top"] - cp["len_side"]) * tw[i] * (1 - 0.55 * backness)) * lmul * rng.uniform(0.8, 1.15)
                 # (shorter towards the fade, so hair combed down the back doesn't hang over the faded skin)
                 if not (len(layer) > 6 and layer[6] == "front"):   # (the hairline's own coverage is still feathering)
                     length *= 0.3 + 0.7 * smoothstep(0.5, 1.0, cov[i])
+                if cp.get("forward") and hl_ is not None:       # hair combed forward stops about at the hairline
+                    length = min(length, max(0.02, 0.9 * hl_[i] + 0.015))
                 if fade_top is not None:                         # and never down past where the fade begins
                     length = min(length, max(0.025, 1.3 * (root[2] - fade_top[i] + 0.08)))
                 # keep the card about as long as the strand texture is tall for its width (1:4 in the atlas): a short
@@ -943,7 +945,7 @@ def build_styles(H):
             fade_top = None
             if "fade_z" in p:
                 fade_top = (p["fade_line"](V) if "fade_line" in p else np.full(len(V), H.ear_z)) + p["fade_z"]
-            cards, capcards = make_cards(key, p, cov, T, fade_top)
+            cards, capcards = make_cards(key, p, cov, T, fade_top, hl)
             # base > 0 keeps a solid inner layer of the hair (that share of the volume) under the cards: it gives
             # the smooth outline of the cut and nothing shows through, while the cards on its surface give strands
             T = T * p["cards"]["base"] if p["cards"].get("base") else np.minimum(T, 0.003)
@@ -968,7 +970,17 @@ def build_styles(H):
 
     if male:
         add_short("Buzz", "Buzz Cut", dict(top=0.016, side=0.012, feather=0.05, groove=0.06, freq=40))
-        add_short("Crop", "Short Crop", dict(top=0.06, side=0.02, front_lift=0.025, feather=0.06, groove=0.08, freq=44))
+        def straight_cards(flow, len_top, len_side, base=0.42, dense=1.0):
+            """the card layers of a short straight cut (worked out on the TaperFade against hair_ref_1)"""
+            k = 1.0 / math.sqrt(dense)
+            return dict(flow=flow, base=base, len_top=len_top, len_side=len_side, jitter=0.1, segs=6,
+                        # (kind, root spacing, height share, width, length x, min coverage[, mask])
+                        layers=[("STRAIGHT_DENSE", 0.025 * k, 0.86, 0.04, 1.0, 0.7),                  # on the base
+                                ("STRAIGHT_DENSE", 0.022 * k, 0.9, 0.036, 1.0, 0.1, "front"),         # the hairline
+                                ("STRAIGHT_DENSE", 0.027 * k, 0.88, 0.036, 1.0, 0.8),                 # the outer shape
+                                ("STRAIGHT_DENSE", 0.022 * k, 0.62, 0.03, 0.5, 0.45)])                # short sides/back
+        add_short("Crop", "Short Crop", dict(top=0.06, side=0.02, front_lift=0.025, feather=0.06, groove=0.03, freq=44,
+                                              cards=dict(straight_cards("crown", 0.13, 0.05), forward=True)))
         # textured crop with a mid skin fade (references hair_ref_1): 4-6 cm on top brushed up with a small front lift,
         # the fade thins the same colour out to skin from just above the ear
         add_short("TaperFade", "Textured Crop, Mid Fade", dict(top=0.07, side=0.012, top_from=0.0, top_to=0.9, front_lift=0.04, fade_z=0.3, fade_len=0.26, fade_front=0.06, fade_len_front=0.12,
@@ -979,7 +991,8 @@ def build_styles(H):
                                                                                  ("STRAIGHT_DENSE", 0.022, 0.9, 0.036, 1.0, 0.1, "front"),   # lying on the base
                                                                                  ("STRAIGHT_DENSE", 0.027, 0.88, 0.036, 1.0, 0.8),  # the outer shape
                                                                                  ("STRAIGHT_DENSE", 0.022, 0.62, 0.03, 0.5, 0.45)])))
-        add_short("HighFade", "High Skin Fade", dict(top=0.10, side=0.02, fade_z=0.22, feather=0.06, groove=0.1, freq=24))
+        add_short("HighFade", "High Skin Fade", dict(top=0.10, side=0.02, fade_z=0.22, fade_front=0.06, fade_len_front=0.12, feather=0.06,
+                                                     groove=0.03, freq=24, cards=straight_cards("back", 0.34, 0.1)))
         add_short("SidePart", "Side Part", dict(top=0.10, side=0.025, part=0.32, sweep=0.03, feather=0.07, groove=0.12))
         add_short("CurlyTop", "Curly Top", dict(top=0.12, side=0.018, fade_z=0.05, curls=260, curl_r=0.028, curl_amp=0.25, feather=0.06))
     else:

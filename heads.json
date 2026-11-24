@@ -41,14 +41,14 @@
     "key": "Crop",
     "label": "Short Crop",
     "offset": [
-     0.0006,
-     0.0996,
-     0.3494
+     0.0001,
+     0.0811,
+     0.3377
     ],
     "size": [
-     0.6508,
-     0.7776,
-     0.7564
+     0.5915,
+     0.7405,
+     0.733
     ],
     "tris": 13428
    },
@@ -58,16 +58,50 @@
     "key": "Crop",
     "label": "Short Crop",
     "offset": [
-     0.0006,
+     0.0001,
      0.0746,
-     0.3494
+     0.3377
     ],
     "size": [
-     0.6508,
+     0.5915,
      0.7275,
-     0.7564
+     0.733
     ],
     "tris": 13428
+   },
+   {
+    "mesh": "Hair_Crop_Cards",
+    "kind": "HairCards",
+    "key": "Crop",
+    "label": "Short Crop",
+    "offset": [
+     -0.0009,
+     0.1255,
+     0.3401
+    ],
+    "size": [
+     0.6142,
+     0.6841,
+     0.7419
+    ],
+    "tris": 17000
+   },
+   {
+    "mesh": "Hair_Crop_CapCards",
+    "kind": "HairCapCards",
+    "key": "Crop",
+    "label": "Short Crop",
+    "offset": [
+     -0.0004,
+     -0.0041,
+     0.3717
+    ],
+    "size": [
+     0.601,
+     0.4249,
+     0.6714
+    ],
+    "tris": 9536
    },
    {
     "mesh": "Hair_TaperFade",
@@ -118,7 +152,7 @@
      0.3744,
      0.7103
     ],
-    "tris": 13954
+    "tris": 13916
    },
    {
     "mesh": "Hair_TaperFade_CapCards",
@@ -143,16 +177,16 @@
     "key": "HighFade",
     "label": "High Skin Fade",
     "offset": [
-     0.0003,
-     0.1813,
-     0.3664
+     0.0,
+     0.1542,
+     0.3398
     ],
     "size": [
-     0.7243,
-     0.68,
-     0.7904
+     0.6163,
+     0.6259,
+     0.7372
     ],
-    "tris": 11730
+    "tris": 10156
    },
    {
     "mesh": "Hair_HighFade_Cap",
@@ -160,16 +194,50 @@
     "key": "HighFade",
     "label": "High Skin Fade",
     "offset": [
-     0.0003,
+     0.0,
      0.1398,
-     0.3664
+     0.3398
     ],
     "size": [
-     0.7243,
+     0.6163,
      0.5971,
-     0.7904
+     0.7372
     ],
-    "tris": 11730
+    "tris": 10156
+   },
+   {
+    "mesh": "Hair_HighFade_Cards",
+    "kind": "HairCards",
+    "key": "HighFade",
+    "label": "High Skin Fade",
+    "offset": [
+     -0.0002,
+     0.251,
+     0.3583
+    ],
+    "size": [
+     0.6746,
+     0.4875,
+     0.7364
+    ],
+    "tris": 17190
+   },
+   {
+    "mesh": "Hair_HighFade_CapCards",
+    "kind": "HairCapCards",
+    "key": "HighFade",
+    "label": "High Skin Fade",
+    "offset": [
+     -0.0017,
+     0.1548,
+     0.373
+    ],
+    "size": [
+     0.6717,
+     0.2952,
+     0.6374
+    ],
+    "tris": 2730
    },
    {
     "mesh": "Hair_SidePart",
