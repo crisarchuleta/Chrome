@@ -303,6 +303,40 @@ def skirts():
                 sbox(kind(S, "Steps", "Chrome"), s * (W + 0.05), y - 0.4, ZB - 0.21, s * (W + 0.5), y + 0.4, ZB - 0.18)
 
 
+def mirror_shell(k, s, x0, ln, yr, zc):
+    """a modern mirror cap: flat back (the glass), rounded nose, squarish top and bottom, rounded outboard tip"""
+    bm = bmesh.new()
+    nt, na = 14, 28
+    rings = []
+    for j in range(nt + 1):
+        t = j / nt
+        tip = math.sqrt(max(0.0, 1 - ((t - 0.72) / 0.28) ** 2)) if t > 0.72 else 1.0
+        root = 0.78 + 0.22 * math.sin(0.5 * math.pi * min(1.0, t / 0.3))
+        h = max(0.02, 0.18 * root * tip)
+        d = max(0.04, 0.3 * (0.8 + 0.2 * root) * (0.35 + 0.65 * tip))
+        dr = min(0.035, d * 0.3)
+        zt = zc + 0.03 * t
+        ring = []
+        for i in range(na):
+            a = 2 * math.pi * i / na
+            ca, sa = math.cos(a), math.sin(a)
+            z = zt + h * math.copysign(abs(sa) ** 0.6, sa)
+            if ca >= 0:
+                yy = yr - dr * (1 - abs(ca) ** 0.25)
+            else:
+                yy = yr - dr - (d - dr) * abs(ca) ** 0.9
+            ring.append(bm.verts.new((x0 + s * ln * t, yy, z)))
+        rings.append(ring)
+    for A, B in zip(rings, rings[1:]):
+        for i in range(na):
+            bm.faces.new((A[i], A[(i + 1) % na], B[(i + 1) % na], B[i]))
+    bm.faces.new(rings[0])
+    bm.faces.new(list(reversed(rings[-1])))
+    bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-5)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    return new_obj(bm, k, style=PREFIX, smooth=60.0)
+
+
 def mirrors():
     S = "Mirrors"
     y = A0 + 0.55 if not OPEN else A0 + 0.12                    # open cart: on the cowl, ahead of the step-in
@@ -314,12 +348,9 @@ def mirrors():
         if SMOOTH:
             x = s * (gh_xb(y) + 0.02)
             # the reference's shell: a teardrop swelling outboard, on a short thick foot from the door's front corner
-            sbeam(kind(S, "Sport", "Body"), (s * (gh_xb(y) - 0.08), y + 0.1, BELT + 0.06), (x + s * 0.2, y + 0.04, z - 0.06), 0.16, 0.2)
-            scyl(kind(S, "Sport", "Body"), (x + s * 0.03, y, z), (x + s * 0.12, y, z), 0.13, seg=20, r2=0.2)
-            scyl(kind(S, "Sport", "Body"), (x + s * 0.12, y, z), (x + s * 0.44, y, z), 0.2, seg=20, r2=0.24)
-            scyl(kind(S, "Sport", "Body"), (x + s * 0.44, y, z), (x + s * 0.6, y, z), 0.24, seg=20, r2=0.19)
-            scyl(kind(S, "Sport", "Body"), (x + s * 0.6, y, z), (x + s * 0.66, y, z), 0.19, seg=20, r2=0.1)
-            sbox(kind(S, "Sport", "Glass"), x + s * 0.18, y + 0.14, z - 0.13, x + s * 0.56, y + 0.245, z + 0.13)
+            sbeam(kind(S, "Sport", "Body"), (s * (gh_xb(y) - 0.06), y + 0.1, z - 0.3), (x + s * 0.18, y + 0.06, z - 0.08), 0.1, 0.17)
+            mirror_shell(kind(S, "Sport", "Body"), s, x + s * 0.02, 0.66, y + 0.2, z)
+            sbox(kind(S, "Sport", "Glass"), x + s * 0.12, y + 0.19, z - 0.14, x + s * 0.58, y + 0.215, z + 0.14)
             sbox(kind(S, "Rect", "Body"), x, y - 0.1, z - 0.2, x + s * 0.62, y + 0.14, z + 0.2, bev=0.06)
             sbox(kind(S, "Rect", "Glass"), x + s * 0.05, y + 0.14, z - 0.15, x + s * 0.57, y + 0.16, z + 0.15)
             continue
@@ -457,11 +488,70 @@ def S_REAR_Y():
     return None
 
 
+CARD_D = [(0.0, 0.16), (0.07, 0.2), (0.12, 0.13), (0.38, 0.14), (0.46, 0.25), (0.55, 0.27), (0.6, 0.17),
+          (0.78, 0.15), (0.92, 0.13), (1.0, 0.05)]        # smooth door card: depth into the cabin up the card
+
+
+def card_d(t):
+    for (ta, da), (tb, db) in zip(CARD_D, CARD_D[1:]):
+        if t <= tb:
+            u = (t - ta) / (tb - ta)
+            u = u * u * (3 - 2 * u)
+            return da + (db - da) * u
+    return CARD_D[-1][1]
+
+
+def door_card_smooth(k, s, y0, y1, z0, z1, xw):
+    """a moulded card: map pocket, swept armrest, rounded top and ends"""
+    ny, nz = 16, 30
+    ya, yb = y0 + 0.12, y1 - 0.12
+    O, I = [], []
+    for j in range(ny + 1):
+        y = ya + (yb - ya) * j / ny
+        e = min(1.0, (y - ya) / 0.2, (yb - y) / 0.2)
+        e = math.sin(0.5 * math.pi * max(0.0, e)) ** 0.6
+        ro, ri = [], []
+        for i in range(nz + 1):
+            t = i / nz
+            d = 0.03 + (card_d(t) - 0.03) * (0.25 + 0.75 * e)
+            z = z0 + (z1 - z0) * t - 0.06 * (1 - e) * t
+            ro.append((xw - s * d, y, z))
+            ri.append((xw, y, z))
+        O.append(ro)
+        I.append(ri)
+    solid_grid(k, O, I, [(j, i) for j in range(ny) for i in range(nz)], smooth=50.0)
+
+
 def door_cards():
     S = "Doors"
     for (nm, s, y0, y1) in DOORS:
         xi = s * (W - 0.55)
         z0, z1 = FLOOR + 0.15, BELT - 0.08
+        xw = xi + s * 0.1
+        if SMOOTH:
+            def xf_(z, off=0.0):
+                return xw - s * (card_d((z - z0) / (z1 - z0)) + off)
+            for v in ("Smooth", "Rolls", "Diamond", "Channel"):
+                door_card_smooth(kind(S, v, "Seat"), s, y0, y1, z0, z1, xw)
+            zh = z0 + 0.5 * (z1 - z0)
+            ym = (y0 + y1) / 2
+            sbox(kind(S, "Smooth", "Chrome"), xf_(z0 + 0.8 * (z1 - z0)) - 0.015, y0 + 0.3, z0 + 0.8 * (z1 - z0) - 0.02,
+                 xf_(z0 + 0.8 * (z1 - z0)) + 0.015, y1 - 0.3, z0 + 0.8 * (z1 - z0) + 0.02)            # trim strip
+            sbeam(kind(S, "Smooth", "SeatTrim"), (xf_(zh) + s * 0.02, ym - 0.55, zh + 0.04), (xf_(zh) + s * 0.02, ym + 0.45, zh + 0.04), 0.06, 0.05)   # pad
+            for k in range(5):
+                z = z0 + 0.62 * (z1 - z0) + k * 0.07 * (z1 - z0)
+                sbox(kind(S, "Rolls", "SeatTrim"), xf_(z) - 0.015, y0 + 0.3, z, xf_(z) + 0.015, y1 - 0.3, z + 0.045)
+            nyb = int((y1 - y0 - 0.6) / 0.45)
+            for i in range(nyb):
+                for j in range(3):
+                    y = y0 + 0.45 + i * 0.45 + (0.22 if j % 2 else 0)
+                    z = z0 + (0.66 + 0.11 * j) * (z1 - z0)
+                    scyl(kind(S, "Diamond", "SeatTrim"), (xf_(z) + s * 0.012, y, z), (xf_(z) - s * 0.012, y, z), 0.035, seg=6)
+            for i in range(int((y1 - y0 - 0.5) / 0.5)):
+                y = y0 + 0.35 + i * 0.5
+                za, zb = z0 + 0.62 * (z1 - z0), z1 - 0.12
+                sbox(kind(S, "Channel", "SeatTrim"), xf_(za) - 0.015, y, za, xf_(za) + 0.015, y + 0.04, zb)
+            continue
         for v in ("Smooth", "Rolls", "Diamond", "Channel"):
             sbox(kind(S, v, "Seat"), xi - 0.1, y0 + 0.12, z0, xi + 0.1, y1 - 0.12, z1)
         xf = xi - s * 0.11

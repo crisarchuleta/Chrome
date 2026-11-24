@@ -595,6 +595,17 @@ def cutters_and_body():
     else:
         flat_floor("Carpet", xin, A0 + 0.1, cab_end - 0.05, floor - 0.02, floor + 0.06)
     wheel_houses("Under" if S.get("smooth") else "Carpet", xin, A0 + 0.05, cab_end, floor)   # seen through the arches
+    if S.get("smooth") and not BED and REAR in ("trunk", "hatch"):
+        # rear quarter behind the back doors: line the cut wall, or an open hatch shows the hollow body
+        yq0 = max(d[3] for d in DOORS) + 0.03 if DOORS else C0
+        nq = max(1, int((cab_end - yq0) / 0.25))
+        for i_ in range(nq):
+            y0_, y1_ = yq0 + (cab_end - yq0) * i_ / nq, yq0 + (cab_end - yq0) * (i_ + 1) / nq
+            xa_, xb_ = (min(xin, gh_xb(y)) - 0.11 for y in (y0_, y1_))
+            za_, zb_ = (min(belt_at(y), gh_zr(y)) + 0.02 for y in (y0_, y1_))
+            for sd in (-1, 1):
+                sprism("Carpet", [(sd * xa_, y0_, floor), (sd * xb_, y1_, floor), (sd * xb_, y1_, zb_), (sd * xa_, y0_, za_)],
+                       [(sd * (xa_ - 0.04), y0_, floor), (sd * (xb_ - 0.04), y1_, floor), (sd * (xb_ - 0.04), y1_, zb_), (sd * (xa_ - 0.04), y0_, za_)])
     if OPEN:                                                                  # rubber edge trim round the step-in + a sill plate
         for s in (-1, 1):
             xa, xb_ = s * (xin - 0.06), s * (W + 0.015)
@@ -610,6 +621,14 @@ def cutters_and_body():
             for k in range(nsl):
                 y0s, y1s = ya + (yb - ya) * k / nsl, ya + (yb - ya) * (k + 1) / nsl
                 flat_floor("Under", min(W, station_w(y1s)) - 0.65, y0s, y1s, tz, tz + 0.05)
+                # side walls: line the cut up to the deck, or the opening shows the hollow body
+                xa_, xb_ = (min(min(W, station_w(y)) - 0.54, top_w(y) - 0.03) for y in (y0s, y1s))
+                za_, zb_ = deck_z(xa_, y0s) - 0.04, deck_z(xb_, y1s) - 0.04
+                for sd in (-1, 1):
+                    sprism("Under", [(sd * xa_, y0s, tz), (sd * xb_, y1s, tz), (sd * xb_, y1s, zb_), (sd * xa_, y0s, za_)],
+                           [(sd * (xa_ - 0.05), y0s, tz), (sd * (xb_ - 0.05), y1s, tz), (sd * (xb_ - 0.05), y1s, zb_), (sd * (xa_ - 0.05), y0s, za_)])
+            for ye, xe in ((ya, min(min(W, station_w(ya)) - 0.55, top_w(ya) - 0.04)), (yb, min(min(W, station_w(yb)) - 0.55, top_w(yb) - 0.04))):
+                sbox("Under", -xe, ye - 0.03, tz, xe, ye + 0.03, min(deck_z(0, ye), deck_z(xe, ye)) - 0.04)   # end walls
         else:
             flat_floor("Under", W - 0.6, C1 + 0.15, L1 - 0.45, tz, tz + 0.05)
         wheel_houses("Under", W - 0.6, C1 + 0.15, L1 - 0.45, tz)
@@ -1503,10 +1522,24 @@ def skylight():
 
     hw_min = min(roof_hw(ya + (yb - ya) * k / 10) for k in range(11))   # straight sides, inside the panel everywhere
     fr = sk.get("width", 0.8)
-    n0 = len(OBJS)
-    rrect("Dark", ya, yb, fr + 0.04, 0.4, 0.008, 0.05)                         # rubber frame
-    frame = OBJS[n0:]
     ym = (ya + yb) / 2
+    # rubber frame: solid under the rear pane, a ring round the opening under the front pane (rounded both sides)
+    hy0, hy1, hx = ya + 0.13, ym - 0.09, fr * hw_min - 0.08
+    ro, ri, n = 0.4, 0.22, 40
+    def half_w(u, y0, y1, w, r):
+        d = min(u - y0, y1 - u)
+        return w - (r - math.sqrt(max(0.0, r * r - (r - d) ** 2)) if d < r else 0.0)
+    for k in range(n):
+        u0, u1 = ya + (yb - ya) * k / n, ya + (yb - ya) * (k + 1) / n
+        wo = [max(0.02, half_w(u, ya, yb, (fr + 0.04) * hw_min, ro)) for u in (u0, u1)]
+        if hy0 <= u0 and u1 <= hy1:
+            wi = [max(0.0, half_w(u, hy0, hy1, hx, ri)) for u in (u0, u1)]
+            for s_ in (-1, 1):
+                decal("Dark", (s_ * wi[0], u0, 9), (s_ * wo[0], u0, 9), (s_ * wo[1], u1, 9), (s_ * wi[1], u1, 9), (0, 0, -1),
+                      nu=3, nv=1, out=0.008, inn=0.05)
+        else:
+            decal("Dark", (-wo[0], u0, 9), (wo[0], u0, 9), (wo[1], u1, 9), (-wo[1], u1, 9), (0, 0, -1), nu=12, nv=1, out=0.008, inn=0.05)
+    frame = []
     # the front pane opens: it tilts up at the back and slides back over the rear pane (hinge "Sunroof" with a slide),
     # uncovering a hole cut through the roof panel, the frame and the headliner (cut_sunroof, once everything exists)
     rrect("Glass__Sunroof", ya + 0.07, ym - 0.03, fr, 0.33, 0.016, 0.02)       # front pane
@@ -1516,7 +1549,7 @@ def skylight():
     zf = loc.z if loc else ROOF
     HINGES["Sunroof"] = {"pivot": (0.0, ya + 0.07, zf + 0.02), "axis": (1, 0, 0), "open": 2.5, "kind": "sunroof",
                          "slide": (0.0, (ym - ya - 0.1) * 0.92, 0.1)}
-    SUNROOF_HOLE.update(y0=ya + 0.13, y1=ym - 0.09, x=fr * hw_min - 0.08, frame=frame)
+    SUNROOF_HOLE.update(y0=hy0, y1=hy1, x=hx, frame=frame)
 
 
 SUNROOF_HOLE = {}
@@ -1946,6 +1979,14 @@ if os.environ.get("NC_REFMASK"):                        # silhouettes for fittin
         for ob_ in scene.objects:
             if ob_.name.endswith("Glass__Sunroof"):
                 ob_.matrix_world = M_ @ ob_.matrix_world
+    for hn_ in filter(None, os.environ.get("NC_OPEN", "").split(",")):   # preview hinges open
+        h_ = HINGES.get(hn_)
+        if h_:
+            pv_ = Vector(h_["pivot"])
+            M_ = Matrix.Translation(pv_) @ Matrix.Rotation(math.radians(h_["open"]), 4, Vector(h_["axis"])) @ Matrix.Translation(-pv_)
+            for ob_ in scene.objects:
+                if ob_.name.endswith("__" + hn_) or any(HINGE_OF.get(k_) == hn_ for k_ in (ob_.name, ob_.name.split(".")[0], ob_.name.split("_", 1)[-1])):
+                    ob_.matrix_world = M_ @ ob_.matrix_world
     if os.environ.get("NC_PROBE"):                       # which visible pieces have vertices near a point
         px_, py_, pz_, pr_ = map(float, os.environ["NC_PROBE"].split(","))
         for ob_ in scene.objects:
