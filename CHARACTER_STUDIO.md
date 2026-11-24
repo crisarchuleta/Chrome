@@ -103,7 +103,7 @@ that hugs the skin, so it looks like part of the skin, not a sticker.
 
 - **Ink layers.** Every body has 13 layers (`Ink_LeftUpperArm`, `Ink_LeftLowerArm`, `Ink_LeftHand`, `Ink_LeftUpperLeg`,
   `Ink_LeftLowerLeg`, the same on the right, `Ink_NeckHead`, `Ink_NeckUpperTorso`, `Ink_Face`). Each one is a copy of the
-  skin faces lifted 1.1 mm, with the exact same bone weights, so it bends with the body. Clothes sit above it, so
+  skin faces lifted 1.1 mm, one rigid layer per R15 part, welded to that part so it moves with the body. Clothes sit above it, so
   anything covered hides the ink. There is never any ink on the torso. The files are `ink/NC_Ink_<Body>.fbx`, one per
   body, built by `tools/ink/build_ink.py`.
 - **Canvases.** All bodies share the same canvases, so one PNG fits every body without stretching:
@@ -148,16 +148,20 @@ that hugs the skin, so it looks like part of the skin, not a sticker.
   1. Import `ink/NCInkSwatches_1.glb + NCInkSwatches_2.glb`, which holds every PNG on a plane, so Studio uploads the images.
   2. Run `require(game.ServerStorage.NCInkSetup).Prepare(workspace.NCInkSwatches_1)` then `_2`. It saves each texture id into
      `ReplicatedStorage.NCInkIds`.
-  3. Import the 10 `NC_Ink_<Body>.fbx` files into `ReplicatedStorage.NCInkRigs` as Models named after the body.
+  3. Import the 10 `NC_Ink_<Body>.fbx` files (3D Importer, no rig: they are plain meshes) into
+     `ReplicatedStorage.NCInkRigs` as Models named after the body.
 - **Runtime.**
   1. `NCInk.Attach(character, "Male_Average")` once after the body is built.
   2. `NCInk.Apply(character, ink)` whenever the look changes.
 
-  The layers bind to the rig's bones by name.
+  Attach places each layer on its own body part from `Ink.FIT` (offset and size as fractions of the part) and holds
+  it with a classic Weld. The layers are rigid on purpose: skinned layers came in scattered from the importer.
 - **Rebuilding.**
   1. `python tools/ink/compose.py <out>` makes the PNGs and the catalog.
   2. `python tools/ink/build_ink.py rig.blend <out>` makes the layers.
   3. `python tools/ink/make_lua_catalog.py` makes the Lua catalog.
+  4. `tools/ink/export_rigid.py` writes the rigid FBXs and `tools/ink/ink_fit.py` the `Ink.FIT` numbers, both from
+     the layer blend that build_ink.py saves.
   4. `tools/ink/build_swatches.py` makes the swatch file.
   5. `tools/ink/review.sh <Body>` renders every tattoo on a body to check it.
 

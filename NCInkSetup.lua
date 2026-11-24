@@ -8,7 +8,8 @@
 --      require(game.ServerStorage.NCInkSetup).Prepare(workspace.NCInkSwatches_2)
 --    Each plane's texture asset id is saved to ReplicatedStorage.NCInkIds as a StringValue named after the file
 --    (e.g. "sl_rosas_nubes_L"). The report lists anything missing. Delete the swatch model afterwards.
--- 3. Import NC_Ink_<Body>.fbx for each of the 10 bodies into ReplicatedStorage.NCInkRigs as Models named <Body>.
+-- 3. Import NC_Ink_<Body>.fbx for each of the 10 bodies (3D Importer, Rig: none; they are plain rigid meshes) into
+--    ReplicatedStorage.NCInkRigs as Models named <Body>. Replace any older skinned copies.
 local RS = game:GetService("ReplicatedStorage")
 
 local S = {}
