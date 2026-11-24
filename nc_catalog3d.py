@@ -96,7 +96,20 @@ def apply_pattern(o, n0, kind, c1, c2, arms_only=False, name=""):
         for pco, pno in cuts:
             geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
             bmesh.ops.bisect_plane(bm, geom=geom, plane_co=pco, plane_no=pno, dist=1e-6)
+        nv0 = len(me.vertices)
         bm.to_mesh(me); bm.free()
+        if "nc_arm" in me.attributes:  # vertices the cuts added: take the sleeve flag of the edge they split
+            fl = np.zeros(len(me.vertices), np.int32); me.attributes["nc_arm"].data.foreach_get("value", fl)
+            Ed = np.array([e.vertices[:] for e in me.edges])
+            new_ = np.arange(len(fl)) >= nv0
+            for _ in range(3):
+                for a_, b_ in ((0, 1), (1, 0)):
+                    m_ = new_[Ed[:, a_]] & ~new_[Ed[:, b_]]
+                    np.maximum.at(fl, Ed[m_, a_], fl[Ed[m_, b_]])
+                # new vertices with only new neighbours (cut crossings) follow those neighbours
+                m_ = new_[Ed[:, 0]] & new_[Ed[:, 1]]
+                np.maximum.at(fl, Ed[m_, 0], fl[Ed[m_, 1]]); np.maximum.at(fl, Ed[m_, 1], fl[Ed[m_, 0]])
+            me.attributes["nc_arm"].data.foreach_set("value", fl)
         nm_ = me.materials[0].name
         me.materials.append(NG.material(nm_ + "_P1", mid)); me.materials.append(NG.material(nm_ + "_P2", dark))
         i_mid, i_dark = len(me.materials) - 2, len(me.materials) - 1
@@ -241,3 +254,9 @@ def _build_item(o, it, f, p, c1, c2, nm, camo):
         import nc_headwear as HW  # helmets, durags, ski masks, great helm, goggles
         return HW.build_item(o, it, hexc)
     return True
+
+
+def build_items(o, ids, path="/home/user/Chrome/NCLookCatalog.lua"):
+    items = {it["id"]: it for it in load(path)}
+    for i in ids:
+        build_item(o, items[i])

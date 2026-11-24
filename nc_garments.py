@@ -541,7 +541,15 @@ def _start(b, f, sub=0, smooth=2):
     P, F, A = keep_big(P, F, A)
     # pinholes (a few cells where the cut field flickers, e.g. arm resting on the side): close them
     loops = boundary_loops(F)
-    small = [l for l in loops if len(l) <= 24]
+    # larger holes high on the chest/shoulder (heavy builds: armpit fold) are holes too, never real openings
+    zsh = min(b.J["l-shoulder"][2], b.J["r-shoulder"][2])
+    def _hole(l):
+        if len(l) <= 24:
+            return True
+        c_ = P[l].mean(0); per_ = sum(np.linalg.norm(P[l[i]] - P[l[i - 1]]) for i in range(len(l))) / b.k
+        nk_ = np.linalg.norm(c_ - b.J["neck"]) / b.k
+        return len(l) <= 60 and per_ < 0.25 and zsh - 0.2 * b.k < c_[2] < zsh + 0.1 * b.k and nk_ > 0.08
+    small = [l for l in loops if _hole(l)]
     if small:
         P = list(P); F = list(F); A = {kk: list(vv) for kk, vv in A.items()}
         for l in small:
@@ -561,6 +569,7 @@ def _start(b, f, sub=0, smooth=2):
     for _ in range(sub):
         P, F, A = subdivide(P, F, A)
     return P, F, A["reg"]
+
 
 
 def _extend_loop(X, F, loop, axis_c, rings, reg, regname):
@@ -1148,7 +1157,8 @@ def build_pants(o, name, fit="baggy", color=(0.06, 0.065, 0.075), accent=None, s
     b = o.low; k = b.k; J = b.J; P0 = b.co; reg = b.reg
     pel = J["pelvis"][2]
     front = np.clip((b.yc - P0[:, 1]) / (0.08 * k), 0, 1)
-    z_waist = pel + (0.035 - 0.02 * front) * k
+    # the waistband must sit over the top of the base-layer shorts (top at pelvis + 0.10..0.12k on every body)
+    z_waist = pel + (0.132 - 0.006 * front) * k
     knee = (J["l-knee"][2] + J["r-knee"][2]) / 2
     ank = (J["l-ankle"][2] + J["r-ankle"][2]) / 2
     z_cut = (knee - 0.02 * k) if shorts else ank + 0.09 * k
@@ -2199,6 +2209,41 @@ def skin_to_rig(o):
         w /= w.sum(1, keepdims=True)
         Wg = np.einsum("nk,nkg->ng", w, W[j])
         Wg /= np.maximum(Wg.sum(1, keepdims=True), 1e-9)
+        if "Gloves" not in ob.name:
+            # body skin at the hips can carry arm weights where the hand rests on it (MakeHuman weight bleed):
+            # garment cloth that is not a sleeve never follows the arm below the shoulder
+            arm_cols = [names.index(g) for g in names if g in ("LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm",
+                                                               "NC_TwistL", "NC_TwistR", "LeftHand", "RightHand")]
+            am = nonarm & (P[:, 2] < b.J["l-shoulder"][2] - 0.12 * b.k)
+            if am.any() and arm_cols:
+                Wg[np.ix_(am, arm_cols)] = 0
+                rs = Wg[am].sum(1)
+                Wg[am] = np.where(rs[:, None] > 1e-6, Wg[am] / np.maximum(rs, 1e-9)[:, None], 0)
+                Wg[am & (Wg.sum(1) < 1e-6), lt] = 1.0
+            # crotch / seat seam: a garment vertex on the centre line must not snap fully to one leg (the two
+            # sides would tear apart when one leg swings). Blend left- and right-side weights across a band.
+            skirt = "skirt" in ob.name.lower() and "Leggings" not in ob.name and "Tights" not in ob.name
+            band = (0.16 if skirt else 0.07) * b.k   # a skirt is one panel: blend across its whole front and back
+            bm = nonarm & (np.abs(P[:, 0] - b.cx) < band) & (P[:, 2] > (-1e9 if skirt else b.crotch_z - 0.2 * b.k)) & \
+                 (P[:, 2] < b.crotch_z + 0.25 * b.k)
+            if bm.any():
+                WS = []
+                for sd in ("l", "r"):
+                    idx_, tr_ = trees_na[sd]
+                    d2, j2 = tr_.query(P[bm], k=6)
+                    w2 = 1 / np.maximum(d2, 1e-4) ** 2; w2 /= w2.sum(1, keepdims=True)
+                    WS.append(np.einsum("nk,nkg->ng", w2, W[idx_[j2]]))
+                s_ = np.clip(0.5 + (P[bm, 0] - b.cx) / (2 * band), 0, 1)
+                s_ = s_ * s_ * (3 - 2 * s_)
+                Wb = s_[:, None] * WS[0] + (1 - s_)[:, None] * WS[1]
+                # right on the seam the cloth hangs from the pelvis; leg influence grows away from it
+                t_ = np.clip(np.abs(P[bm, 0] - b.cx) / band, 0, 1); f_ = 0.3 + 0.7 * t_ * t_ * (3 - 2 * t_)
+                lw = Wb[:, leg_cols].sum(1)
+                Wb[:, leg_cols] *= f_[:, None]; Wb[:, lt] += lw * (1 - f_)
+                Wb /= np.maximum(Wb.sum(1, keepdims=True), 1e-9)
+                gz = np.clip((P[bm, 2] - (b.crotch_z - 0.2 * b.k)) / (0.08 * b.k), 0, 1)[:, None]  # fade down the inseam
+                if skirt: gz[:] = 1.0
+                Wg[bm] = gz * Wb + (1 - gz) * Wg[bm]
         if any(t in ob.name for t in RIGID_HEAD):  # caps, beanies, shades, masks move as one piece with the head
             Wg[:] = 0; Wg[:, names.index("Head")] = 1.0
         else:
@@ -2213,7 +2258,7 @@ def skin_to_rig(o):
                                   shape=(len(P), len(P))).tocsr()
                 deg = np.asarray(A.sum(1)).ravel(); deg[deg == 0] = 1
                 upper = P[:, 2].max() > upper_cut
-                its = 0 if "Gloves" in ob.name else (10 if upper else 2)  # pants: keep the two legs apart
+                its = 0 if "Gloves" in ob.name else (10 if upper or ("skirt" in ob.name.lower() and "Leggings" not in ob.name) else 2)  # pants: keep the two legs apart
                 for _ in range(its):
                     Wg = 0.5 * Wg + 0.5 * (A @ Wg) / deg[:, None]
                 Wg /= np.maximum(Wg.sum(1, keepdims=True), 1e-9)
@@ -2243,7 +2288,7 @@ def build_skirt(o, name, length=0.45, flare=0.25, color=(0.1, 0.1, 0.12), accent
     crotch or the buttock crease), then the flare to the hem. Pleats are knife folds round the hem."""
     b = o.low; k = b.k; J = b.J; P0 = b.co; reg = b.reg
     pel = J["pelvis"][2]
-    z_waist = pel + 0.1 * k  # over the top of the base-layer shorts
+    z_waist = pel + 0.132 * k  # over the top of the base-layer shorts (pelvis + 0.10..0.12k)
     cx, cy = b.cx, b.yc
     na = 120
     phi = np.linspace(-np.pi, np.pi, na, endpoint=False)
