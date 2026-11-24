@@ -116,8 +116,23 @@ C.Drive = {
 C.ShopFallbackPosition = Vector3.new(260, 0, -260)
 C.CustomizeRadius = 40 -- your car must be this close to the shop to customize it
 
--- optional sounds: put your own uploaded sound ids here ("rbxassetid://123"); empty = silent
-C.Sounds = { Pump = "", Dump = "", Hop = "", Engine = "", Skid = "" } -- Skid: looped tyre squeal (NCTyreFX)
+-- sounds: the uploaded ids of sounds/*.ogg (make_vehicle_sounds.py, all original). Upload each file in Studio
+-- (Asset Manager > Bulk Import, or Avatar > Audio) and paste its id here as "rbxassetid://123". Empty = silent.
+C.Sounds = {
+	backfire_1 = "", backfire_2 = "", backfire_3 = "", door_close = "",
+	door_open = "", engine_diesel_high = "", engine_diesel_low = "", engine_diesel_mid = "",
+	engine_electric = "", engine_i4_high = "", engine_i4_low = "", engine_i4_mid = "",
+	engine_off = "", engine_single_high = "", engine_single_low = "", engine_single_mid = "",
+	engine_sport4_high = "", engine_sport4_low = "", engine_sport4_mid = "", engine_start = "",
+	engine_truck_high = "", engine_truck_low = "", engine_truck_mid = "", engine_v8_high = "",
+	engine_v8_low = "", engine_v8_mid = "", hood_close = "", horn_bike = "",
+	horn_car = "", horn_truck = "", hyd_dump = "", hyd_hop = "",
+	hyd_pump = "", indicator_tick = "", indicator_tock = "", panel_click = "",
+	siren_airhorn = "", siren_wail = "", siren_yelp = "", trunk_close = "",
+	tyre_scrub = "", tyre_squeal = "", window_motor = "",
+}
+-- the older names the lowrider scripts use
+C.Sounds.Hop, C.Sounds.Pump, C.Sounds.Dump, C.Sounds.Skid = C.Sounds.hyd_hop, C.Sounds.hyd_pump, C.Sounds.hyd_dump, ""
 
 ---------------------------------------------------------------------------------------------------- the tuning menu
 -- Everything you can change is one "mod": a look key with a list of options. The shop UI, the server's checks and

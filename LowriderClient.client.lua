@@ -49,6 +49,8 @@ end
 -- the driving model lives in NCVehicleSim (shared with the server's AI cars)
 local Sim = require(RS:WaitForChild("NCVehicleSim"))
 local TyreFX = require(RS:WaitForChild("NCTyreFX"))
+local CarLife = require(RS:WaitForChild("NCCarLife"))
+local ControlRE = Remotes:WaitForChild("VehicleControl")
 local st, susp, rayParams, castWheels, poseWheels = Sim.State, Sim.Susp, Sim.RayParams, Sim.Cast, Sim.Pose
 
 local function simulate(car, s, dt, input)
@@ -193,7 +195,7 @@ local function hop(car, s, which)
 			s.e[c] = sp.lift
 		end
 	end
-	local snd = Config.Sounds.Hop
+	local snd = Config.Sounds.hyd_hop or ""
 	if snd ~= "" then
 		local so = Instance.new("Sound")
 		so.SoundId = snd
@@ -244,6 +246,37 @@ local function bind()
 			hop(myCar, s, "front")
 		end
 	end, Enum.KeyCode.Space, Enum.KeyCode.ButtonA)
+	-- horn (hold), lights, indicators / hazards, siren (Coast Patrol)
+	act("LR_Horn", function(b, si)
+		if si == Enum.UserInputState.Begin or si == Enum.UserInputState.End or si == Enum.UserInputState.Cancel then
+			ControlRE:FireServer("horn", si == Enum.UserInputState.Begin)
+		end
+	end, Enum.KeyCode.H, Enum.KeyCode.ButtonR1)
+	act("LR_Lights", function(b)
+		if b and myCar then
+			local t = game:GetService("Lighting").ClockTime
+			local cur = myCar:GetAttribute("Lights") or ((t > 18.3 or t < 6.4) and 1 or 0)
+			local nxt = (cur + 1) % 3
+			ControlRE:FireServer("lights", nxt)
+			notify(({ [0] = "Lights off", "Headlights on", "High beams" })[nxt])
+		end
+	end, Enum.KeyCode.L)
+	local function signal(which)
+		return function(b)
+			if b and myCar then
+				local cur = myCar:GetAttribute("Signal") or ""
+				ControlRE:FireServer("signal", cur == which and "" or which)
+			end
+		end
+	end
+	act("LR_SignalL", signal("L"), Enum.KeyCode.Z)
+	act("LR_SignalR", signal("R"), Enum.KeyCode.C)
+	act("LR_Hazards", signal("H"), Enum.KeyCode.Q)
+	act("LR_Siren", function(b)
+		if b and myCar and myCar:GetAttribute("Police") then
+			ControlRE:FireServer("siren", ((myCar:GetAttribute("Siren") or 0) + 1) % 3)
+		end
+	end, Enum.KeyCode.E)
 	act("LR_Handbrake", function(b, si)
 		held.handbrake = b or (si == Enum.UserInputState.Change and held.handbrake)
 	end, Enum.KeyCode.LeftShift, Enum.KeyCode.ButtonL1)
@@ -311,6 +344,7 @@ local function bind()
 end
 
 local function unbind()
+	ControlRE:FireServer("horn", false)
 	for _, n in ACTIONS do
 		ContextActionService:UnbindAction(n)
 	end
@@ -438,6 +472,14 @@ end, function()
 		end
 	end
 end)
+tbutton("HORN", UDim2.fromOffset(16, 0), function() ControlRE:FireServer("horn", true) end, function() ControlRE:FireServer("horn", false) end)
+tbutton("LIGHTS", UDim2.fromOffset(152, 0), function()
+	if myCar then
+		local t = game:GetService("Lighting").ClockTime
+		local cur = myCar:GetAttribute("Lights") or ((t > 18.3 or t < 6.4) and 1 or 0)
+		ControlRE:FireServer("lights", (cur + 1) % 3)
+	end
+end)
 tbutton("E-BRAKE", UDim2.fromOffset(152, 100), function() held.handbrake = true end, function() held.handbrake = false end)
 tbutton("BURNOUT", UDim2.fromOffset(16, 100), function() held.burn = true end, function() held.burn = false end)
 tbutton("3-WHEEL", UDim2.fromOffset(16, 150), function()
@@ -473,7 +515,7 @@ local function updateHud(car, s)
 	local spd = math.floor(math.abs(s.fwdSpeed or 0) / 1.15 * 0.6818 + 0.5)
 	modeL.Text = ("%s · %d mph"):format(mode, spd)
 	local lines = { "Arrows: lift front/back/sides", "X: ride / laid / lifted", "F: get out" }
-	local tricks = "W+S: burnout (+steer: donut)  SHIFT: handbrake / drift"
+	local tricks = "W+S: burnout (+steer: donut)  SHIFT: handbrake / drift\nH: horn  L: lights  Z/C: indicators  Q: hazards" .. (car:GetAttribute("Police") and "  E: siren" or "")
 	if sp.hop > 0 then
 		table.insert(lines, 1, "SPACE: hop (hold, let go)  B: body hop")
 	end
@@ -589,9 +631,24 @@ RunService.PreSimulation:Connect(function(dt)
 			local s = st(myCar)
 			s.charging, s.dance = false, false
 		end
+		if myCar then
+			for _, pp in myCar:GetDescendants() do -- my own car's prompts come back once I'm out
+				if pp:IsA("ProximityPrompt") and pp:GetAttribute("HiddenWhileDriving") then
+					pp.Enabled = true
+					pp:SetAttribute("HiddenWhileDriving", nil)
+				end
+			end
+		end
 		myCar = car
 		if car then
 			bind()
+			-- while driving, the car's own door / trunk prompts stay out of the way (E is the siren, F gets out)
+			for _, pp in car:GetDescendants() do
+				if pp:IsA("ProximityPrompt") and pp.Enabled then
+					pp.Enabled = false
+					pp:SetAttribute("HiddenWhileDriving", true)
+				end
+			end
 		end
 		hud.Visible = car ~= nil
 		touch.Visible = car ~= nil and UserInputService.TouchEnabled
@@ -600,8 +657,9 @@ RunService.PreSimulation:Connect(function(dt)
 	for _, c in cars() do
 		local ch = c.PrimaryPart
 		if not (ch and c:GetAttribute("NCLowrider")) or ch.Anchored then
-			if ch then
+			if ch and c:GetAttribute("NCLowrider") and (ch.Position - camera.CFrame.Position).Magnitude < 300 then
 				TyreFX.Quiet(c)
+				CarLife.Parked(c, st(c))
 			end
 			continue -- parked world cars sit anchored until someone gets in
 		end
@@ -618,11 +676,21 @@ RunService.PreSimulation:Connect(function(dt)
 				-- parked: keep its last ride height, drop out of three-wheel and dancing
 				s.threeWheel, s.dance, s.charging = nil, false, false
 			end
+			local eBefore = (s.e.FL + s.e.FR + s.e.RL + s.e.RR) / 4
 			simulate(c, s, dt, input)
 			if (ch.Position - camPos).Magnitude < 350 then
 				TyreFX.Update(c, s, s.slip or {}, dt)
+				local sl = s.slip or {}
+				local gas, brk = input.gas or math.max(input.throttle, 0), input.brake or math.max(-input.throttle, 0)
+				CarLife.Update(c, s, {
+					fwd = s.fwdSpeed or 0, top = s.D.TopSpeed, throttle = s.burnout and 1 or (gas > 0.05 and gas or -brk),
+					burnout = s.burnout, braking = (brk > 0.3 and (s.fwdSpeed or 0) > 1) or input.handbrake == true,
+					slip = math.max(sl.FL or 0, sl.FR or 0, sl.RL or 0, sl.RR or 0), spin = s.burnout and 1 or 0,
+					hyd = ((s.e.FL + s.e.FR + s.e.RL + s.e.RR) / 4 - eBefore) / dt, inside = c == myCar,
+				}, dt)
 			else
 				TyreFX.Quiet(c)
+				CarLife.Quiet(c)
 			end
 			if c == myCar then
 				updateHud(c, s)
@@ -632,10 +700,12 @@ RunService.PreSimulation:Connect(function(dt)
 			dashLive(c, s, c == myCar and seat or nil, s.fwdSpeed or 0)
 		elseif (ch.Position - camPos).Magnitude >= 350 then
 			TyreFX.Quiet(c)
+			CarLife.Quiet(c)
 		else
 			-- someone else's car: follow their corner heights and pose the wheels from my own rays
 			local f, r = c:GetAttribute("HydF") or Vector2.zero, c:GetAttribute("HydR") or Vector2.zero
 			local tgt = { FL = f.X, FR = f.Y, RL = r.X, RR = r.Y }
+			local eBefore = (s.e.FL + s.e.FR + s.e.RL + s.e.RR) / 4
 			for _, k in CORNERS do
 				s.e[k] = s.e[k] + (tgt[k] - s.e[k]) * math.min(1, dt * 12)
 			end
@@ -656,6 +726,14 @@ RunService.PreSimulation:Connect(function(dt)
 			end
 			poseWheels(c, s, origin, casts, steer, v, dt)
 			TyreFX.Update(c, s, slip, dt)
+			local th = ds and ds.ThrottleFloat or 0
+			local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+			CarLife.Update(c, s, {
+				fwd = v, top = s.D.TopSpeed, throttle = burning and 1 or th, burnout = burning, braking = th < -0.05 and v > 1,
+				slip = math.max(sf.X, sf.Y, sr.X, sr.Y), spin = burning and 1 or 0,
+				hyd = ((s.e.FL + s.e.FR + s.e.RL + s.e.RR) / 4 - eBefore) / dt,
+				inside = hum ~= nil and hum.SeatPart ~= nil and hum.SeatPart.Parent == c,
+			}, dt)
 			if (ch.Position - camPos).Magnitude < 40 then
 				Kit.SetSpeed(c, math.abs(v) / 1.15 * 0.6818)
 				dashLive(c, s, ds, v)

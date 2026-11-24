@@ -40,6 +40,7 @@ local StateRE = remote("RemoteEvent", "LowriderState") -- driver -> server: corn
 local UiRE = remote("RemoteEvent", "LowriderUI") -- server -> client: open the shop screen / hop results
 local HopRE = remote("RemoteEvent", "LowriderHop") -- client -> server: a measured hop
 local WindowRE = remote("RemoteEvent", "VehicleWindow") -- client -> server: roll my window (or, driving, every window)
+local ControlRE = remote("RemoteEvent", "VehicleControl") -- client -> server: horn, lights, indicators, siren (driver)
 
 local carsFolder = workspace:FindFirstChild("Lowriders") or Instance.new("Folder")
 carsFolder.Name = "Lowriders"
@@ -524,6 +525,48 @@ WindowRE.OnServerEvent:Connect(function(player, all)
 end)
 Players.PlayerRemoving:Connect(function(p)
 	windowCooldown[p] = nil
+end)
+
+-- the driver's horn / lights / indicators / siren, as car attributes every client turns into sound and light
+-- (NCCarLife): Horn bool, Lights 0 off / 1 on / 2 high beams, Signal "L" / "R" / "H" / "", Siren 0 / 1 wail / 2 yelp
+local honking = {} -- [player] = car
+ControlRE.OnServerEvent:Connect(function(player, action, value)
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	local seat = hum and hum.SeatPart
+	local car = seat and seat.Parent
+	if not (car and seat.Name == "DriveSeat" and car:IsA("Model") and car:GetAttribute("NCLowrider")) then
+		return
+	end
+	if action == "horn" then
+		car:SetAttribute("Horn", value == true)
+		honking[player] = value == true and car or nil
+	elseif action == "lights" and (value == 0 or value == 1 or value == 2) then
+		car:SetAttribute("Lights", value)
+	elseif action == "signal" and (value == "L" or value == "R" or value == "H" or value == "") then
+		car:SetAttribute("Signal", value)
+	elseif action == "siren" and car:GetAttribute("Police") and (value == 0 or value == 1 or value == 2) then
+		car:SetAttribute("Siren", value)
+	end
+end)
+local function stopHorn(p)
+	local car = honking[p]
+	honking[p] = nil
+	if car and car.Parent then
+		car:SetAttribute("Horn", false)
+	end
+end
+Players.PlayerRemoving:Connect(stopHorn)
+-- getting out lets go of the horn
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		for p, car in honking do
+			local hum = p.Character and p.Character:FindFirstChildOfClass("Humanoid")
+			if not (hum and hum.SeatPart and hum.SeatPart.Parent == car) then
+				stopHorn(p)
+			end
+		end
+	end
 end)
 
 HopRE.OnServerEvent:Connect(function(player, inches)

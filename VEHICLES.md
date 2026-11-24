@@ -61,6 +61,15 @@ that vehicle's `defaults` in NCVehicles.lua.
   **Tyre smoke + skid marks** (NCTyreFX, ReplicatedStorage): a smoke emitter and a flat Trail at every tyre, driven
   by how hard it slips. The driver reports slip to the server (LowriderState), which sets SlipF / SlipR so everyone
   sees it. Tyre squeal plays once a sound id is put in `Config.Sounds.Skid`.
+- **Sound and lights** (NCCarLife, ReplicatedStorage, client): engine loops per engine type (v8, truck, i4,
+  diesel, single, sport4, electric) crossfaded by a 5-speed simulated gearbox, start-up / shut-down, exhaust pops
+  with a flash on lift-off and hard upshifts, tyre squeal and burnout scrub, hydraulic pump / dump. Headlights
+  (L: off / on / high beams, automatic at night), dim tail lights, brake lights, reverse lights, indicators (Z / C)
+  and hazards (Q), horn (H, gamepad R1), and on Coast Patrol cars a siren (E: wail / yelp) with the light bar
+  flashing. Doors, hood, trunk and gas door click and thud (Kit.SetOpen); windows have a motor (Kit.SetWindow).
+  The driver's choices travel as car attributes (VehicleControl remote): Horn, Lights, Signal, Siren.
+  **Sounds** are all original, synthesised by `make_vehicle_sounds.py` into `sounds/*.ogg` (43 files). Upload them
+  in Studio and paste each id into `NCLowriderConfig.Sounds` (same names); a sound with no id stays silent.
 - **An open cabin** (seats, dash, door cards show through the glass) and **an engine bay** under the hood.
 - **Swappable parts:** front / rear bumper, grille, headlights, taillights, hood, spoiler, side skirts / running
   boards, mirrors, exhaust, roof (sunroof, rack, light bar), underglow, truck bed (cover, roll bar, rack), seats,

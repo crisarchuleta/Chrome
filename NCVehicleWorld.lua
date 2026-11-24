@@ -288,6 +288,11 @@ function World.MakeAI(car)
 		info.ai = true
 	end
 	World.SetSim(car, nil)
+	car:SetAttribute("EngineOn", true) -- nobody sits in it, but the engine runs (NCCarLife)
+	if car:GetAttribute("Police") then
+		car:SetAttribute("Siren", 1) -- Coast Patrol units are always on a call: wail + light bar
+		car:SetAttribute("Lights", 1)
+	end
 end
 
 -- one server step of the driving model: throttle and steer in -1..1 (steer > 0 = right). Returns forward speed.

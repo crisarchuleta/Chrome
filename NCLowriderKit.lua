@@ -921,6 +921,23 @@ end
 -- Kit.SetOpen(car, "DoorL", true) swings a panel open (false closes it) over `time` seconds (0 = snap). Works on the
 -- server (everyone sees it) or the client. Kit.Panels(car) lists { name = root } for the car's opening panels.
 local swing = setmetatable({}, { __mode = "k" }) -- [root] = token, so a newer call wins
+-- panel sounds (ids in Config.Sounds; played where SetOpen runs, so the server's play reaches everyone)
+local function panelSound(parent, name, vol)
+	local id = Config.Sounds and Config.Sounds[name] or ""
+	if id == "" or not parent then
+		return
+	end
+	local snd = Instance.new("Sound")
+	snd.SoundId = id
+	snd.Volume = vol or 0.7
+	snd.RollOffMode = Enum.RollOffMode.InverseTapered
+	snd.RollOffMinDistance = 8
+	snd.RollOffMaxDistance = 120
+	snd.Parent = parent
+	snd:Play()
+	game:GetService("Debris"):AddItem(snd, 3)
+end
+local CLOSE_SOUND = { door = "door_close", hood = "hood_close", fuel = "panel_click", cap = "panel_click", seat = "panel_click" }
 function Kit.Panels(car)
 	local out = {}
 	for _, m in car:GetChildren() do
@@ -949,6 +966,10 @@ function Kit.SetOpen(car, name, open, time)
 	swing[root] = token
 	root:SetAttribute("Amount", to)
 	time = time or 0.45
+	local kind = root:GetAttribute("Kind") or "trunk"
+	if to > from then
+		panelSound(root, kind == "door" and "door_open" or "panel_click", 0.6)
+	end
 	task.spawn(function()
 		local t0 = os.clock()
 		while true do
@@ -959,6 +980,9 @@ function Kit.SetOpen(car, name, open, time)
 			end
 			weld.C0 = closed * CFrame.fromAxisAngle(axis, angle * (from + (to - from) * e))
 			if k >= 1 then
+				if to < from then
+					panelSound(root, CLOSE_SOUND[kind] or "trunk_close", 0.8)
+				end
 				break
 			end
 			task.wait()
@@ -1090,6 +1114,24 @@ function Kit.SetWindow(car, name, amount, time)
 	roll[p] = token
 	p:SetAttribute("Down", to)
 	time = time or math.abs(to - from) * 1.6 -- a motor takes about 1.6 s top to bottom
+	local motor = p:FindFirstChild("WindowMotor")
+	if not motor and (Config.Sounds and Config.Sounds.window_motor or "") ~= "" then
+		motor = Instance.new("Sound")
+		motor.Name = "WindowMotor"
+		motor.SoundId = Config.Sounds.window_motor
+		motor.Looped = true
+		motor.Volume = 0.35
+		motor.RollOffMaxDistance = 60
+		motor.Parent = p
+	end
+	if motor and time > 0 then
+		motor:Play()
+		task.delay(time, function()
+			if roll[p] == nil or roll[p] == token then
+				motor:Stop()
+			end
+		end)
+	end
 	task.spawn(function()
 		local t0 = os.clock()
 		while true do
@@ -1142,6 +1184,13 @@ function Kit.WindowFor(car, seat)
 		end
 	end
 	return best
+end
+
+-- the material key a piece is drawn with ("Headlight", "Taillight", "PoliceRed", "Body"...), from its Role
+function Kit.MatOf(car, role)
+	local vd = VD(Vehicles.Of(car))
+	local inf = (vd.Car.OptInfo and vd.Car.OptInfo[role]) or (vd.Wheel.OptInfo and vd.Wheel.OptInfo[role])
+	return inf and inf.mat or baseRole(role)
 end
 
 -- the car's ground origin (between the axles) in world space
