@@ -924,7 +924,7 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
         t = i / nr
         pts = base.copy()
         pts[:, 2] -= drop * t
-        sc = 1.0 + flare * t  # cloth falls slightly outward
+        sc = 1.0 + (flare + HEM_FLARE_ADD) * t  # cloth falls slightly outward
         if rib and kind != "tee":
             sc *= 1 - 0.07 * smoothstep(1 - 0.055 * k / max(drop, 1e-3) - 0.25, 1.0, t)
         pts[:, 0] = b.cx + (pts[:, 0] - b.cx) * sc
@@ -2511,6 +2511,24 @@ def skin_to_rig(o):
         w /= w.sum(1, keepdims=True)
         Wg = np.einsum("nk,nkg->ng", w, W[j])
         Wg /= np.maximum(Wg.sum(1, keepdims=True), 1e-9)
+        if DRAPE_UP != 0 and "Gloves" not in ob.name and P[:, 2].max() > upper_cut and \
+                not any(t in ob.name for t in ("_Hood", "_String", "_ZipPull")):
+            # cloth hanging clear of the body (under the bust, over the belly) hangs from the body above it:
+            # weighted by the skin it merely hovered over, the bust swung down through it when the upper body bent
+            gap = d[:, 0]
+            dm = nonarm & (gap > DRAPE_D0 * b.k) & (P[:, 2] < b.J["l-shoulder"][2] - 0.1 * b.k)
+            if dm.any():
+                Q = P[dm].copy(); Q[:, 2] += DRAPE_UP * gap[dm]
+                gs_ = gside[dm]; dq = np.zeros((dm.sum(), 6)); jq = np.zeros((dm.sum(), 6), int)
+                for sd in ("l", "r"):
+                    ms_ = gs_ == sd
+                    if ms_.any():
+                        idx_, tr_ = trees_na[sd]; d3, j3 = tr_.query(Q[ms_], k=6); dq[ms_] = d3; jq[ms_] = idx_[j3]
+                wq = 1 / np.maximum(dq, 1e-4) ** 2; wq /= wq.sum(1, keepdims=True)
+                Wq = np.einsum("nk,nkg->ng", wq, W[jq]); Wq /= np.maximum(Wq.sum(1, keepdims=True), 1e-9)
+                t_ = np.clip((gap[dm] - DRAPE_D0 * b.k) / (DRAPE_D1 * b.k - DRAPE_D0 * b.k), 0, 1)
+                t_ = (t_ * t_ * (3 - 2 * t_))[:, None]
+                Wg[dm] = (1 - t_) * Wg[dm] + t_ * Wq
         if "Gloves" not in ob.name:
             # body skin at the hips can carry arm weights where the hand rests on it (MakeHuman weight bleed):
             # garment cloth that is not a sleeve never follows the arm below the shoulder
@@ -2654,6 +2672,10 @@ def skin_to_rig(o):
                 hz = b.J["l-upper-leg"][2]
                 th = HEM_LEG * np.clip((hz + HEM_Z0 * b.k - P[:, 2]) / (HEM_RAMP * b.k), 0, 1)
                 th = th * th * (3 - 2 * th)
+                if HEM_LEG_BACK < 1:
+                    # the back hem hangs from the pelvis: on the thigh weights it swung out behind the seat when sitting
+                    bk_ = np.clip((P[:, 1] - b.yc) / (0.12 * b.k), 0, 1); bk_ = bk_ * bk_ * (3 - 2 * bk_)
+                    th = th * (1 - (1 - HEM_LEG_BACK) * bk_)
                 if "nc_arm" in ob.data.attributes:
                     th = th * ~flag
                 if (th > 0).any():
@@ -2788,6 +2810,7 @@ SLEEVE_DIFFUSE = 2  # diffusion steps on the forearm sleeve (None: same as the r
 WAIST_TORSO = 0.0  # bottoms: share of leg weight moved to the pelvis at the waistband
 WAIST_Z0 = 0.06    # ... starting this far above the hip joint (k)
 WAIST_RAMP = 0.08  # ... full this much higher (k)
+HEM_LEG_BACK = 1.0  # share of HEM_LEG kept at the back of a top's hem
 HEM_LEG = 1.0  # share of body weights a top's hem takes near the hip joint (a lifted or striding thigh cut through it)
 HEM_Z0 = 0.0   # the blend starts at the hip joint height ...
 HEM_RAMP = 0.08  # ... and is full this far below it (k)
@@ -3399,6 +3422,10 @@ ARMPIT_HUG = 0.0  # build_top: cloth near the armpit pulled onto the skin
 ARMPIT_BODY = 0.0  # cloth near the armpit takes the skin's own weights (see skin_to_rig)
 SHOULDER_SHARPEN = 2.0
 HIP_SHARPEN = 1.0
+HEM_FLARE_ADD = 0.0  # build_top: extra outward fall of a top below the waist
+DRAPE_UP = 0.0  # skin_to_rig: a top's cloth hovering this many gaps above... (0 = off)
+DRAPE_D0 = 0.015  # gap (k) where the hang-from weights start
+DRAPE_D1 = 0.04   # ... and are full
 LEG_OUT_DEG = 0.0  # lower-body shell: legs spread this much before the remesh
 HIP_R0 = 0.10
 HIP_R1 = 0.18

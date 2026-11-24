@@ -34,7 +34,7 @@ ids = [i for i, it in items.items() if it["slot"] in ("Top", "Outer", "Bottom")]
 os.makedirs(OUT, exist_ok=True)
 
 
-HIP_CUT = -0.08   # bottoms: faces above the hip joint + this (k) are "-hip" parts
+HIP_CUT = -0.10   # bottoms: faces above the hip joint + this (k) are "-hip" parts
 LONG_HEM = -0.09  # tops whose hem reaches below the hip joint + this (k) cover them: parts get a "__L" suffix
 
 
