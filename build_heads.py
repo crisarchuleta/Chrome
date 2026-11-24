@@ -194,7 +194,7 @@ def tex_material(name, image):
     tx.image = image
     nt.links.new(tx.outputs["Color"], b.inputs["Base Color"])
     nt.links.new(tx.outputs["Alpha"], b.inputs["Alpha"])
-    b.inputs["Roughness"].default_value = 0.55
+    b.inputs["Roughness"].default_value = 0.72
     m["nc_tinted"] = True
     MATS[name] = m
     return m
@@ -736,7 +736,9 @@ def front_hairline(H, V):
     a_brow = math.atan2(tail[0], -tail[1])
     a_t = a_brow + math.radians(4 if male else -18)
     burn = H.ear_z + (0.0 if male else 0.06)                        # how low the sideburn comes
-    corner = hz_c + (0.02 if male else 0.0) * smoothstep(a_t - math.radians(20), a_t, a)
+    # (straight across, the middle a touch higher, rounding over into the temples: no dip in the centre like a
+    #  widow's peak, which raising only the corners made)
+    corner = hz_c + (0.008 if male else 0.0) * (1 - smoothstep(0.0, a_t, a))
     drop = np.clip((a - a_t) / math.radians(14 if male else 42), 0, 1)       # (the temple: nearly straight down)
     # (women: a rounder curve down over the temple to just in front of the ear top, the temple itself covered)
     hz = corner + (burn - corner) * (smoothstep(0.0, 1.0, drop) ** (0.55 if male else 0.8))
@@ -796,7 +798,7 @@ def build_styles(H):
 
     FLOWS = {"crown": flow_crown, "back": flow_back}
 
-    def make_cards(key, p, cov, T):
+    def make_cards(key, p, cov, T, fade_top=None):
         cp = p["cards"]
         rng = np.random.default_rng(abs(hash(key)) % (2 ** 31))
         flow = FLOWS[cp.get("flow", "crown")]
@@ -811,19 +813,34 @@ def build_styles(H):
 
         def height_at(frac):
             return lambda loc: vol[kdv.find(loc)[1]] * frac
-        for kind, spacing, hfrac, width, lmul, wmin in cp["layers"]:
+        relc = V - H.centre
+        masks = {
+            # the front strip along the hairline, where the hair rises off the forehead (its coverage is still
+            # feathering in, so the coverage-weighted layers leave it bare)
+            "front": smoothstep(0.35 * H.R, 0.7 * H.R, -relc[:, 1]) * smoothstep(H.anchor[2] + 0.12, H.anchor[2] + 0.2, V[:, 2]),
+        }
+        for layer in cp["layers"]:
+            kind, spacing, hfrac, width, lmul, wmin = layer[:6]
             weight = smoothstep(wmin, 1.0, cov)
-            for i in sample_roots_(rng, weight, spacing):
-                length = (cp["len_side"] + (cp["len_top"] - cp["len_side"]) * tw[i]) * lmul * rng.uniform(0.8, 1.15)
+            if len(layer) > 6:
+                weight = weight * masks[layer[6]]
+            for root, i in sample_roots_(rng, weight, spacing):
+                # (the back of a crop is short: the long top hair is the front and crown, so no bowl-shaped fringe)
+                backness = float(smoothstep(0.15 * H.R, 0.65 * H.R, relc[i, 1]))
+                length = (cp["len_side"] + (cp["len_top"] - cp["len_side"]) * tw[i] * (1 - 0.7 * backness)) * lmul * rng.uniform(0.8, 1.15)
+                # (shorter towards the fade, so hair combed down the back doesn't hang over the faded skin)
+                length *= 0.3 + 0.7 * smoothstep(0.5, 1.0, cov[i])
+                if fade_top is not None:                         # and never down past where the fade begins
+                    length = min(length, max(0.025, 1.3 * (root[2] - fade_top[i] + 0.08)))
                 # keep the card about as long as the strand texture is tall for its width (1:4 in the atlas): a short
                 # card as wide as it is long squashes the strands into a brush-shaped block
                 w_i = min(width, length * 0.4)
                 segs_i = max(3, int(round(cp.get("segs", 6) * min(1.0, length / (0.6 * cp["len_top"])))))
-                vv, ff, uu, ww = HC.grow_card(H, V[i], flow, length, height_at(hfrac * rng.uniform(0.85, 1.1)), w_i,
+                vv, ff, uu, ww = HC.grow_card(H, root, flow, length, height_at(hfrac * rng.uniform(0.85, 1.1)), w_i,
                                               segs_i, rng, kind, jitter=cp.get("jitter", 0.35),
                                               lift_curve=lambda s_: min(1.0, s_ / 0.2) ** 0.7 * (1 - 0.35 * s_ * s_))
                 builders["full"].add(vv, ff, uu, ww)
-                if V[i][2] < H.anchor[2] + 0.2:                  # (under a hat only the band below it shows)
+                if root[2] < H.anchor[2] + 0.2:                  # (under a hat only the band below it shows)
                     builders["cap"].add(vv, ff, uu, ww)
         mk = lambda b_, n_: b_.make(n_, uv=False) if b_.v else None
         out_ = []
@@ -838,8 +855,27 @@ def build_styles(H):
             out_.append(ob)
         return out_
 
+    # root candidates: random points over the scalp's triangles (the mesh's own vertices are too sparse for dense
+    # cards), each with the index of its nearest vertex for the style's fields
+    Fa = np.array([f for f in F if len(f) == 3] + [[f[0], f[2], f[3]] for f in F if len(f) == 4] +
+                  [[f[0], f[1], f[2]] for f in F if len(f) == 4])
+    _r = np.random.default_rng(5)
+    _A = np.linalg.norm(np.cross(V[Fa[:, 1]] - V[Fa[:, 0]], V[Fa[:, 2]] - V[Fa[:, 0]]), axis=1)
+    _fi = _r.choice(len(Fa), 60000, p=_A / _A.sum())
+    _b = _r.random((60000, 2))
+    _flip = _b.sum(1) > 1
+    _b[_flip] = 1 - _b[_flip]
+    CAND = V[Fa[_fi, 0]] + _b[:, :1] * (V[Fa[_fi, 1]] - V[Fa[_fi, 0]]) + _b[:, 1:] * (V[Fa[_fi, 2]] - V[Fa[_fi, 0]])
+    _kd = KDTree(len(V))
+    for ii, vv_ in enumerate(V):
+        _kd.insert(vv_, ii)
+    _kd.balance()
+    CAND_I = np.array([_kd.find(c)[1] for c in CAND])
+
     def sample_roots_(rng, weight, spacing):
-        return HC.sample_roots(rng, V, weight, spacing)
+        """roots as (point, nearest vertex index) pairs"""
+        keep = HC.sample_roots(rng, CAND, weight[CAND_I], spacing)
+        return [(CAND[k], CAND_I[k]) for k in keep]
 
     def add_short(key, label, p, extras=None):
         T, hl = style_short(H, V, F, S, N, d, p)
@@ -886,7 +922,12 @@ def build_styles(H):
             cov = np.minimum(cov, 1 - on_top * (1 - smoothstep(0.004, 0.012, dpart)))
         if "fade_z" in p:
             fz = (p["fade_line"](V) if "fade_line" in p else H.ear_z) + p["fade_z"] + p.get("fade_front", 0.0) * smoothstep(0.0, 0.6 * H.R, -(V[:, 1] - H.centre[1]))
-            fc = smoothstep(fz - p.get("fade_len", 0.3), fz + 0.1, V[:, 2] + 0.03 * noise(V, 9))
+            # (fade_len_front: a shorter fade at the temples, where the reference goes from the corner to skin
+            #  within a few cm, while the sides and back fade over a longer stretch)
+            fwd = smoothstep(0.0, 0.6 * H.R, -(V[:, 1] - H.centre[1]))
+            flen0 = p.get("fade_len", 0.3)
+            flen0 = flen0 + (p.get("fade_len_front", flen0) - flen0) * fwd
+            fc = smoothstep(fz - flen0, fz + 0.1 * (flen0 / p.get("fade_len", 0.3)), V[:, 2] + 0.03 * noise(V, 9))
             if p.get("hard_part") is not None:               # (the fade starts right under the part: dark there,
                 below = p["hard_part"](V) - V[:, 2]          # then a long thinning tail down to skin)
                 flen = p["fade_len"] * (1 + 0.4 * smoothstep(0.0, 0.6 * H.R, V[:, 1] - H.centre[1]))   # (longer down the back)
@@ -897,8 +938,16 @@ def build_styles(H):
         if p.get("cards"):
             # hair cards: the scalp layer is a thin painted base (colour under the cards, the fade, the edge-up);
             # the volume is cards of single-hair texture grown along the style's flow
-            cards, capcards = make_cards(key, p, cov, T)
-            T = np.minimum(T, 0.003)
+            fade_top = None
+            if "fade_z" in p:
+                fade_top = (p["fade_line"](V) if "fade_line" in p else np.full(len(V), H.ear_z)) + p["fade_z"]
+            cards, capcards = make_cards(key, p, cov, T, fade_top)
+            # base > 0 keeps a solid inner layer of the hair (that share of the volume) under the cards: it gives
+            # the smooth outline of the cut and nothing shows through, while the cards on its surface give strands
+            T = T * p["cards"]["base"] if p["cards"].get("base") else np.minimum(T, 0.003)
+            # the solid base thins out over the last couple of cm to the hairline, so the front hair rises off the
+            # forehead in cards instead of the base ending in a rolled edge
+            T = T * (0.15 + 0.85 * smoothstep(0.0, p["cards"].get("edge_ramp", 0.07), hl))
         hair = shell(f"Hair_{key}", V, F, N, T, field=field, lift=0.0035, uv=(cov, ev))
         if extras:
             b = Builder()
@@ -920,13 +969,14 @@ def build_styles(H):
         add_short("Crop", "Short Crop", dict(top=0.06, side=0.02, front_lift=0.025, feather=0.06, groove=0.08, freq=44))
         # textured crop with a mid skin fade (references hair_ref_1): 4-6 cm on top brushed up with a small front lift,
         # the fade thins the same colour out to skin from just above the ear
-        add_short("TaperFade", "Textured Crop, Mid Fade", dict(top=0.07, side=0.012, top_from=0.0, top_to=0.9, front_lift=0.04, fade_z=0.22,
-                                                              feather=0.035, groove=0.08, freq=60, texture=0.14,
-                                                              cards=dict(flow="back", len_top=0.3, len_side=0.07, jitter=0.12, segs=7,
+        add_short("TaperFade", "Textured Crop, Mid Fade", dict(top=0.07, side=0.012, top_from=0.0, top_to=0.9, front_lift=0.04, fade_z=0.3, fade_len=0.26, fade_front=0.06, fade_len_front=0.12,
+                                                              feather=0.035, groove=0.03, freq=60, texture=0.0,
+                                                              cards=dict(flow="back", base=0.55, len_top=0.3, len_side=0.07, jitter=0.1, segs=6,
                                                                          # (kind, root spacing, height share, width, length x, min coverage)
-                                                                         layers=[("STRAIGHT_DENSE", 0.042, 0.45, 0.034, 1.0, 0.75),
-                                                                                 ("STRAIGHT_WISPY", 0.042, 0.6, 0.032, 1.0, 0.85),
-                                                                                 ("STRAIGHT_WISPY", 0.017, 0.2, 0.03, 0.4, 0.45)])))
+                                                                         layers=[("STRAIGHT_DENSE", 0.025, 0.86, 0.04, 1.0, 0.7),
+                                                                                 ("STRAIGHT_DENSE", 0.022, 0.9, 0.036, 1.0, 0.1, "front"),   # lying on the base
+                                                                                 ("STRAIGHT_DENSE", 0.027, 0.88, 0.036, 1.0, 0.8),  # the outer shape
+                                                                                 ("STRAIGHT_WISPY", 0.02, 0.72, 0.03, 0.4, 0.45)])))
         add_short("HighFade", "High Skin Fade", dict(top=0.10, side=0.02, fade_z=0.22, feather=0.06, groove=0.1, freq=24))
         add_short("SidePart", "Side Part", dict(top=0.10, side=0.025, part=0.32, sweep=0.03, feather=0.07, groove=0.12))
         add_short("CurlyTop", "Curly Top", dict(top=0.12, side=0.018, fade_z=0.05, curls=260, curl_r=0.028, curl_amp=0.25, feather=0.06))
@@ -1706,6 +1756,11 @@ for _, model in ipairs(Selection:Get()) do
 \t\t\tpart.Anchored = false
 \t\t\tpart.CanCollide, part.CanTouch, part.CanQuery, part.Massless = false, false, false, true
 \t\t\tpart.CastShadow = false
+\t\t\t-- full detail at every distance: the automatic level of detail swaps in a coarse mesh further away, which
+\t\t\t-- showed the hair as a hard-edged cap with no fade
+\t\t\tpcall(function()
+\t\t\t\tpart.RenderFidelity = Enum.RenderFidelity.Precise
+\t\t\tend)
 \t\t\t-- hair, brows and stubble keep their greyscale texture as a SurfaceAppearance with soft alpha
 \t\t\tlocal sa = part:FindFirstChildOfClass("SurfaceAppearance")
 \t\t\tif not sa and part.TextureID ~= "" then

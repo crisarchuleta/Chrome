@@ -28,6 +28,11 @@ for _, model in ipairs(Selection:Get()) do
 			part.Anchored = false
 			part.CanCollide, part.CanTouch, part.CanQuery, part.Massless = false, false, false, true
 			part.CastShadow = false
+			-- full detail at every distance: the automatic level of detail swaps in a coarse mesh further away, which
+			-- showed the hair as a hard-edged cap with no fade
+			pcall(function()
+				part.RenderFidelity = Enum.RenderFidelity.Precise
+			end)
 			-- hair, brows and stubble keep their greyscale texture as a SurfaceAppearance with soft alpha
 			local sa = part:FindFirstChildOfClass("SurfaceAppearance")
 			if not sa and part.TextureID ~= "" then

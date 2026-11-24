@@ -69,7 +69,7 @@ def _strand_paths(rng, kind, n, H, W):
         # a gentle random drift so no two are parallel
         drift = _smooth(np.cumsum(rng.normal(0, 0.25, H)), 60)
         drift -= np.linspace(0, drift[-1], H)
-        x = x + drift * (0.4 if kind != "COILY" else 0.8)
+        x = x + drift * (0.25 if kind != "COILY" else 0.8)
         if kind == "STRAIGHT_WISPY" and rng.random() < 0.25:            # flyaways leave the clump
             x = x + (rng.choice([-1, 1]) * rng.uniform(0.05, 0.2) * W) * v ** 2
         width = rng.uniform(1.0, 2.1) * (W / 256)
@@ -129,7 +129,7 @@ def make_atlas(out_dir, seed=21):
         col[:, k * W:(k + 1) * W] = c
         nx[:, k * W:(k + 1) * W] = x
     # tangent-space normal: each strand is a little cylinder, so its normal turns across its width
-    ang = nx * math.radians(55)
+    ang = nx * math.radians(38)
     N = np.dstack([np.sin(ang), np.zeros_like(ang), np.cos(ang)])
     # fine lengthwise ridges break up the highlight like real hair
     ridge = 0.08 * np.sin(np.arange(H)[:, None] * 0.0 + np.arange(ATLAS)[None, :] * 2.1)
