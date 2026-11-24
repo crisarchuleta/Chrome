@@ -318,67 +318,10 @@ local function spawnCar(player, vid)
 	end)
 	-- opening panels: a prompt on the trunk, hood and gas door (and each door, to show the car off). Doors also
 	-- swing open by themselves for a moment when someone gets in or out on that side.
-	local PROMPT = {
-		trunk = { "Pop the trunk", "Close the trunk" },
-		hatch = { "Open the hatch", "Close the hatch" },
-		liftgate = { "Open the liftgate", "Close the liftgate" },
-		tailgate = { "Drop the tailgate", "Close the tailgate" },
-		hood = { "Pop the hood", "Close the hood" },
-		fuel = { "Open the gas door", "Close the gas door" },
-		door = { "Open the door", "Close the door" },
-		seat = { "Lift the seat", "Close the seat" },
-		cap = { "Open the gas cap", "Close the gas cap" },
-	}
-	local panels = Kit.Panels(car)
-	for name, root in panels do
-		local kind = root:GetAttribute("Kind") or "trunk"
-		local text = PROMPT[kind] or PROMPT.trunk
-		local at = Instance.new("Attachment") -- the prompt sits in the middle of the panel, not on its hinge
-		at.Name = "PromptAt"
-		at.Parent = root
-		local bcf = root.Parent:GetBoundingBox()
-		at.WorldPosition = bcf.Position
-		local tp = Instance.new("ProximityPrompt")
-		tp.Name = "Open" .. name
-		tp.ActionText = text[1]
-		tp.ObjectText = Vehicles.Get(vid).name
-		tp.HoldDuration = 0.15
-		tp.MaxActivationDistance = kind == "fuel" and 5 or 7
-		tp.RequiresLineOfSight = false
-		tp.Parent = at
-		root:GetAttributeChangedSignal("Amount"):Connect(function()
-			tp.ActionText = text[(root:GetAttribute("Amount") or 0) > 0.5 and 2 or 1]
-		end)
-		tp.Triggered:Connect(function(who)
-			if who == player then
-				Kit.SetOpen(car, name, not Kit.IsOpen(car, name))
-			end
-		end)
-	end
-	for _, sp in car:GetChildren() do
-		if sp:IsA("Seat") or sp:IsA("VehicleSeat") then
-			local door, best
-			for name, root in panels do
-				local d = (root.Position - sp.Position).Magnitude
-				if root:GetAttribute("Kind") == "door" and (not best or d < best) then
-					door, best = name, d
-				end
-			end
-			if door then
-				sp:GetPropertyChangedSignal("Occupant"):Connect(function()
-					if Kit.IsOpen(car, door) then
-						return -- already open (left open with the prompt)
-					end
-					Kit.SetOpen(car, door, true, 0.3)
-					task.delay(1.1, function()
-						if car.Parent then
-							Kit.SetOpen(car, door, false, 0.35)
-						end
-					end)
-				end)
-			end
-		end
-	end
+	Kit.AddPanelPrompts(car, function(who)
+		return who == player
+	end)
+	Kit.AutoDoors(car)
 	return true
 end
 
@@ -478,8 +421,14 @@ local lastState = {}
 StateRE.OnServerEvent:Connect(function(player, carModel, fl, fr, rl, rr, mode)
 	local car = cars[player]
 	if carModel ~= car or not car then
-		-- passengers' clients never send; a driver of someone else's car is refused at the seat
-		return
+		-- passengers' clients never send; a driver of someone else's car is refused at the seat. The city's cars
+		-- (NCVehicleWorld) report from whoever is simulating them.
+		if typeof(carModel) == "Instance" and carModel:IsA("Model") and carModel:GetAttribute("IsCar")
+			and carModel:GetAttribute("NCLowrider") and carModel:GetAttribute("Sim") == player.UserId then
+			car = carModel
+		else
+			return
+		end
 	end
 	local now = os.clock()
 	if lastState[player] and now - lastState[player] < 0.05 then

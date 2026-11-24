@@ -875,6 +875,87 @@ function Kit.SetOpen(car, name, open, time)
 	return true
 end
 
+-- server: a prompt on every opening panel (trunk, hood, gas door, doors). canUse(player) decides who may open them
+-- (nil = anyone). Used by Low & Slow rides and the city's cars alike.
+local PROMPT = {
+	trunk = { "Pop the trunk", "Close the trunk" },
+	hatch = { "Open the hatch", "Close the hatch" },
+	liftgate = { "Open the liftgate", "Close the liftgate" },
+	tailgate = { "Drop the tailgate", "Close the tailgate" },
+	hood = { "Pop the hood", "Close the hood" },
+	fuel = { "Open the gas door", "Close the gas door" },
+	door = { "Open the door", "Close the door" },
+	seat = { "Lift the seat", "Close the seat" },
+	cap = { "Open the gas cap", "Close the gas cap" },
+}
+function Kit.AddPanelPrompts(car, canUse)
+	local title = Vehicles.Get(Vehicles.Of(car)).name
+	for name, root in Kit.Panels(car) do
+		local kind = root:GetAttribute("Kind") or "trunk"
+		local text = PROMPT[kind] or PROMPT.trunk
+		local at = Instance.new("Attachment") -- the prompt sits in the middle of the panel, not on its hinge
+		at.Name = "PromptAt"
+		at.Parent = root
+		local bcf = root.Parent:GetBoundingBox()
+		at.WorldPosition = bcf.Position
+		local tp = Instance.new("ProximityPrompt")
+		tp.Name = "Open" .. name
+		tp.ActionText = text[1]
+		tp.ObjectText = title
+		tp.HoldDuration = 0.15
+		tp.MaxActivationDistance = (kind == "fuel" or kind == "cap") and 5 or 7
+		tp.RequiresLineOfSight = false
+		tp.Parent = at
+		root:GetAttributeChangedSignal("Amount"):Connect(function()
+			tp.ActionText = text[(root:GetAttribute("Amount") or 0) > 0.5 and 2 or 1]
+		end)
+		tp.Triggered:Connect(function(who)
+			if not canUse or canUse(who) then
+				Kit.SetOpen(car, name, not Kit.IsOpen(car, name))
+			end
+		end)
+	end
+end
+
+-- the door nearest a seat ("DoorL"...), or nil (bikes, the open cart)
+function Kit.DoorFor(car, seat)
+	local door, best
+	for name, root in Kit.Panels(car) do
+		local d = (root.Position - seat.Position).Magnitude
+		if root:GetAttribute("Kind") == "door" and (not best or d < best) then
+			door, best = name, d
+		end
+	end
+	return door
+end
+
+-- swings a door open for a moment and shuts it (getting in / out); leaves a door that was left open alone
+function Kit.PulseDoor(car, door)
+	if not door or Kit.IsOpen(car, door) then
+		return
+	end
+	Kit.SetOpen(car, door, true, 0.3)
+	task.delay(1.1, function()
+		if car.Parent then
+			Kit.SetOpen(car, door, false, 0.35)
+		end
+	end)
+end
+
+-- server: every seat's door swings open by itself when someone gets in or out on that side
+function Kit.AutoDoors(car)
+	for _, sp in car:GetChildren() do
+		if sp:IsA("Seat") or sp:IsA("VehicleSeat") then
+			local door = Kit.DoorFor(car, sp)
+			if door then
+				sp:GetPropertyChangedSignal("Occupant"):Connect(function()
+					Kit.PulseDoor(car, door)
+				end)
+			end
+		end
+	end
+end
+
 -- the car's ground origin (between the axles) in world space
 function Kit.Origin(car)
 	local ch = car.PrimaryPart

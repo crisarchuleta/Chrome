@@ -73,3 +73,32 @@ in nc_car_kit.py (the lowrider uses them too).
    `require(game.ReplicatedStorage.NCLowriderKit).Prepare(workspace.<ImportedModel>)` for each import.
 3. They show up in the Garage list at Low & Slow Kustoms. Hooking them into CarSpawner / HomeService / PoliceAI /
    PhoneService (which find cars by name in ServerStorage.CarTemplates) is the last step.
+
+## In the game (NCVehicleWorld)
+
+The city's cars now come from this system. `CarSpawner`, `PoliceAI` and `HomeService` still call
+`Spawner.MakeCar(cf, paint, glow, templateName)`; when `templateName` is an NCVehicles id whose meshes are imported
+(`LowriderAssets/<id>/Car`), `NCVehicleWorld.Build` makes a Kit car instead of cloning `ServerStorage.CarTemplates`.
+Anything it can't build falls back to the old template, so nothing breaks mid-install.
+
+* Parked cars rest anchored on their spot. Sitting in the driver's seat unanchors the car and hands its physics to
+  that player's LowriderClient. An empty car that stops for 25 s, or whose driver is 300 studs away or gone, settles
+  (anchored, level, on the ground).
+* F at any seat swings that door open, seats you and shuts it. Trunk / hood / gas door / doors have prompts
+  (personal and garage cars: owner only; anyone can ride along, only the owner drives).
+* Coast Patrol: `PoliceCruiser` and `ArmoredTruck` are driven on the server with the same suspension model
+  (`NCVehicleSim`, shared with LowriderClient) through `World.AIDrive(car, throttle, steer, dt)`. The roof lights
+  (`PoliceRed` / `PoliceBlue` pieces) flash.
+* Garage: stored Kit cars show in the bays (`World.Display`); `HomeConfig.Cars` adds Ironclad SS and Dunewalker.
+* NeonCoastClient leaves Kit cars to LowriderClient (no VectorVelocity driving, G stays three-wheel).
+
+### Install (Studio)
+
+1. ReplicatedStorage: add ModuleScript `NCVehicleSim` (NCVehicleSim.lua). Replace `NCLowriderKit`, `HomeConfig`.
+2. ServerScriptService: add ModuleScript `NCVehicleWorld` (NCVehicleWorld.lua). Replace the sources of
+   `CarSpawner`, `PoliceAI`, `HomeService`, `LowriderService`.
+3. StarterPlayerScripts: replace `LowriderClient` and `NeonCoastClient`.
+4. Make sure every vehicle's `NCVehicleData_<id>` module is in ReplicatedStorage and its GLBs are imported and run
+   through `NCLowriderKit.Prepare` (VEHICLES.md, above). Vehicles not yet imported keep using the old templates.
+5. Play test: parked cars, V for a personal car, F to get in, drive, get out (car settles), garage store + drive out,
+   get a wanted level and check the patrol cars chase and bust.
