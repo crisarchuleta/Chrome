@@ -257,6 +257,9 @@ class Head:
         self.chin = chin_band[np.argmin(chin_band[:, 1])] if len(chin_band) else self.mouth - np.array([0, 0, 0.2])
         self.centre = np.array([0.0, (c[:, 1].min() + c[:, 1].max()) / 2, self.ear_z + 0.1])
         self.R = float(np.median(np.linalg.norm(c[c[:, 2] > self.anchor[2]] - self.centre, axis=1)))
+        if os.environ.get("NC_DBG"):
+            print("NC_DBG_FRAME", gender, "anchor", self.anchor.round(4).tolist(), "R", round(self.R, 4), "centre", self.centre.round(4).tolist(),
+                  "capline_front", round(self.anchor[2] + self.R * 0.41, 4), "capline_back", round(self.anchor[2] + self.R * 0.11, 4))
 
     def nearest(self, p):
         loc, nrm, fi, d = self.bvh.find_nearest(Vector(p))
@@ -1290,8 +1293,11 @@ def build_styles(H):
             for ii, pe in enumerate(ears):
                 kxy.insert((pe[0], pe[1], 0.0), ii)
             kxy.balance()
-            cand = np.array([i for i in np.where(T > 0.012)[0] if kde.find(V[i])[2] > 0.13
-                             and kxy.find((V[i][0], V[i][1], 0.0))[2] > 0.06])
+            # (face-framing locs also grow over the temples, right down to just above the ear: otherwise the shell
+            #  showed there as a smooth slab between the ropes)
+            e_min, xy_min = (0.075, 0.025) if frame_face else (0.13, 0.06)
+            cand = np.array([i for i in np.where(T > 0.012)[0] if kde.find(V[i])[2] > e_min
+                             and kxy.find((V[i][0], V[i][1], 0.0))[2] > xy_min])
             r2.shuffle(cand)
             rel = V - H.centre
             chosen = []
@@ -1370,6 +1376,15 @@ def build_styles(H):
                     # tucked in towards the head at its top end, so the cut end hides under the brim
                     near = H.nearest(Pp[j0])[0]
                     Pp = np.vstack([near + (Pp[j0] - near) * 0.4, Pp[j0:]])
+                    # the top of each loc lies in against the head under the band (it bulged out wider than the hat)
+                    n_t = max(2, len(Pp) // 3)
+                    for j in range(1, n_t):
+                        nj = H.nearest(Pp[j])[0]
+                        d_ = Pp[j] - nj
+                        dl = np.linalg.norm(d_)
+                        want = radius * 1.05 + (dl - radius * 1.05) * (j / n_t) ** 1.5
+                        if dl > want:
+                            Pp[j] = nj + d_ / dl * want
                 pts = list(Pp)
                 rad = [radius * (1.0 - 0.35 * (j / len(pts)) ** 2) for j in range(len(pts))]
                 rad[0] *= 0.8
@@ -1530,7 +1545,7 @@ def build_styles(H):
     if male:
         # thick two-strand rope-twist locs to the collarbone from a centre part, framing the face, tips curling;
         # under a hat they hang out from under the band all round (the person's photos, 2026-11-24)
-        add_short("Locs", "Rope Twist Locs", dict(base, parts_y=True), locs_extras(0.95, 12, 64, 0.05, 0.95, part=True, two_strand=True,
+        add_short("Locs", "Rope Twist Locs", dict(base, parts_y=True), locs_extras(0.95, 12, 80, 0.05, 0.95, part=True, two_strand=True,
                                                                      gap=0.085, clear_k=1.15, frame_face=True, hat_tail=True,
                                                                      curl_tips=True, turns=22.0))
         # hanging two-strand twists from a centre part, ending at the brows, the ear tops and the fade line, with a
