@@ -5765,8 +5765,8 @@ D.Male = {
 		["Hair_Buzz_Cap"] = { kind = "HairCap", key = "Buzz", label = "Buzz Cut", offset = Vector3.new(0.0001, 0.0723, 0.3323), size = Vector3.new(0.5867, 0.7221, 0.7286) },
 		["Hair_Crop"] = { kind = "Hair", key = "Crop", label = "Short Crop", offset = Vector3.new(0.0006, 0.0974, 0.3453), size = Vector3.new(0.6410, 0.7723, 0.7547) },
 		["Hair_Crop_Cap"] = { kind = "HairCap", key = "Crop", label = "Short Crop", offset = Vector3.new(0.0006, 0.0723, 0.3453), size = Vector3.new(0.6410, 0.7221, 0.7547) },
-		["Hair_TaperFade"] = { kind = "Hair", key = "TaperFade", label = "Textured Crop, Mid Fade", offset = Vector3.new(0.0003, 0.1878, 0.3275), size = Vector3.new(0.6380, 0.6434, 0.7861) },
-		["Hair_TaperFade_Cap"] = { kind = "HairCap", key = "TaperFade", label = "Textured Crop, Mid Fade", offset = Vector3.new(-0.0002, 0.1497, 0.3442), size = Vector3.new(0.6369, 0.5673, 0.7526) },
+		["Hair_TaperFade"] = { kind = "Hair", key = "TaperFade", label = "Textured Crop, Mid Fade", offset = Vector3.new(0.0019, 0.2140, 0.3245), size = Vector3.new(0.6396, 0.5966, 0.7749) },
+		["Hair_TaperFade_Cap"] = { kind = "HairCap", key = "TaperFade", label = "Textured Crop, Mid Fade", offset = Vector3.new(-0.0011, 0.1746, 0.3399), size = Vector3.new(0.6335, 0.5176, 0.7439) },
 		["Hair_HighFade"] = { kind = "Hair", key = "HighFade", label = "High Skin Fade", offset = Vector3.new(0.0003, 0.2160, 0.3624), size = Vector3.new(0.7145, 0.6005, 0.7890) },
 		["Hair_HighFade_Cap"] = { kind = "HairCap", key = "HighFade", label = "High Skin Fade", offset = Vector3.new(0.0003, 0.1746, 0.3624), size = Vector3.new(0.7145, 0.5176, 0.7890) },
 		["Hair_SidePart"] = { kind = "Hair", key = "SidePart", label = "Side Part", offset = Vector3.new(0.0150, 0.1262, 0.3713), size = Vector3.new(0.7308, 0.8299, 0.8066) },
@@ -5777,8 +5777,8 @@ D.Male = {
 		["Hair_Locs_Cap"] = { kind = "HairCap", key = "Locs", label = "Shoulder Locs", offset = Vector3.new(-0.0003, -0.4703, 0.4176), size = Vector3.new(1.0000, 1.8072, 0.9920) },
 		["Hair_Twists"] = { kind = "Hair", key = "Twists", label = "Hanging Twists", offset = Vector3.new(0.0051, 0.1687, 0.3043), size = Vector3.new(0.6609, 0.5447, 0.8466) },
 		["Hair_Twists_Cap"] = { kind = "HairCap", key = "Twists", label = "Hanging Twists", offset = Vector3.new(-0.0038, 0.1652, 0.3486), size = Vector3.new(0.6276, 0.5363, 0.7613) },
-		["Hair_FlatTwists"] = { kind = "Hair", key = "FlatTwists", label = "Flat Twists", offset = Vector3.new(-0.0004, 0.1617, 0.3364), size = Vector3.new(0.6222, 0.6049, 0.7369) },
-		["Hair_FlatTwists_Cap"] = { kind = "HairCap", key = "FlatTwists", label = "Flat Twists", offset = Vector3.new(0.0003, 0.1460, 0.3367), size = Vector3.new(0.5930, 0.5736, 0.7375) },
+		["Hair_FlatTwists"] = { kind = "Hair", key = "FlatTwists", label = "Flat Twists", offset = Vector3.new(-0.0000, 0.1766, 0.3351), size = Vector3.new(0.6315, 0.5755, 0.7430) },
+		["Hair_FlatTwists_Cap"] = { kind = "HairCap", key = "FlatTwists", label = "Flat Twists", offset = Vector3.new(-0.0000, 0.1608, 0.3367), size = Vector3.new(0.6315, 0.5440, 0.7376) },
 		["Brows_Natural"] = { kind = "Brows", key = "Natural", label = "Natural", offset = Vector3.new(0.0000, 0.1242, -0.0511), size = Vector3.new(0.4132, 0.0750, 0.0958) },
 		["Brows_Thick"] = { kind = "Brows", key = "Thick", label = "Thick", offset = Vector3.new(-0.0000, 0.1236, -0.0507), size = Vector3.new(0.4147, 0.0952, 0.0978) },
 		["Brows_Arched"] = { kind = "Brows", key = "Arched", label = "Arched", offset = Vector3.new(-0.0000, 0.1395, -0.0487), size = Vector3.new(0.4063, 0.0831, 0.0974) },
@@ -5869,7 +5869,7 @@ return D
 -- Pieces:
 --   NC_Ink_<Body>.fbx      the 13 layers (Ink_LeftUpperArm ... Ink_Face) skinned to that body's rig. Import each
 --                          into ReplicatedStorage.NCInkRigs as a Model named <Body> (e.g. "Male_Average").
---   NCInkSwatches.glb      every tattoo PNG on its own plane. Import it once into Workspace, run
+--   NCInkSwatches_1.glb + NCInkSwatches_2.glb      every tattoo PNG on its own plane. Import it once into Workspace, run
 --                          NCInkSetup.Prepare(model) from the command bar: it saves each texture's asset id into
 --                          ReplicatedStorage.NCInkIds (StringValues named after the file) and you can delete the model.
 --   NCInkCatalog           the tattoo list (generated from ink_catalog.json).
@@ -6186,10 +6186,11 @@ return C
 ]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX11"><Properties><string name="Name">NCInkSetup</string><ProtectedString name="Source"><![CDATA[--!nonstrict
 -- NCInkSetup (ModuleScript, Studio only): one-time setup for the tattoo textures.
 --
--- 1. File > Import 3D: NCInkSwatches.glb (every tattoo PNG on a plane named after the file). Studio uploads the
---    images as it imports.
--- 2. Command bar:
---      require(game.ServerStorage.NCInkSetup).Prepare(workspace.NCInkSwatches)
+-- 1. File > Import 3D: NCInkSwatches_1.glb and NCInkSwatches_2.glb (every tattoo PNG on a plane named after the
+--    file, split in two so each file stays under the 20 MB upload limit). Studio uploads the images as it imports.
+-- 2. Command bar (once per swatch model; the missing-list is only complete after the second):
+--      require(game.ServerStorage.NCInkSetup).Prepare(workspace.NCInkSwatches_1)
+--      require(game.ServerStorage.NCInkSetup).Prepare(workspace.NCInkSwatches_2)
 --    Each plane's texture asset id is saved to ReplicatedStorage.NCInkIds as a StringValue named after the file
 --    (e.g. "sl_rosas_nubes_L"). The report lists anything missing. Delete the swatch model afterwards.
 -- 3. Import NC_Ink_<Body>.fbx for each of the 10 bodies into ReplicatedStorage.NCInkRigs as Models named <Body>.

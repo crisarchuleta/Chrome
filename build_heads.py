@@ -642,6 +642,9 @@ def style_short(H, V, F, S, N, d, p):
         T = T * (1 - k / 2 + k * np.clip(bumps, 0, 1.2)) + 0.012 * noise(V, 22)
     else:
         T = combed(V, N, crown, p.get("freq", 26), p.get("groove", 0.3), T)
+    if p.get("texture"):                                 # short textured hair: small tufts all over, not smooth streaks
+        tw = smoothstep(0.0, 0.4 * R, up)
+        T = T * (1 + p["texture"] * tw * (0.5 * noise(V, 90) + 0.5 * noise(V, 160)))
     T = np.maximum(T, 0) * cover
     return T, hl
 
@@ -756,11 +759,12 @@ def build_styles(H):
         cov = np.clip(hl / (feather * (1 + 1.5 * low) * (1 - 0.6 * burnz)), 0, 1)
         field = hl + 0.004                                   # the surface runs just past the edge, flush on the skin
         if p.get("parts_phi") is not None:                   # clean scalp parts between the rows
-            phv = np.arctan2(relv[:, 0], V[:, 2] - H.ear_z)
-            rxz = np.hypot(relv[:, 0], V[:, 2] - H.ear_z)
+            az_ = H.ear_z - p.get("parts_axis", 0.0)
+            phv = np.arctan2(relv[:, 0], V[:, 2] - az_)
+            rxz = np.hypot(relv[:, 0], V[:, 2] - az_)
             dpart = np.min(np.abs(phv[:, None] - np.radians(p["parts_phi"])[None, :]), axis=1) * rxz
             # (clean parts only where the rows sit close; lower on the sides the base is left dark)
-            on_top = smoothstep(H.anchor[2] + 0.2, H.anchor[2] + 0.3, V[:, 2]) * smoothstep(math.radians(50), math.radians(35), np.abs(phv))
+            on_top = smoothstep(H.anchor[2] + 0.2, H.anchor[2] + 0.3, V[:, 2]) * smoothstep(math.radians(30), math.radians(22), np.abs(phv))
             cov = np.minimum(cov, 1 - on_top * (1 - smoothstep(0.002, 0.007, dpart)))
         if p.get("parts_y") is not None:                     # a centre part from the hairline to the crown
             dpart = np.abs(relv[:, 0])
@@ -791,8 +795,8 @@ def build_styles(H):
         add_short("Crop", "Short Crop", dict(top=0.06, side=0.02, front_lift=0.025, feather=0.06, groove=0.08, freq=44))
         # textured crop with a mid skin fade (references hair_ref_1): 4-6 cm on top brushed up with a small front lift,
         # the fade thins the same colour out to skin from just above the ear
-        add_short("TaperFade", "Textured Crop, Mid Fade", dict(top=0.075, side=0.012, top_from=0.0, top_to=0.85, front_lift=0.04, fade_z=0.16,
-                                                              feather=0.04, groove=0.14, freq=40))
+        add_short("TaperFade", "Textured Crop, Mid Fade", dict(top=0.07, side=0.012, top_from=0.0, top_to=0.9, front_lift=0.04, fade_z=0.22,
+                                                              feather=0.035, groove=0.08, freq=60, texture=0.14))
         add_short("HighFade", "High Skin Fade", dict(top=0.10, side=0.02, fade_z=0.22, feather=0.06, groove=0.1, freq=24))
         add_short("SidePart", "Side Part", dict(top=0.10, side=0.025, part=0.32, sweep=0.03, feather=0.07, groove=0.12))
         add_short("CurlyTop", "Curly Top", dict(top=0.12, side=0.018, fade_z=0.05, curls=260, curl_r=0.028, curl_amp=0.25, feather=0.06))
@@ -858,7 +862,10 @@ def build_styles(H):
                     b.add(vv, ff)
         return ex
 
-    FT_SPAN = 60.0
+    # rows lie in planes through a front-to-back axis well below the head (under the jaw), so they run nearly
+    # parallel over the top like the reference instead of bunching together at the forehead
+    FT_AXIS = 0.5
+    FT_SPAN = 38.0
 
     def flat_twists(n_rows, radius):
         """two-strand flat twists in rows from the hairline over the crown to the fade (references hair_ref_2): each row
@@ -868,10 +875,10 @@ def build_styles(H):
         for ii, vv_ in enumerate(V):
             kv.insert(vv_, ii)
         kv.balance()
-        axis_o = Vector((0.0, H.centre[1], H.ear_z))
+        axis_o = Vector((0.0, H.centre[1], H.ear_z - FT_AXIS))
 
         def ex(b, T, capped=False):
-            fz = H.ear_z + 0.15
+            fz = H.ear_z + 0.1
             for ph in phis:
                 segs = [[]]
                 for th in np.linspace(math.radians(-20), math.radians(220), 200):
@@ -882,7 +889,7 @@ def build_styles(H):
                         continue
                     q = np.array(hit[0])
                     _, idx, _ = kv.find(q)
-                    if d[idx] < 0.012 or q[2] < fz + 0.06 or (capped and q[2] > H.anchor[2] + 0.2):
+                    if d[idx] < 0.005 or q[2] < fz or (capped and q[2] > H.anchor[2] + 0.2):
                         segs.append([])                         # (only inside the hairline and above the fade)
                         continue
                     segs[-1].append((q, np.array(hit[1])))
@@ -906,9 +913,9 @@ def build_styles(H):
         # squared edge-up and a high skin fade (references hair_ref_3)
         add_short("Twists", "Hanging Twists", dict(base, top=0.02, fade_z=0.2, feather=0.025, parts_y=True),
                   locs_extras(0.45, 14, 220, 0.022, 0.3, end_z=H.ear_z + 0.12, part=True, two_strand=True, gap=0.042, clear_k=0.8))
-        add_short("FlatTwists", "Flat Twists", dict(top=0.012, side=0.012, fade_z=0.15, feather=0.025, groove=0.05, freq=40,
-                                                    parts_phi=[-FT_SPAN + 2 * FT_SPAN * k / 11 for k in range(1, 11)]),
-                  flat_twists(11, 0.035))
+        add_short("FlatTwists", "Flat Twists", dict(top=0.012, side=0.012, fade_z=0.19, feather=0.025, groove=0.05, freq=40,
+                                                    parts_phi=[-FT_SPAN + 2 * FT_SPAN * k / 15 for k in range(1, 15)], parts_axis=FT_AXIS),
+                  flat_twists(15, 0.034))
     else:
         add_short("Locs", "Long Locs", base, locs_extras(1.8, 10, 80, 0.026, 0.38))
 
