@@ -164,8 +164,10 @@ that hugs the skin, so it looks like part of the skin, not a sticker.
      the layer blend that build_ink.py saves. `ink_fit.py` must measure against the same rig blend the Studio bodies were
      imported from (the part split changes between rig builds), or the ink sits off; `NCInk.Attach` warns if a part's
      size differs from `Ink.PART_SIZE`, and `NCInk.Debug(character)` prints each layer's placement.
-  4. `tools/ink/build_swatches.py` makes the swatch file.
-  5. `tools/ink/review.sh <Body>` renders every tattoo on a body to check it.
+  5. `tools/ink/wash.py <png dir> <out dir>` lightens the black-and-grey wash (thin ink fades faster and turns charcoal
+     grey; mid-alpha black read as solid black in game). Then `tools/ink/build_swatches.py` makes the two swatch files
+     from the washed PNGs (half the files in each).
+  6. `tools/ink/review.sh <Body>` renders every tattoo on a body to check it.
 
 ## How the 3D pieces work
 
