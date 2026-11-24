@@ -378,6 +378,29 @@ def clip(V, F, f, *fields):
     return (Vn, [[rm[v] for v in f2] for f2 in out]) + tuple(np.array([fl[v] for v in used]) for fl in flds)
 
 
+def drop_islands(Fc, nv, min_faces=24):
+    """the edge cut leaves tiny islands of hair out on the skin where the hairline noise pokes over zero: they show
+    as a dark mark under the hairline. Keep only pieces with a real number of faces."""
+    par = list(range(nv))
+
+    def find(a):
+        while par[a] != a:
+            par[a] = par[par[a]]
+            a = par[a]
+        return a
+    for f in Fc:
+        r0 = find(f[0])
+        for x in f[1:]:
+            r = find(x)
+            if r != r0:
+                par[r] = r0
+    cnt = {}
+    roots = [find(f[0]) for f in Fc]
+    for r in roots:
+        cnt[r] = cnt.get(r, 0) + 1
+    return [f for f, r in zip(Fc, roots) if cnt[r] >= min_faces]
+
+
 def shell(name, V, F, N, T, field=None, lift=0.004, uv=None):
     """hair as a single outer surface: head + normal * T. Its edge (field = 0, default the T = 0 line) is cut
     smooth and sits right on the skin, so the hair comes out of the head instead of ending in a step. No inner
@@ -389,6 +412,7 @@ def shell(name, V, F, N, T, field=None, lift=0.004, uv=None):
     else:
         Vc, Fc, Nc, Tc, Uc, Wc = clip(V, F, field, N, T, uv[0], uv[1])
     Nc = Nc / np.maximum(np.linalg.norm(Nc, axis=1), 1e-9)[:, None]
+    Fc = drop_islands(Fc, len(Vc))
     ob = mesh_object(name, Vc + Nc * (np.maximum(Tc, 0)[:, None] + lift), Fc)
     if uv is not None:
         UVS[ob.name] = (Uc, Wc)
@@ -860,8 +884,9 @@ def build_styles(H):
             if os.environ.get("NC_DBG"):
                 print("NC_DBG", key, layer[6] if len(layer) > 6 else "-", len(_roots), float(weight.max()))
             for root, i in _roots:
-                if cov[i] < 0.3 or V[i][2] < H.ear_z + 0.06:     # (no cards right on the bare edge, where one floats
-                    continue                                     #  as a speck, or on the sideburns: the shell does those)
+                if cov[i] < 0.3 or (V[i][2] < H.ear_z + 0.06 + rng.uniform(0, 0.05) and relc[i, 1] < -0.15 * H.R):
+                    continue      # (none right on the bare edge, where one floats as a speck, or on the sideburns in front
+                    #  of the ear, which the shell does; a ragged line, so the cards above don't end in a step)
                 # (the back of a crop is short: the long top hair is the front and crown, so no bowl-shaped fringe)
                 backness = float(smoothstep(-0.1 * H.R, 0.8 * H.R, relc[i, 1]))   # (a long blend: no step at the crown)
                 length = (cp["len_side"] + (cp["len_top"] - cp["len_side"]) * tw[i] * (1 - 0.55 * backness)) * lmul * rng.uniform(0.8, 1.15)
@@ -930,6 +955,20 @@ def build_styles(H):
         """roots as (point, nearest vertex index) pairs"""
         keep = HC.sample_roots(rng, CAND, weight[CAND_I], spacing)
         return [(CAND[k], CAND_I[k]) for k in keep]
+
+    SHEET_CARDS = {"full": [], "cap": []}     # strand cards laid on a hanging sheet by an extras builder (curtain)
+
+    def cards_obj(name, items):
+        if not items:
+            return None
+        b_ = Builder()
+        for vv, ff, uu, ww in items:
+            b_.add(vv, ff, uu, ww)
+        ob = b_.make(name, uv=False)
+        uvl = ob.data.uv_layers.new(name="UVMap")
+        loops = np.array([l.vertex_index for l in ob.data.loops])
+        uvl.data.foreach_set("uv", np.stack([np.array(b_.u)[loops], np.array(b_.w)[loops]], 1).ravel())
+        return ob
 
     def add_short(key, label, p, extras=None):
         T, hl = style_short(H, V, F, S, N, d, p)
@@ -1018,6 +1057,10 @@ def build_styles(H):
             b.add_obj(cap)
             extras(b, T, capped=True)
             cap = b.make(f"Hair_{key}_Cap")
+        if cards is None and SHEET_CARDS["full"]:
+            cards = cards_obj(f"Hair_{key}_Cards", SHEET_CARDS["full"])
+            capcards = cards_obj(f"Hair_{key}_CapCards", SHEET_CARDS["cap"])
+        SHEET_CARDS["full"], SHEET_CARDS["cap"] = [], []
         out[key] = {"label": label, "hair": hair, "cap": cap, "fade": None, "skin_fade": "fade_z" in p,
                     "cards": cards, "capcards": capcards}
 
@@ -1441,6 +1484,51 @@ def build_styles(H):
                 uu = tip.ravel()                                  # (front edges stay solid: hair runs along them)
                 ww = (cc / (cols - 1) * 16 + 0.15 * np.sin(rr * 0.3)).ravel()
                 b.add(verts, faces, np.r_[uu, uu], np.r_[ww, ww])
+                # strand cards over the sheet: ribbons down each column (two layers, the outer one a little apart and
+                # shorter), so the hair reads as strands, not a painted sheet. Under a hat, only below the cap line.
+                rng_ = np.random.default_rng(zlib.crc32(f"sheet{length}{flare}".encode()))
+                surf = G + outn * ((groove + 0.03) * taper)[..., None]
+                for layer_k, (off, step, wmul, lmin) in enumerate(((0.004, 1.0, 1.25, 0.85), (0.011, 1.6, 1.0, 0.6))):
+                    cpos = 0.0
+                    while cpos < cols - 1:
+                        c0 = int(cpos)
+                        f_ = cpos - c0
+                        line = surf[c0] * (1 - f_) + surf[min(c0 + 1, cols - 1)] * f_
+                        nn = outn[c0]
+                        across = surf[min(c0 + 1, cols - 1)] - surf[max(c0 - 1, 0)]
+                        across = across / np.maximum(np.linalg.norm(across, axis=1), 1e-9)[:, None]
+                        spacing = np.linalg.norm(surf[min(c0 + 1, cols - 1)] - surf[c0], axis=1)
+                        endr = int(rows * rng_.uniform(lmin, 1.0))
+                        r0 = 0
+                        if capped:
+                            below = np.nonzero(line[:, 2] < cap_line(H, line) - 0.02)[0]
+                            if len(below) == 0:
+                                cpos += step * rng_.uniform(0.8, 1.2)
+                                continue
+                            r0 = int(below[0])
+                        # (overlapping shingles ~8 cm long, each the whole strand texture: one ribbon the full length
+                        #  stretched the strands into smooth streaks)
+                        seg = max(4, int(0.32 / max(col_len(angs[c0]) / rows, 1e-3)))
+                        sa_ = r0 - int(rng_.uniform(0, 0.5) * seg) if not capped else r0
+                        while sa_ < endr - 2:
+                            a_, e_ = max(sa_, r0), min(sa_ + seg, endr)
+                            if e_ - a_ >= 3:
+                                hw = (spacing * wmul * 0.5 + 0.004)[a_:e_ + 1]
+                                ctr = line[a_:e_ + 1] + nn[a_:e_ + 1] * (off + 0.002 * rng_.uniform(-1, 1))
+                                ac = across[a_:e_ + 1]
+                                ctr = ctr + ac * (rng_.uniform(-0.4, 0.4) * hw[:, None])
+                                u0, u1 = HC.kind_u("STRAIGHT_DENSE")
+                                sp = (u1 - u0) * rng_.uniform(0.9, 1.0)
+                                us = u0 + rng_.uniform(0, (u1 - u0) - sp)
+                                if rng_.random() < 0.5:
+                                    us, sp = us + sp, -sp
+                                m = len(ctr)
+                                vv = list(map(tuple, ctr - ac * hw[:, None])) + list(map(tuple, ctr + ac * hw[:, None]))
+                                ff = [[j, j + 1, m + j + 1, m + j] for j in range(m - 1)]
+                                vcoord = list(np.linspace((a_ - sa_) / seg * 0.98 + 0.01, (e_ - sa_) / seg * 0.98 + 0.01, m))
+                                SHEET_CARDS["cap" if capped else "full"].append((vv, ff, [us] * m + [us + sp] * m, vcoord + vcoord))
+                            sa_ += int(seg * rng_.uniform(0.5, 0.65))
+                        cpos += step * rng_.uniform(0.8, 1.2)
             return ex
         add_short("LongStraight", "Long Straight", dict(slick, top=0.05, side=0.04, groove=0.3),
                   curtain(1.9, 0.25, False))
