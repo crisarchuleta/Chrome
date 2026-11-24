@@ -1,3 +1,4 @@
+import collections
 # Neon Coast garment maker for the MakeHuman (MPFB) bodies.
 # Builds real 3D clothes that are sized to each body: the garment starts as the body's own (modesty-smoothed) surface,
 # cut along clean hem lines, subdivided, then loosened with per-region "drape" envelopes (boxy tops hang straight from
@@ -1241,6 +1242,42 @@ def _leg_falloff(b, X, z_top, slope=0.1, nb_z=80, nb_p=32):
     return X
 
 
+
+def _hand_clear(o, X, F, radius=0.07, cloth=0.004):
+    """Rest pose: the hands hang against the hips. Pull the cloth in under each hand (a smooth press, never
+    below the body) so the hand rests ON the pants / skirt instead of vanishing into them. Measured on curvy
+    builds the whole hand sat inside the cloth (Female_Heavy, 2026-11-24)."""
+    b = o.b
+    if not hasattr(b, "whole_co"):
+        return X
+    k = b.k; cw = np.asarray(b.whole_co); rg = np.asarray(b.whole_reg)
+    H = cw[rg == "Hand"]
+    bm = np.isin(rg, ("Torso", "ULeg", "LLeg"))
+    if not len(H) or not bm.any():
+        return X
+    nw = np.array([v.normal[:] for v in b.obj.data.vertices])
+    if len(nw) != len(cw):
+        return X
+    Bv, Bn = cw[bm], nw[bm]
+    tb = cKDTree(Bv)
+    _, jh = tb.query(H); gap_h = np.einsum("ij,ij->i", H - Bv[jh], Bn[jh])
+    dh, ih = cKDTree(H).query(X)
+    wt = smoothstep(0.0, 1.0, np.clip(1.0 - dh / (radius * k), 0, 1))
+    if not (wt > 0).any():
+        return X
+    _, jb = tb.query(X); nb = Bn[jb]
+    off = np.einsum("ij,ij->i", X - Bv[jb], nb)
+    target = np.maximum(gap_h[ih] - (cloth + 0.003) * k, 0.004 * k)
+    delta = wt * np.maximum(0.0, off - target)
+    E = np.array(edges_of(F))
+    for _ in range(4):  # smooth press, not a hand-shaped imprint
+        acc = np.zeros(len(X)); cnt = np.zeros(len(X))
+        np.add.at(acc, E[:, 0], delta[E[:, 1]]); np.add.at(acc, E[:, 1], delta[E[:, 0]])
+        np.add.at(cnt, E[:, 0], 1); np.add.at(cnt, E[:, 1], 1)
+        delta = np.maximum(delta, 0.5 * delta + 0.5 * acc / np.maximum(cnt, 1))
+    delta = np.minimum(delta, np.maximum(off - 0.004 * k, 0))
+    return X - nb * delta[:, None]
+
 def build_pants(o, name, fit="baggy", color=(0.06, 0.065, 0.075), accent=None, stack=True, cuffed=False,
                 cargo=False, camo_pal=None, thick=0.004, shorts=False):
     b = o.low; k = b.k; J = b.J; P0 = b.co; reg = b.reg
@@ -1353,6 +1390,7 @@ def build_pants(o, name, fit="baggy", color=(0.06, 0.065, 0.075), accent=None, s
     X = o.col_noarm.push(X, 0.006 * k)
     X = laplace(X, E, 1, taubin=True)
     X = o.col_noarm.push(X, 0.005 * k)
+    X = _hand_clear(o, X, F, cloth=thick)
     # waistband accent faces
     fc = np.array([X[f].mean(0) for f in F])
     mi = np.zeros(len(F), int)
@@ -2434,6 +2472,8 @@ def build_skirt(o, name, length=0.45, flare=0.25, color=(0.1, 0.1, 0.12), accent
     fn = np.cross(X[[f[1] for f in F]] - X[[f[0] for f in F]], X[[f[2] for f in F]] - X[[f[0] for f in F]])
     if np.mean(np.einsum("ij,ij->i", fn, fc - np.array([cx, cy, fc[:, 2].mean()]))) < 0:
         F = [f[::-1] for f in F]
+    X = _hand_clear(o, X, F, radius=0.1, cloth=thick)
+    X = o.col_noarm.push(X, 0.004 * k)  # never pressed in under the leggings / shorts below
     mi = np.array([1 if X[f[0], 2] > z_waist - 0.03 * k and X[f[2], 2] > z_waist - 0.031 * k else 0 for f in F])
     acc = accent or color
     mats = [material(name + "_Main", tuple(color[:3]) + (1,)), material(name + "_Band", tuple(acc[:3]) + (1,))]
@@ -2444,6 +2484,7 @@ def build_skirt(o, name, length=0.45, flare=0.25, color=(0.1, 0.1, 0.12), accent
 
 
 # ----------------------------------------------------------------------------------------------- game export
+PATTERN_HOOK = None  # set by nc_catalog3d: re-cuts a pattern on the decimated mesh
 GAME_TRIS = {"Chain": 6000, "Gloves": 3000, "default": 7000, "small": 1500}
 
 
@@ -2456,9 +2497,32 @@ def game_ready(ob):
     for m in list(ob.modifiers):
         if m.type == "SUBSURF":
             ob.modifiers.remove(m)
+    # patterned garments (stripes / plaid / chest band): decimate the uncut mesh, then cut the pattern again
+    if "nc_pattern" in ob and PATTERN_HOOK is not None and tris > budget:
+        kind = __import__("json").loads(ob["nc_pattern"]).get("kind")
+        if PATTERN_HOOK(ob, int(budget * {"plaid": 0.3, "stripes": 0.5, "camo": 0.35}.get(kind, 0.8))):
+            for m in list(ob.modifiers):
+                if m.type == "SUBSURF":
+                    ob.modifiers.remove(m)
+            return ob  # the pattern cut is the final mesh: no second decimation across the new colour edges
+    # other colour borders (ribs, zips): the decimation must not collapse across them, or edges turn into shards
+    me = ob.data
+    used = {p.material_index for p in me.polygons}
+    vg = None
+    if len(used) > 1:
+        vm = collections.defaultdict(set)
+        for p in me.polygons:
+            for v in p.vertices:
+                vm[v].add(p.material_index)
+        border = [v for v, ms in vm.items() if len(ms) > 1]
+        if border:
+            vg = ob.vertex_groups.get("NC_MatBorder") or ob.vertex_groups.new(name="NC_MatBorder")
+            vg.add(border, 1.0, "REPLACE")
     if tris > budget:
         d = ob.modifiers.new("GameDecimate", "DECIMATE")
         d.ratio = budget / tris
+        if vg is not None:
+            d.vertex_group = vg.name; d.invert_vertex_group = True; d.vertex_group_factor = 1000.0
         # keep the armature first, decimate before the thickness
         while ob.modifiers.find(d.name) > 1:
             with bpy.context.temp_override(object=ob):
