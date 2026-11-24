@@ -445,7 +445,20 @@ def bake_base_layer(body, garments):
     bm = bmesh.new()
     bm.from_mesh(me)
     bm.verts.ensure_lookup_table()
-    cov = np.array([kd.find(v.co)[2] < 0.07 for v in bm.verts])
+
+    # (and never the hands: a hand resting against the hip can dip inside the shorts at rest)
+    hand_g = {g.index for g in body.vertex_groups if g.name.endswith("Hand") or any(g.name.startswith("NC_" + f) for f in FINGERS)}
+    hand_v = np.zeros(len(bm.verts), bool)
+    for v in me.vertices:
+        if sum(ge.weight for ge in v.groups if ge.group in hand_g) > 0.3:
+            hand_v[v.index] = True
+
+    def covered(v):
+        if hand_v[v.index]:
+            return False
+        # (the women's hands hang within 7 cm of the shorts: their palms were deleted, holes in Studio 2026-11-24)
+        return kd.find(v.co)[2] < 0.07
+    cov = np.array([covered(v) for v in bm.verts])
     deep = cov.copy()
     for v in bm.verts:                      # erode: keep a ring of skin under every hem
         if cov[v.index] and not all(cov[e.other_vert(v).index] for e in v.link_edges):

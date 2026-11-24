@@ -466,18 +466,18 @@
    "Head": 8884,
    "RightUpperArm": 658,
    "RightLowerArm": 540,
-   "RightHand": 2988,
+   "RightHand": 3246,
    "RightUpperLeg": 456,
    "RightLowerLeg": 666,
    "RightFoot": 2126,
    "LeftUpperArm": 664,
    "LeftLowerArm": 540,
-   "LeftHand": 2988,
+   "LeftHand": 3246,
    "LeftUpperLeg": 456,
    "LeftLowerLeg": 666,
    "LeftFoot": 2126
   },
-  "tris_total": 32604,
+  "tris_total": 33120,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 35.5,
@@ -489,7 +489,7 @@
    "LeftTwist": -1.9,
    "LeftLegStraighten": 5.3
   },
-  "covered_skin_faces_removed": 1817,
+  "covered_skin_faces_removed": 1559,
   "face_bones": {
    "NC_FaceEyeL": [
     -0.1064,
@@ -1060,18 +1060,18 @@
    "Head": 8892,
    "RightUpperArm": 671,
    "RightLowerArm": 528,
-   "RightHand": 2936,
+   "RightHand": 3246,
    "RightUpperLeg": 502,
    "RightLowerLeg": 662,
    "RightFoot": 2126,
    "LeftUpperArm": 671,
    "LeftLowerArm": 528,
-   "LeftHand": 2936,
+   "LeftHand": 3246,
    "LeftUpperLeg": 500,
    "LeftLowerLeg": 662,
    "LeftFoot": 2126
   },
-  "tris_total": 32632,
+  "tris_total": 33252,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 35.5,
@@ -1083,7 +1083,7 @@
    "LeftTwist": -1.9,
    "LeftLegStraighten": 5.3
   },
-  "covered_skin_faces_removed": 1788,
+  "covered_skin_faces_removed": 1478,
   "face_bones": {
    "NC_FaceEyeL": [
     -0.1062,
@@ -1653,19 +1653,19 @@
    "UpperTorso": 6000,
    "Head": 8876,
    "RightUpperArm": 800,
-   "RightLowerArm": 530,
-   "RightHand": 3098,
+   "RightLowerArm": 534,
+   "RightHand": 3246,
    "RightUpperLeg": 512,
    "RightLowerLeg": 666,
    "RightFoot": 2126,
    "LeftUpperArm": 800,
-   "LeftLowerArm": 530,
-   "LeftHand": 3100,
+   "LeftLowerArm": 534,
+   "LeftHand": 3246,
    "LeftUpperLeg": 512,
    "LeftLowerLeg": 666,
    "LeftFoot": 2126
   },
-  "tris_total": 33082,
+  "tris_total": 33384,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 35.5,
@@ -1677,7 +1677,7 @@
    "LeftTwist": -1.9,
    "LeftLegStraighten": 5.3
   },
-  "covered_skin_faces_removed": 1425,
+  "covered_skin_faces_removed": 1274,
   "face_bones": {
    "NC_FaceEyeL": [
     -0.1063,
@@ -2248,18 +2248,18 @@
    "Head": 8886,
    "RightUpperArm": 738,
    "RightLowerArm": 542,
-   "RightHand": 2970,
+   "RightHand": 3246,
    "RightUpperLeg": 458,
    "RightLowerLeg": 668,
    "RightFoot": 2126,
    "LeftUpperArm": 738,
    "LeftLowerArm": 542,
-   "LeftHand": 2970,
+   "LeftHand": 3246,
    "LeftUpperLeg": 458,
    "LeftLowerLeg": 668,
    "LeftFoot": 2126
   },
-  "tris_total": 32512,
+  "tris_total": 33064,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 35.5,
@@ -2271,7 +2271,7 @@
    "LeftTwist": -1.8,
    "LeftLegStraighten": 5.3
   },
-  "covered_skin_faces_removed": 1745,
+  "covered_skin_faces_removed": 1469,
   "face_bones": {
    "NC_FaceEyeL": [
     -0.1063,
@@ -2842,18 +2842,18 @@
    "Head": 8896,
    "RightUpperArm": 652,
    "RightLowerArm": 540,
-   "RightHand": 3210,
+   "RightHand": 3246,
    "RightUpperLeg": 464,
    "RightLowerLeg": 666,
    "RightFoot": 2126,
    "LeftUpperArm": 648,
    "LeftLowerArm": 540,
-   "LeftHand": 3210,
+   "LeftHand": 3246,
    "LeftUpperLeg": 464,
    "LeftLowerLeg": 666,
    "LeftFoot": 2126
   },
-  "tris_total": 33168,
+  "tris_total": 33240,
   "heat_missing": [],
   "repose": {
    "RightArmDrop": 35.5,
@@ -2865,7 +2865,7 @@
    "LeftTwist": -1.8,
    "LeftLegStraighten": 5.3
   },
-  "covered_skin_faces_removed": 1593,
+  "covered_skin_faces_removed": 1557,
   "face_bones": {
    "NC_FaceEyeL": [
     -0.1064,
