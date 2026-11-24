@@ -3,7 +3,7 @@ piece gets a fitted mesh on every body. Colours come from the item's default c1 
 import re
 import nc_garments as NG
 
-LINE = re.compile(r'^\s*I\("([a-z0-9_]+)",\s*"(Top|Outer|Bottom|Shoes)",\s*"((?:[^"\\]|\\.)*)",\s*\d+,\s*"([a-z]+)",\s*(\{[^}]*\}|nil),\s*([^,]+),\s*"(#[0-9A-Fa-f]{6})"(?:,\s*([^,]+),\s*"(#[0-9A-Fa-f]{6})")?')
+LINE = re.compile(r'^\s*I\("([a-z0-9_]+)",\s*"(Top|Outer|Bottom|Shoes|Head|Mask|Face)",\s*"((?:[^"\\]|\\.)*)",\s*\d+,\s*"([a-z]+)",\s*(\{[^}]*\}|nil),\s*([^,]+),\s*"(#[0-9A-Fa-f]{6})"(?:,\s*([^,]+),\s*"(#[0-9A-Fa-f]{6})")?')
 
 
 def hexc(h):
@@ -140,5 +140,6 @@ def build_item(o, it):
         NG.build_sneakers(o, nm, high=high, color=c1, sole=(0.92, 0.92, 0.9) if "boot" not in nmn else (0.12, 0.1, 0.08),
                           accent=c2, chunky=1.3 if "chunky" in nmn or "platform" in nmn else 1.0)
     else:
-        return False
+        import nc_headwear as HW  # helmets, durags, ski masks, great helm, goggles
+        return HW.build_item(o, it, hexc)
     return True

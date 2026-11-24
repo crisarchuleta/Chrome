@@ -209,6 +209,21 @@ fits, baggy stacked denim, chunky chains, gloves and shades.
 - `nc_outfits.py` holds the reference looks (`sevenm`, `pinkcamo`, `tee_cargo`, `puffer_sweats`).
 - `nc_catalog3d.py` maps every Top / Outer / Bottom / Shoes item in `NCLookCatalog` (about 150) to the garment maker,
   using the item's own colours.
+- `nc_headwear.py` fits the head pieces to each MakeHuman head the same way (cut from the head skin, lifted, smoothed,
+  kept outside the head by the collider). `nc_catalog3d.py` sends these Head / Mask / Face items to it:
+  - `hat_combat_helmet`, `hat_nvg_helmet`: high-cut padded shell clear of short hair, rubber edge trim, Y chin strap
+    pulled tight under the jaw; the night-ops one adds side rails, the front shroud, stowed goggles and a back pouch.
+  - `hat_durag`, `hat_durag_velvet`: skin-tight crown from the forehead over the ear tops to the nape, centre seam,
+    rolled tie band, knot at the nape, tail flap and two tie ends (silky is glossy, velvet is matte).
+  - `mask_ski` (eye and mouth holes), `mask_ski_open` (one face opening), `mask_ski_pom` (white rib edges and pom):
+    knit under tension so it bridges the eye sockets, under the nose and the chin, rib roll on every opening, and a bib
+    that runs over the neck base.
+  - `hat_knight_helm`: flat-top great helm sized to clear the head by 1.4 cm and resting above the shoulders, eye slits
+    with a nose bar, brow band, ridge and bottom band with rivets, cross-shaped breathing holes.
+  - `eye_ski_goggles`, `eye_goggles_up`: wide toric lens with a nose notch, foam frame sealing to the face, elastic strap
+    (pushed-up pair sits on the forehead).
+  Checked from five angles on Male_Average, Male_Skinny, Male_Muscular, Female_Skinny and Female_Heavy with the skin
+  rendered bright green: nothing pokes through.
 - `build_wardrobe.py` builds them on all ten bodies. It saves `NeonCoast_Wardrobe_<Body>.blend` (one collection per
   look) and game-ready FBX files: subdivision off, decimated to about 7k triangles per piece, skinned to the rig, ready
   for Studio's 3D importer.
