@@ -585,16 +585,67 @@
     "key": "Twists",
     "label": "Hanging Twists",
     "offset": [
-     -0.0014,
-     0.1354,
-     0.308
+     0.0013,
+     0.1362,
+     0.3027
     ],
     "size": [
-     0.6544,
-     0.6147,
-     0.8348
+     0.5884,
+     0.6163,
+     0.801
     ],
-    "tris": 17000
+    "tris": 17512
+   },
+   {
+    "mesh": "Hair_Twists_2",
+    "kind": "Hair",
+    "key": "Twists",
+    "label": "Hanging Twists",
+    "offset": [
+     -0.0014,
+     0.209,
+     0.305
+    ],
+    "size": [
+     0.6402,
+     0.4708,
+     0.8296
+    ],
+    "tris": 16632
+   },
+   {
+    "mesh": "Hair_Twists_3",
+    "kind": "Hair",
+    "key": "Twists",
+    "label": "Hanging Twists",
+    "offset": [
+     -0.0009,
+     0.2053,
+     0.305
+    ],
+    "size": [
+     0.6487,
+     0.4611,
+     0.8259
+    ],
+    "tris": 16740
+   },
+   {
+    "mesh": "Hair_Twists_4",
+    "kind": "Hair",
+    "key": "Twists",
+    "label": "Hanging Twists",
+    "offset": [
+     -0.0005,
+     0.2051,
+     0.3265
+    ],
+    "size": [
+     0.6444,
+     0.4555,
+     0.8096
+    ],
+    "tris": 15372
    },
    {
     "mesh": "Hair_Twists_Cap",
@@ -636,16 +687,33 @@
     "key": "FlatTwists",
     "label": "Flat Twists",
     "offset": [
-     -0.0008,
-     0.161,
-     0.3343
+     0.0088,
+     0.1506,
+     0.3255
     ],
     "size": [
-     0.6127,
-     0.6453,
-     0.7494
+     0.5936,
+     0.6246,
+     0.7319
     ],
-    "tris": 17000
+    "tris": 16794
+   },
+   {
+    "mesh": "Hair_FlatTwists_2",
+    "kind": "Hair",
+    "key": "FlatTwists",
+    "label": "Flat Twists",
+    "offset": [
+     -0.107,
+     0.3005,
+     0.3377
+    ],
+    "size": [
+     0.4,
+     0.3676,
+     0.7431
+    ],
+    "tris": 12288
    },
    {
     "mesh": "Hair_FlatTwists_Cap",
@@ -1413,15 +1481,32 @@
     "label": "Slick Low Bun",
     "offset": [
      0.0,
-     0.0497,
-     0.3212
+     0.0505,
+     0.3208
     ],
     "size": [
-     0.5383,
-     0.7085,
-     0.7607
+     0.5382,
+     0.7068,
+     0.76
     ],
-    "tris": 17000
+    "tris": 17840
+   },
+   {
+    "mesh": "Hair_LowBun_2",
+    "kind": "Hair",
+    "key": "LowBun",
+    "label": "Slick Low Bun",
+    "offset": [
+     0.0007,
+     -0.1484,
+     0.5905
+    ],
+    "size": [
+     0.31,
+     0.3123,
+     0.222
+    ],
+    "tris": 5280
    },
    {
     "mesh": "Hair_LowBun_Cap",
@@ -1431,14 +1516,31 @@
     "offset": [
      0.0,
      -0.0351,
-     0.322
+     0.3217
     ],
     "size": [
      0.5294,
      0.539,
-     0.759
+     0.7582
     ],
-    "tris": 16999
+    "tris": 17490
+   },
+   {
+    "mesh": "Hair_LowBun_Cap_2",
+    "kind": "HairCap",
+    "key": "LowBun",
+    "label": "Slick Low Bun",
+    "offset": [
+     0.0002,
+     -0.0352,
+     0.3295
+    ],
+    "size": [
+     0.287,
+     0.5368,
+     0.744
+    ],
+    "tris": 2112
    },
    {
     "mesh": "Hair_LowBun_Cards",
@@ -1498,15 +1600,32 @@
     "label": "High Ponytail",
     "offset": [
      0.0001,
-     -0.339,
+     -0.3176,
      0.3447
     ],
     "size": [
      0.5402,
-     1.4893,
+     1.4465,
      0.8077
     ],
-    "tris": 17000
+    "tris": 17616
+   },
+   {
+    "mesh": "Hair_Ponytail_2",
+    "kind": "Hair",
+    "key": "Ponytail",
+    "label": "High Ponytail",
+    "offset": [
+     -0.0004,
+     -0.4116,
+     0.5679
+    ],
+    "size": [
+     0.1436,
+     1.1802,
+     0.2986
+    ],
+    "tris": 1984
    },
    {
     "mesh": "Hair_Ponytail_Cap",
@@ -1515,15 +1634,15 @@
     "label": "High Ponytail",
     "offset": [
      -0.0,
-     -0.4246,
+     -0.4032,
      0.3455
     ],
     "size": [
      0.5295,
-     1.3181,
+     1.2753,
      0.806
     ],
-    "tris": 16282
+    "tris": 16082
    },
    {
     "mesh": "Hair_Ponytail_Cards",
@@ -1582,16 +1701,33 @@
     "key": "LongStraight",
     "label": "Long Straight",
     "offset": [
-     -0.0004,
-     -0.5561,
-     0.3446
+     0.0005,
+     0.0645,
+     0.2702
     ],
     "size": [
-     0.9457,
-     1.9177,
-     0.8075
+     0.5436,
+     0.6766,
+     0.6588
     ],
-    "tris": 17000
+    "tris": 13720
+   },
+   {
+    "mesh": "Hair_LongStraight_2",
+    "kind": "Hair",
+    "key": "LongStraight",
+    "label": "Long Straight",
+    "offset": [
+     -0.0003,
+     -0.5587,
+     0.4716
+    ],
+    "size": [
+     0.9344,
+     1.8745,
+     0.5502
+    ],
+    "tris": 16762
    },
    {
     "mesh": "Hair_LongStraight_Cap",
@@ -1599,16 +1735,33 @@
     "key": "LongStraight",
     "label": "Long Straight",
     "offset": [
-     -0.0004,
-     -0.5681,
-     0.3454
+     0.0,
+     -0.0197,
+     0.2648
     ],
     "size": [
-     0.9457,
-     1.8936,
-     0.8058
+     0.5296,
+     0.5082,
+     0.6446
     ],
-    "tris": 16999
+    "tris": 10202
+   },
+   {
+    "mesh": "Hair_LongStraight_Cap_2",
+    "kind": "HairCap",
+    "key": "LongStraight",
+    "label": "Long Straight",
+    "offset": [
+     -0.0003,
+     -0.5587,
+     0.3521
+    ],
+    "size": [
+     0.9344,
+     1.8745,
+     0.7891
+    ],
+    "tris": 16762
    },
    {
     "mesh": "Hair_LongStraight_Cards",
@@ -1633,16 +1786,16 @@
     "key": "LongStraight",
     "label": "Long Straight",
     "offset": [
-     -0.0095,
-     -0.5501,
-     0.3571
+     -0.0037,
+     -0.5476,
+     0.356
     ],
     "size": [
-     0.9669,
-     1.9276,
-     0.812
+     0.9631,
+     1.9225,
+     0.8098
     ],
-    "tris": 17988
+    "tris": 17986
    },
    {
     "mesh": "Hair_LongStraight_Cards_3",
@@ -1650,16 +1803,16 @@
     "key": "LongStraight",
     "label": "Long Straight",
     "offset": [
-     -0.0048,
-     -0.5661,
-     0.4116
+     -0.0092,
+     -0.5652,
+     0.4088
     ],
     "size": [
-     0.9774,
-     1.8853,
-     0.7131
+     0.963,
+     1.9042,
+     0.7209
     ],
-    "tris": 17984
+    "tris": 17996
    },
    {
     "mesh": "Hair_LongStraight_Cards_4",
@@ -1667,16 +1820,16 @@
     "key": "LongStraight",
     "label": "Long Straight",
     "offset": [
-     -0.0115,
-     -0.5507,
-     0.4179
+     -0.007,
+     -0.5467,
+     0.521
     ],
     "size": [
-     0.9514,
-     1.8506,
-     0.6971
+     0.9616,
+     1.852,
+     0.4888
     ],
-    "tris": 2454
+    "tris": 2074
    },
    {
     "mesh": "Hair_LongStraight_CapCards",
@@ -1684,16 +1837,16 @@
     "key": "LongStraight",
     "label": "Long Straight",
     "offset": [
-     -0.0025,
+     -0.0021,
      -0.7075,
-     0.392
+     0.393
     ],
     "size": [
-     0.9843,
+     0.9661,
      1.6025,
-     0.7502
+     0.7522
     ],
-    "tris": 17990
+    "tris": 17986
    },
    {
     "mesh": "Hair_LongStraight_CapCards_2",
@@ -1701,16 +1854,16 @@
     "key": "LongStraight",
     "label": "Long Straight",
     "offset": [
-     -0.0051,
-     -0.7032,
-     0.4213
+     -0.006,
+     -0.7371,
+     0.4354
     ],
     "size": [
-     0.9807,
-     1.5366,
-     0.6987
+     0.9748,
+     1.5159,
+     0.6673
     ],
-    "tris": 4128
+    "tris": 3890
    },
    {
     "mesh": "Hair_Bob",
@@ -1718,16 +1871,33 @@
     "key": "Bob",
     "label": "Chin Bob",
     "offset": [
+     0.0005,
+     0.067,
+     0.271
+    ],
+    "size": [
+     0.5473,
+     0.6814,
+     0.6603
+    ],
+    "tris": 13720
+   },
+   {
+    "mesh": "Hair_Bob_2",
+    "kind": "Hair",
+    "key": "Bob",
+    "label": "Chin Bob",
+    "offset": [
      -0.0006,
-     -0.1052,
-     0.3117
+     -0.1272,
+     0.4392
     ],
     "size": [
      0.8714,
-     1.0257,
-     0.7418
+     1.0116,
+     0.4867
     ],
-    "tris": 16999
+    "tris": 9646
    },
    {
     "mesh": "Hair_Bob_Cap",
@@ -1735,16 +1905,33 @@
     "key": "Bob",
     "label": "Chin Bob",
     "offset": [
+     0.0,
+     -0.0197,
+     0.2648
+    ],
+    "size": [
+     0.5297,
+     0.5082,
+     0.6446
+    ],
+    "tris": 10202
+   },
+   {
+    "mesh": "Hair_Bob_Cap_2",
+    "kind": "HairCap",
+    "key": "Bob",
+    "label": "Chin Bob",
+    "offset": [
      -0.0006,
-     -0.1197,
-     0.3126
+     -0.1272,
+     0.3201
     ],
     "size": [
      0.8714,
-     0.9966,
-     0.74
+     1.0116,
+     0.725
     ],
-    "tris": 17000
+    "tris": 9646
    },
    {
     "mesh": "Hair_Bob_Cards",
@@ -1803,12 +1990,12 @@
     "key": "Bob",
     "label": "Chin Bob",
     "offset": [
-     -0.0039,
+     -0.0049,
      -0.2597,
      0.3536
     ],
     "size": [
-     0.8584,
+     0.8605,
      0.7138,
      0.6781
     ],

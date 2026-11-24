@@ -1704,7 +1704,9 @@ def build_styles(H):
             r3 = random.Random(5)
             rng_p = np.random.default_rng(zlib.crc32(b"pony_frizz"))
             core = [0.06 * (1 - 0.8 * (j / n) ** 1.6) for j in range(n)]
-            vv, ff = tube(pts, [c * 0.8 for c in core], sides=10, twist=0.1)
+            # (the core stops well inside the clumps and thins to nothing: its end poked out as a small square tip)
+            n_core = max(3, int(n * 0.72))
+            vv, ff = tube(pts[:n_core], [core[j] * 0.8 * (1 - 0.7 * (j / n_core) ** 2) for j in range(n_core)], sides=10, twist=0.1)
             b.add(vv, ff)
             for k in range(14):
                 a0 = 2 * math.pi * k / 14 + r3.uniform(-0.2, 0.2)
@@ -1729,7 +1731,7 @@ def build_styles(H):
                 # one continuous sheet of hair from the scalp past the ears, draped over the back and shoulders.
                 # Each column falls straight down from the widest point above it (like real hair over a head and
                 # shoulders): radius from the head's vertical axis = running max of the head/body outline + a gap.
-                cols, rows = 72, max(10, int(length / 0.03))
+                cols, rows = (66 if length > 1.5 else 72), max(10, int(length / 0.03))   # (one piece under 18k triangles)
                 # (the sheet ends just behind the ears; in front of them the hair is the scalp cards and the front
                 #  strands falling down beside the face. Reaching further forward its end showed as a flat panel)
                 SPAN = 97.0
@@ -1793,7 +1795,10 @@ def build_styles(H):
                 for k, a in enumerate(angs):
                     G[k, :, 0] = axis[0] + math.sin(a) * R[k]
                     G[k, :, 1] = axis[1] + math.cos(a) * R[k]
-                    G[k, :, 2] = z0 - col_len(a) * jj[0] * (0.975 + 0.015 * math.sin(k * 0.55) + 0.01 * math.sin(k * 1.7 + 0.4))
+                    # (uneven ends column to column, more at the sides: the side panel ended in one flat line at the shoulder)
+                    sd_ = smoothstep(math.radians(28), math.radians(55), abs(a))
+                    G[k, :, 2] = z0 - col_len(a) * jj[0] * (0.965 + (0.015 + 0.02 * sd_) * math.sin(k * 0.55)
+                                                            + (0.01 + 0.02 * sd_) * math.sin(k * 1.7 + 0.4) + 0.015 * sd_ * math.sin(k * 3.9 + 1.1))
                 outn = np.zeros_like(G)
                 for k, a in enumerate(angs):
                     outn[k, :, 0], outn[k, :, 1] = math.sin(a), math.cos(a)
@@ -1882,7 +1887,7 @@ def build_styles(H):
                         ang = math.atan2(q[0] - axis[0], q[1] - axis[1])
                         r_ = math.hypot(q[0] - axis[0], q[1] - axis[1])
                         z_ = q[2]
-                        floor_z = (shoulder_z + rng_.uniform(-0.02, 0.06)) if abs(ang) > math.radians(55) else -9.0
+                        floor_z = (shoulder_z + rng_.uniform(-0.07, 0.08)) if abs(ang) > math.radians(55) else -9.0
                         kq = int(np.clip((ang - a_lo) / (a_hi - a_lo) * (cols - 1), 0, cols - 1))
                         floor_z = max(floor_z, z0 - col_len(angs[kq]) + rng_.uniform(0.0, 0.08))   # (inside the sheet's cut)
                         while L < total and z_ - step_h > floor_z:   # then down, onto the sheet
@@ -2204,7 +2209,9 @@ for gender in ("Male", "Female"):
             ob = st[kind]
             ob.data.materials.append(fade_col if st.get("skin_fade") else hair_col)
             knd = {"hair": "Hair", "cap": "HairCap"}[kind]
-            if st["label"] in SPLIT_HAIR:
+            # (every hair piece now: decimating it squared off the ponytail tip and left flecks and dashes on the
+            #  long styles; only a single connected piece that is still too big gets thinned below)
+            if True:
                 # rope locs and twists: split into _2, _3 ... parts (whole locs kept together) instead of decimated,
                 # which melted the two-strand twist into lumps
                 for ob_ in split_cards(ob, 18000):
@@ -2234,6 +2241,7 @@ for gender in ("Male", "Female"):
     for name, (ob, kind, key, label) in pieces.items():      # Roblox: at most 20,000 triangles per MeshPart
         tris = sum(len(p.vertices) - 2 for p in ob.data.polygons)
         if tris > 18000:
+            print("NC_DECIMATE", name, tris)
             md = ob.modifiers.new("D", "DECIMATE")
             md.ratio = 17000 / tris
             uvl = ob.data.uv_layers.get("UVMap")
