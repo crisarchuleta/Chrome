@@ -29,6 +29,7 @@ local ShopRF = Remotes:WaitForChild("LowriderShop")
 local StateRE = Remotes:WaitForChild("LowriderState")
 local UiRE = Remotes:WaitForChild("LowriderUI")
 local HopRE = Remotes:WaitForChild("LowriderHop")
+local WindowRE = Remotes:WaitForChild("VehicleWindow")
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -966,6 +967,23 @@ for which, btn in { sv = sv, hue = hue } do
 		end
 	end)
 end
+-- R: roll your window up -> half way -> down (driver: Shift+R does every window). Works in any seat of a Kit vehicle.
+UserInputService.InputBegan:Connect(function(io, processed)
+	if processed or (io.KeyCode ~= Enum.KeyCode.R and io.KeyCode ~= Enum.KeyCode.DPadLeft) then
+		return
+	end
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	local seat = hum and hum.SeatPart
+	if not (seat and seat.Parent and seat.Parent:GetAttribute("NCLowrider")) then
+		return
+	end
+	if io.KeyCode == Enum.KeyCode.DPadLeft and seat.Name == "DriveSeat" then
+		return -- the driver's d-pad steers the hydraulics
+	end
+	local shift = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
+	WindowRE:FireServer(shift)
+end)
+
 UserInputService.InputChanged:Connect(function(io)
 	if dragging and (io.UserInputType == Enum.UserInputType.MouseMovement or io.UserInputType == Enum.UserInputType.Touch) then
 		dragAt(io.Position)

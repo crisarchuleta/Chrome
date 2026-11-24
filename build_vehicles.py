@@ -655,6 +655,9 @@ def build_engine_bay():
     sbox("Dark", ap - 0.85, y1 - 1.2, fl, ap - 0.2, y1 - 0.3, fl + 0.6, bev=0.04)              # battery
 
 
+WINDOWS = {}
+
+
 def split_onto_doors():
     """trim, glass, mirrors and door cards that sit on a door move onto that door"""
     def rule(kind):
@@ -700,6 +703,11 @@ def split_onto_doors():
             part.faces.ensure_lookup_table()
             bmesh.ops.delete(part, geom=[f for f in part.faces if f.index not in sel], context="FACES")
             kind = ob["kind"] + "__" + nm
+            if ob["kind"] == "RoofGlass":
+                # door glass is its own piece so it can roll down into the door (Kit.SetWindow)
+                kind = "RoofGlass__Win" + nm
+                zs = [v.co.z for v in part.verts]
+                WINDOWS[nm] = {"piece": kind, "drop": max(0.0, min(max(zs) - min(zs) + 0.02, min(zs) - DOOR_Z0 - 0.12))}
             if ob["kind"] in OPT_INFO:
                 OPT_INFO[kind] = dict(OPT_INFO[ob["kind"]], hinge=nm)
             else:
@@ -888,6 +896,7 @@ data = {
         "OptInfo": {k: v for k, v in OPT_INFO.items() if f"{PREFIX}_{k}" in car_tris},
         "Options": options_of(OPT_INFO, car_tris, PREFIX + "_"),
         "Gauge": {"Centre": car_pt(GAUGE[0]), "Size": [1.4, 0.4], "Tilt": GAUGE[1]},
+        "Windows": {k: {"Piece": w["piece"], "Drop": round(w["drop"], 3), "Dir": [0, -1, 0]} for k, w in WINDOWS.items()},
         "Steer": {"Centre": car_pt(STEER[0]), "Axis": [round(-STEER[1].x, 4), round(STEER[1].z, 4), round(STEER[1].y, 4)]},
         "Plaque": {"Centre": car_pt((0.0, C1 - 0.3, BELT + 0.5)), "Size": [1.8, 0.5]},
     },
@@ -967,7 +976,7 @@ def show(build=None, liv=None, paint=None):
                 ob.data.materials[0] = m
 
 
-def pose(frac):
+def pose(frac, win=0.0):
     for ob in scene.objects:
         k = ob.get("pkind")
         h = HINGE_OF.get(k) or (OPT_INFO.get(k) or {}).get("hinge")
@@ -975,7 +984,9 @@ def pose(frac):
             continue
         hg = HINGES[h]
         p = Vector(hg["pivot"])
-        ob.matrix_world = Matrix.Translation(p) @ Matrix.Rotation(math.radians(hg["open"] * frac), 4, Vector(hg["axis"])) @ Matrix.Translation(-p)
+        w = WINDOWS.get(h)
+        down = Matrix.Translation((0, 0, -w["drop"] * win)) if w and k == w["piece"] else Matrix.Identity(4)
+        ob.matrix_world = Matrix.Translation(p) @ Matrix.Rotation(math.radians(hg["open"] * frac), 4, Vector(hg["axis"])) @ Matrix.Translation(-p) @ down
 
 
 def shot(name, loc, tgt):
@@ -999,5 +1010,11 @@ pose(1.0)
 shot("open_front34", (-Lr * 1.7, -Lr * 1.9, ROOF * 1.8 + 3), (0, -1.0, fz))
 shot("open_rear34", (Lr * 1.6, Lr * 2.0, ROOF * 1.8 + 3), (0, 1.5, fz))
 pose(0.0)
+if WINDOWS:
+    pose(0.0, win=0.5)
+    shot("windows_half", (Lr * 1.9, -Lr * 0.6, ROOF * 1.0), (0, 0, fz + 0.6))
+    pose(0.0, win=1.0)
+    shot("windows_down", (Lr * 2.6, 0.0, ROOF * 0.9), (0, 0, fz))
+    pose(0.0)
 print("NEONCOAST_DONE", json.dumps({"vehicle": VID, "car": sum(car_tris.values()), "wheel": sum(wheel_tris.values()),
                                     "options": data["Car"]["Options"], "wheelOptions": data["Wheel"]["Options"]}))

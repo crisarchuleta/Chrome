@@ -18,6 +18,7 @@
 --     Lid, Hood, DoorL, DoorR, Fuel   opening panels (Car.Hinges): a Model each, with an invisible "<name>Root"
 --                   welded to the chassis by "<name>Hinge"; Kit.SetOpen swings it. Pieces and swappable parts that
 --                   sit on a panel (door glass, mirrors, door cards, hood ornament, spoiler) ride on its root.
+--                   Door glass (Car.Windows) has its own weld "WindowSlide" so it can roll down: Kit.SetWindow.
 --     W_FL/W_FR/W_RL/W_RR   wheel models; their weld (Hub.WheelWeld) is posed every frame by each client
 --     DriveSeat (VehicleSeat), Seat_Passenger, Seat_RearL, Seat_RearR
 local RS = game:GetService("ReplicatedStorage")
@@ -801,6 +802,10 @@ function Kit.BuildCar(cf, vid)
 	local optFolder = Instance.new("Folder")
 	optFolder.Name = "Opt"
 	optFolder.Parent = car
+	local windowOf = {}
+	for wname, spec in vd.Car.Windows or {} do
+		windowOf[spec.Piece] = wname
+	end
 	for _, p in body:GetChildren() do
 		if p:IsA("BasePart") and p.Name ~= "Origin" then
 			loose(p)
@@ -810,7 +815,18 @@ function Kit.BuildCar(cf, vid)
 			elseif roots[hingeFor(vd, role) or ""] then
 				local root = roots[hingeFor(vd, role)]
 				p.Parent = root.Parent
-				weldTo(p, root)
+				local w = weldTo(p, root)
+				local wname = windowOf[role]
+				if wname then
+					-- door glass: slides down into the door along Dir (Kit.SetWindow)
+					local spec = vd.Car.Windows[wname]
+					w.Name = "WindowSlide"
+					p:SetAttribute("Window", wname)
+					p:SetAttribute("UpC0", w.C0)
+					p:SetAttribute("Drop", spec.Drop)
+					p:SetAttribute("Dir", v3(spec.Dir or { 0, -1, 0 }))
+					p:SetAttribute("Down", 0)
+				end
 			else
 				p.Parent = visual
 				weldTo(p, chassis)
@@ -1031,6 +1047,101 @@ function Kit.AutoDoors(car)
 			end
 		end
 	end
+end
+
+---------------------------------------------------------------------------------------------------- roll-down windows
+-- Each door's glass is its own piece riding on the door (Car.Windows). Kit.SetWindow(car, "DoorL", 0.5) rolls it
+-- half way down (0 = up, 1 = all the way down) over `time` seconds. Server or client, like Kit.SetOpen.
+Kit.WINDOW_STEPS = { 0, 0.5, 1 } -- up, half way, down: what one press of the window key steps through
+local roll = setmetatable({}, { __mode = "k" })
+function Kit.Windows(car)
+	local out = {}
+	for _, m in car:GetChildren() do
+		if m:IsA("Model") then
+			for _, p in m:GetChildren() do
+				local w = p:IsA("BasePart") and p:GetAttribute("Window") and p:FindFirstChild("WindowSlide")
+				if w then
+					out[p:GetAttribute("Window")] = p
+				end
+			end
+		end
+	end
+	return out
+end
+
+function Kit.WindowAmount(car, name)
+	local p = Kit.Windows(car)[name]
+	return p and p:GetAttribute("Down") or 0
+end
+
+function Kit.SetWindow(car, name, amount, time)
+	local p = Kit.Windows(car)[name]
+	local weld = p and p:FindFirstChild("WindowSlide")
+	if not weld then
+		return false
+	end
+	local up, dir, drop = p:GetAttribute("UpC0"), p:GetAttribute("Dir"), p:GetAttribute("Drop") or 0
+	local root = weld.Part0
+	-- Dir is in the car frame; the door root may be swung open, so turn it into the root's own frame (closed pose)
+	local closed = root:GetAttribute("ClosedC0")
+	local localDir = closed and closed:VectorToObjectSpace(dir) or dir
+	local from, to = p:GetAttribute("Down") or 0, math.clamp(amount, 0, 1)
+	local token = {}
+	roll[p] = token
+	p:SetAttribute("Down", to)
+	time = time or math.abs(to - from) * 1.6 -- a motor takes about 1.6 s top to bottom
+	task.spawn(function()
+		local t0 = os.clock()
+		while true do
+			local k = time > 0 and math.clamp((os.clock() - t0) / time, 0, 1) or 1
+			if roll[p] ~= token or not weld.Parent then
+				return
+			end
+			weld.C0 = CFrame.new(localDir * drop * (from + (to - from) * k)) * up
+			if k >= 1 then
+				break
+			end
+			task.wait()
+		end
+		roll[p] = nil
+	end)
+	return true
+end
+
+-- the next step (up -> half -> down -> up) for one window, or every window when name is nil
+function Kit.StepWindow(car, name)
+	local wins = Kit.Windows(car)
+	local cur = name and Kit.WindowAmount(car, name) or 0
+	if not name then
+		for n in wins do
+			cur = math.max(cur, Kit.WindowAmount(car, n))
+		end
+	end
+	local nxt = 0
+	for _, a in Kit.WINDOW_STEPS do
+		if a > cur + 0.01 then
+			nxt = a
+			break
+		end
+	end
+	for n in wins do
+		if not name or n == name then
+			Kit.SetWindow(car, n, nxt)
+		end
+	end
+	return nxt
+end
+
+-- the window beside a seat ("DoorL"...), or nil
+function Kit.WindowFor(car, seat)
+	local best, bd
+	for n, p in Kit.Windows(car) do
+		local d = (p.Position - seat.Position).Magnitude
+		if not bd or d < bd then
+			best, bd = n, d
+		end
+	end
+	return best
 end
 
 -- the car's ground origin (between the axles) in world space

@@ -39,6 +39,7 @@ local ShopRF = remote("RemoteFunction", "LowriderShop") -- client asks: buy the 
 local StateRE = remote("RemoteEvent", "LowriderState") -- driver -> server: corner heights (for other players' wheels)
 local UiRE = remote("RemoteEvent", "LowriderUI") -- server -> client: open the shop screen / hop results
 local HopRE = remote("RemoteEvent", "LowriderHop") -- client -> server: a measured hop
+local WindowRE = remote("RemoteEvent", "VehicleWindow") -- client -> server: roll my window (or, driving, every window)
 
 local carsFolder = workspace:FindFirstChild("Lowriders") or Instance.new("Folder")
 carsFolder.Name = "Lowriders"
@@ -483,6 +484,33 @@ local function updateBoards()
 		end
 	end
 end
+
+-- R in any Kit vehicle steps your window up -> half -> down; the driver with Shift held steps every window
+local windowCooldown = {}
+WindowRE.OnServerEvent:Connect(function(player, all)
+	local now = os.clock()
+	if (windowCooldown[player] or 0) > now then
+		return
+	end
+	windowCooldown[player] = now + 0.25
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	local seat = hum and hum.SeatPart
+	local car = seat and seat.Parent
+	if not (car and car:IsA("Model") and car:GetAttribute("NCLowrider")) then
+		return
+	end
+	if all == true and seat.Name == "DriveSeat" then
+		Kit.StepWindow(car, nil)
+	else
+		local name = Kit.WindowFor(car, seat)
+		if name then
+			Kit.StepWindow(car, name)
+		end
+	end
+end)
+Players.PlayerRemoving:Connect(function(p)
+	windowCooldown[p] = nil
+end)
 
 HopRE.OnServerEvent:Connect(function(player, inches)
 	local prof = profiles[player]

@@ -391,6 +391,9 @@ def door_rule(kind):
     return None
 
 
+WINDOWS = {}
+
+
 def split_onto_doors():
     """move the bits of trim, glass, mirrors and door cards that sit on a door onto that door"""
     for ob in list(OBJS):
@@ -428,6 +431,11 @@ def split_onto_doors():
             bmesh.ops.delete(part, geom=[f for f in part.faces if f.index not in sel], context="FACES")
             hinge = "Door" + ("L" if s > 0 else "R")
             kind = ob["kind"] + "__" + hinge
+            if ob["kind"] == "RoofGlass":
+                # door glass is its own piece so it can roll down into the door (Kit.SetWindow)
+                kind = "RoofGlass__Win" + hinge
+                zs = [v.co.z for v in part.verts]
+                WINDOWS[hinge] = {"piece": kind, "drop": max(0.0, min(max(zs) - min(zs) + 0.02, min(zs) - DOOR_Z0 - 0.12))}
             if kind in OPT_INFO or ob["kind"] in OPT_INFO:
                 OPT_INFO[kind] = dict(OPT_INFO[ob["kind"]], hinge=hinge)
             else:
@@ -719,6 +727,7 @@ data = {
         "Options": options_of(OPT_INFO, car_tris, "Lowrider_"),
         # the dash gauge face (live speedometer) and the club plaque in the rear window
         "Gauge": {"Centre": car_pt((1.55, -2.30, 2.62)), "Size": [1.6, 0.418], "Tilt": 16.7},
+        "Windows": {k: {"Piece": w["piece"], "Drop": round(w["drop"], 3), "Dir": [0, -1, 0]} for k, w in WINDOWS.items()},
         "Steer": {"Centre": car_pt((1.55, -1.7, 2.92)), "Axis": [0.0, round(0.83 / math.hypot(0.55, 0.83), 4), round(0.55 / math.hypot(0.55, 0.83), 4)]},
         "Plaque": {"Centre": car_pt((0.0, 4.68, 3.35)), "Size": [2.0, 0.6]},
     },
@@ -861,7 +870,7 @@ show_livery("none")
 shot("clean_side", (26, 0.5, 3.2), (0, 0.5, 2.0))
 
 
-def pose_hinges(frac, only=None):
+def pose_hinges(frac, only=None, win=0.0):
     """swing every opening panel (and the parts riding on it) frac of the way open, like the game does"""
     for ob in scene.objects:
         k = ob.get("pkind")
@@ -870,7 +879,17 @@ def pose_hinges(frac, only=None):
             continue
         hg = HINGES[h]
         p = Vector(hg["pivot"])
-        ob.matrix_world = Matrix.Translation(p) @ Matrix.Rotation(math.radians(hg["open"] * frac), 4, Vector(hg["axis"])) @ Matrix.Translation(-p)
+        w = WINDOWS.get(h)
+        down = Matrix.Translation((0, 0, -w["drop"] * win)) if w and k == w["piece"] else Matrix.Identity(4)
+        ob.matrix_world = Matrix.Translation(p) @ Matrix.Rotation(math.radians(hg["open"] * frac), 4, Vector(hg["axis"])) @ Matrix.Translation(-p) @ down
+
+
+show_livery("none")
+pose_hinges(0.0, win=0.5)
+shot("windows_half", (20, -6, 4.8), (0, 0, 2.6))
+pose_hinges(0.0, win=1.0)
+shot("windows_down", (26, 0.5, 4.2), (0, 0.5, 2.0))
+pose_hinges(0.0)
 
 
 show_livery("flames", {"Trunk": "Show", "Doors": "Diamond", "Seats": "Diamond"})

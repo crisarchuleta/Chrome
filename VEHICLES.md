@@ -47,6 +47,13 @@ that vehicle's `defaults` in NCVehicles.lua.
   door. Door glass, mirrors and door cards ride on their door; hood scoops ride on the hood; spoilers ride on the
   rear. Data: `Car.Hinges` + `Car.HingeOf` (+ `hinge` in `Car.OptInfo`). The game opens a door when someone gets in
   or out and puts a prompt on each panel (`Kit.SetOpen`).
+- **Roll-down windows:** each door's glass is its own piece (`RoofGlass__Win<Door>`) riding on that door, with
+  its own weld `WindowSlide`. `Car.Windows` = { DoorL = { Piece, Drop (studs), Dir (car frame) } }.
+  `Kit.SetWindow(car, "DoorL", 0.5)` rolls it half way (0 up, 1 down); `Kit.StepWindow` steps up -> half -> down.
+  In game: **R** rolls the window beside your seat, **Shift+R** (driver) rolls every window (remote
+  `VehicleWindow`, handled in LowriderService). Glass that is taller than the door stops short so it never pokes out.
+- **A turning steering wheel** (`Car.Steer`, `Kit.SetSteer`) and a dash **P R N D L** readout (`Kit.SetGear`) next
+  to the live speedometer.
 - **An open cabin** (seats, dash, door cards show through the glass) and **an engine bay** under the hood.
 - **Swappable parts:** front / rear bumper, grille, headlights, taillights, hood, spoiler, side skirts / running
   boards, mirrors, exhaust, roof (sunroof, rack, light bar), underglow, truck bed (cover, roll bar, rack), seats,
