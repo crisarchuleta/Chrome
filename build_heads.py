@@ -742,7 +742,7 @@ def front_hairline(H, V):
     drop = np.clip((a - a_t) / math.radians(14 if male else 42), 0, 1)       # (the temple: nearly straight down)
     # (women: a rounder curve down over the temple to just in front of the ear top, the temple itself covered)
     hz = corner + (burn - corner) * (smoothstep(0.0, 1.0, drop) ** (0.55 if male else 0.8))
-    hz += 0.012 * noise(V, 30)                                      # a little irregular, like a real hairline
+    hz += 0.006 * noise(V, 30)                                      # a little irregular, like a real hairline
     w = 0.03
     fill = smoothstep(-w, w, V[:, 2] - hz)
     # how much this hairline replaces the scalp group: all of the face side, fading out just in front of the ear
@@ -796,12 +796,21 @@ def build_styles(H):
         t = t * t * (3 - 2 * t)
         return (1 - t) * np.array([0.0, 1.0, 0.35]) + t * np.array([0.0, 0.35, -1.0])
 
+    def flow_part(px):
+        """combed away from a side part at x = px (head frame), sweeping back as it goes"""
+        def f(loc, nrm):
+            side = np.sign(loc[0] - (H.centre[0] + px)) or 1.0
+            # (the part runs from the hairline to the crown; behind it the hair is simply combed down the back)
+            behind = float(np.clip((loc[1] - crown_[1]) / 0.1 + 0.3, 0, 1))
+            return (1 - behind) * (np.array([side * 1.0, 0.45, 0.0]) + flow_back(loc, nrm) * 0.3) + behind * flow_back(loc, nrm)
+        return f
+
     FLOWS = {"crown": flow_crown, "back": flow_back}
 
     def make_cards(key, p, cov, T, fade_top=None, hl_=None):
         cp = p["cards"]
         rng = np.random.default_rng(zlib.crc32(key.encode()))     # (stable: str hash() changes every run)
-        flow = FLOWS[cp.get("flow", "crown")]
+        flow = flow_part(cp["part"] * H.R) if cp.get("flow") == "part" else FLOWS[cp.get("flow", "crown")]
         tmin, tmax = p["side"], max(p["top"], p["side"] + 1e-4)
         tw = np.clip((T - tmin) / (tmax - tmin), 0, 1)
         builders = {"full": Builder(), "cap": Builder()}
@@ -991,10 +1000,18 @@ def build_styles(H):
                                                                                  ("STRAIGHT_DENSE", 0.022, 0.9, 0.036, 1.0, 0.1, "front"),   # lying on the base
                                                                                  ("STRAIGHT_DENSE", 0.027, 0.88, 0.036, 1.0, 0.8),  # the outer shape
                                                                                  ("STRAIGHT_DENSE", 0.022, 0.62, 0.03, 0.5, 0.45)])))
-        add_short("HighFade", "High Skin Fade", dict(top=0.10, side=0.02, fade_z=0.22, fade_front=0.06, fade_len_front=0.12, feather=0.06,
-                                                     groove=0.03, freq=24, cards=straight_cards("back", 0.34, 0.1)))
-        add_short("SidePart", "Side Part", dict(top=0.10, side=0.025, part=0.32, sweep=0.03, feather=0.07, groove=0.12))
-        add_short("CurlyTop", "Curly Top", dict(top=0.12, side=0.018, fade_z=0.05, curls=260, curl_r=0.028, curl_amp=0.25, feather=0.06))
+        add_short("HighFade", "High Skin Fade", dict(top=0.085, side=0.014, top_from=0.1, top_to=0.85, fade_z=0.36, fade_len=0.26,
+                                                     fade_front=0.04, fade_len_front=0.12, feather=0.045,
+                                                     groove=0.03, freq=24, cards=straight_cards("back", 0.32, 0.1, base=0.35)))
+        add_short("SidePart", "Side Part", dict(top=0.10, side=0.025, part=0.32, sweep=0.03, feather=0.07, groove=0.04,
+                                                 cards=dict(straight_cards("part", 0.3, 0.07), part=0.32)))
+        add_short("CurlyTop", "Curly Top", dict(top=0.12, side=0.018, fade_z=0.05, curls=260, curl_r=0.028, curl_amp=0.25, feather=0.06,
+                                                 cards=dict(flow="crown", base=0.5, len_top=0.12, len_side=0.05, jitter=0.6, segs=5,
+                                                            layers=[("COILY", 0.022, 0.8, 0.045, 1.0, 0.6),
+                                                                    ("COILY", 0.022, 0.95, 0.045, 1.0, 0.75),
+                                                                    ("COILY", 0.024, 1.05, 0.04, 0.8, 0.85),
+                                                                    ("COILY", 0.02, 0.85, 0.04, 1.0, 0.1, "front"),
+                                                                    ("STRAIGHT_DENSE", 0.022, 0.62, 0.03, 0.5, 0.45)])))
     else:
         add_short("Pixie", "Pixie Cut", dict(top=0.07, side=0.03, part=0.25, sweep=0.03, feather=0.06, groove=0.12))
 
@@ -1697,16 +1714,37 @@ for gender in ("Male", "Female"):
                     "eyeMid": [round(x, 4) for x in rbx(A)],
                     "eyeSpan": float(np.linalg.norm(H.eyeL - H.eyeR))}
     # export (meshes named exactly as Lua looks them up)
-    bpy.ops.object.select_all(action="DESELECT")
-    for name, (ob, *_r) in pieces.items():
-        ob.select_set(True)
+    # Studio refuses FBX files over 20 MB, so the hair cards go in their own files (NC_Head_<Gender>_Cards<n>.fbx),
+    # a few styles each; AssembleHeads takes any number of these files
     olds = {}
     for name, (ob, *_r) in pieces.items():
         olds[ob] = ob.name
         ob.name = name
-    bpy.context.view_layer.objects.active = next(iter(pieces.values()))[0]
-    bpy.ops.export_scene.fbx(filepath=os.path.join(OUT, f"NC_Head_{gender}.fbx"), use_selection=True, object_types={"MESH"},
-                             apply_scale_options="FBX_SCALE_UNITS", mesh_smooth_type="FACE", path_mode="COPY", embed_textures=True)
+    base = [n for n in pieces if not n.endswith("Cards")]
+    cards = [n for n in pieces if n.endswith("Cards")]
+    groups = [("", base)]
+    CARD_TRIS_PER_FILE = 60000
+    cur, tri_sum = [], 0
+    tris_of = {i["mesh"]: i["tris"] for i in info}
+    for n in cards:
+        if cur and tri_sum + tris_of[n] > CARD_TRIS_PER_FILE:
+            groups.append((f"_Cards{len(groups)}", cur))
+            cur, tri_sum = [], 0
+        cur.append(n)
+        tri_sum += tris_of[n]
+    if cur:
+        groups.append((f"_Cards{len(groups)}", cur))
+    for f_ in os.listdir(OUT):                               # (no stale card files from an earlier build)
+        if f_.startswith(f"NC_Head_{gender}_Cards") and f_.endswith(".fbx"):
+            os.remove(os.path.join(OUT, f_))
+    for suffix, names in groups:
+        bpy.ops.object.select_all(action="DESELECT")
+        for n in names:
+            pieces[n][0].select_set(True)
+        bpy.context.view_layer.objects.active = pieces[names[0]][0]
+        bpy.ops.export_scene.fbx(filepath=os.path.join(OUT, f"NC_Head_{gender}{suffix}.fbx"), use_selection=True,
+                                 object_types={"MESH"}, apply_scale_options="FBX_SCALE_UNITS", mesh_smooth_type="FACE",
+                                 path_mode="COPY", embed_textures=True)
     for ob, n in olds.items():
         ob.name = n
     print("NC_HEAD", gender, len(pieces), "pieces", sum(i["tris"] for i in info), "tris")
@@ -1742,7 +1780,8 @@ with open(os.path.join(OUT, "NCHeadData.lua"), "w", encoding="utf-8") as f:
 with open(os.path.join(OUT, "heads.json"), "w") as f:
     json.dump(DATA, f, indent=1)
 ASSEMBLE = """-- AssembleHeads (generated by build_heads.py): run once in Studio's command bar, after importing
--- NC_Head_Male.fbx and NC_Head_Female.fbx with the 3D Importer. Select both imported models, paste this, press Enter.
+-- NC_Head_Male.fbx, NC_Head_Female.fbx and every NC_Head_<Gender>_Cards<n>.fbx with the 3D Importer. Select all the
+-- imported models (or just the ones you re-imported), paste this, press Enter.
 -- The pieces go to ReplicatedStorage.NC_HeadAssets.<Gender>, where NCHead (the Character Studio) finds them.
 local Selection = game:GetService("Selection")
 local RS = game:GetService("ReplicatedStorage")
@@ -1760,12 +1799,13 @@ for _, model in ipairs(Selection:Get()) do
 \t\twarn("AssembleHeads: keep NC_Head_<Gender> in the name of " .. model.Name)
 \t\tcontinue
 \tend
-\tlocal old = root:FindFirstChild(gender)
-\tif old then
-\t\told:Destroy()
+\t-- (the pieces come in several files: NC_Head_<Gender>.fbx and NC_Head_<Gender>_Cards<n>.fbx, so each piece
+\t--  replaces its old copy by name and the rest of the folder stays)
+\tlocal folder = root:FindFirstChild(gender)
+\tif not folder then
+\t\tfolder = Instance.new("Folder")
+\t\tfolder.Name = gender
 \tend
-\tlocal folder = Instance.new("Folder")
-\tfolder.Name = gender
 \tfor _, part in ipairs(model:GetDescendants()) do
 \t\tif part:IsA("MeshPart") then
 \t\t\tpart.Anchored = false
@@ -1802,6 +1842,10 @@ for _, model in ipairs(Selection:Get()) do
 \t\t\t\tif not (ch:IsA("Attachment") or ch == sa) then
 \t\t\t\t\tch:Destroy()
 \t\t\t\tend
+\t\t\tend
+\t\t\tlocal prev = folder:FindFirstChild(part.Name)
+\t\t\tif prev then
+\t\t\t\tprev:Destroy()
 \t\t\tend
 \t\t\tpart.Parent = folder
 \t\t\tdone += 1

@@ -83,14 +83,14 @@ item with no mesh style for that body, and stock avatars, keep the older procedu
 After the bodies (MAKEHUMAN_BODIES.md):
 1. Drag the new `NeonCoastCharacterStudio.rbxmx` into ServerScriptService, replacing the old one. It now includes
    `NCHead` and `NCHeadData`.
-2. Import `NC_Head_Male.fbx` and `NC_Head_Female.fbx` with the 3D Importer. Keep the default scale and the names.
+2. Import `NC_Head_Male.fbx`, `NC_Head_Female.fbx` and the hair-card files `NC_Head_<Gender>_Cards<n>.fbx` with the 3D Importer (the cards are split off to keep every file under Studio's 20 MB limit). Keep the default scale and the names.
    The FBX files carry four greyscale textures (hair edge, brows, two stubble maps). If the hair, brows or
    stubble come in without them, upload the PNGs in `textures_heads/` and set each piece's
    SurfaceAppearance.ColorMap (NC_HairEdge for every Hair_ piece, NC_Brow for Brows_, NC_Stubble /
    NC_StubbleHeavy for the stubble). Hair cards (`Hair_*_Cards`) use NC_HairCard_Color; for their normal and
    roughness maps, upload NC_HairCard_Normal.png and NC_HairCard_Rough.png and paste the ids into CARD_NORMAL and
    CARD_ROUGH at the top of `AssembleHeads.lua` (only needed if the importer didn't bring them in).
-3. Select both imported models. Paste `AssembleHeads.lua` into the command bar and press Enter. The pieces go to
+3. Select all the imported models (or just the ones you re-imported: pieces replace their old copies by name). Paste `AssembleHeads.lua` into the command bar and press Enter. The pieces go to
    `ReplicatedStorage.NC_HeadAssets.Male` and `.Female`.
 4. Re-import the ten `NC_Body_*.fbx` files and run `AssembleMakeHumanBodies.lua` again, because they now have the face bones.
 5. Press Play. Open Character Studio, go to Body, then Face shape, and move a slider. Try a few hairstyles with and
