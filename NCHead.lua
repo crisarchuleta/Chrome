@@ -23,6 +23,11 @@ local RS = game:GetService("ReplicatedStorage")
 local H = {}
 H.FOLDER = "NC_Face"
 H.SOFT_T = 0.02 -- the smallest Transparency that turns on the soft alpha of a SurfaceAppearance
+-- Transparency of the scalp shell under a hair-card style. Two see-through parts are sorted by their centres, and the
+-- shell's and the cards' centres are ~0.04 studs apart, so from some angles the shell drew over the cards (a smooth
+-- glossy front, and strands only past its silhouette like a crest). An opaque shell is always drawn first. If skin
+-- fades go hard-edged with it, set this back to H.SOFT_T.
+H.CARD_SHELL_T = 0
 H.LIP_TINT = Color3.fromRGB(150, 62, 70)
 H.LASH = Color3.fromRGB(22, 16, 14)
 
@@ -182,7 +187,9 @@ function H.put(fr, name, parent, props)
 		pcall(function()
 			sa.Color = props.Color or part.Color
 		end)
-		part.Transparency = math.max(part.Transparency, H.SOFT_T)
+		if not props.Opaque then
+			part.Transparency = math.max(part.Transparency, H.SOFT_T)
+		end
 	end
 	part.CastShadow = props.CastShadow or false
 	-- a classic Weld holds the exact offset from the Head (C0), whatever the parts' positions are when it is made;
@@ -217,13 +224,16 @@ function H.WearHair(fr, pp, parent, hair, skin, hatOn)
 	if hatOn and H.has(fr, name .. "_Cap") then
 		name ..= "_Cap"
 	end
-	if not H.put(fr, name, parent, { Color = hair, Material = Enum.Material.SmoothPlastic, CastShadow = true }) then
-		return false
-	end
 	-- hair-card styles: the strand cards lie over the painted scalp (Hair_<Style>_Cards, or the flattened
 	-- Hair_<Style>_CapCards under a hat). They are thin, so they don't cast shadows.
 	local cards = "Hair_" .. style .. (hatOn and "_CapCards" or "_Cards")
-	if H.has(fr, cards) then
+	local hasCards = H.has(fr, cards)
+	local opaque = hasCards and H.CARD_SHELL_T < H.SOFT_T
+	if not H.put(fr, name, parent, { Color = hair, Material = Enum.Material.SmoothPlastic, CastShadow = true,
+		Transparency = hasCards and H.CARD_SHELL_T or nil, Opaque = opaque }) then
+		return false
+	end
+	if hasCards then
 		H.put(fr, cards, parent, { Color = hair, Material = Enum.Material.SmoothPlastic })
 	end
 	return true
