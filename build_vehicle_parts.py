@@ -177,6 +177,36 @@ def hoods():
     ym = (L0 + A0) / 2
     yl = A0 - L0
     z = lambda x, y: deck_z(x, y)
+    if SMOOTH:
+        # curved hood: each option is a skin grown off the hood itself (flat prisms float off or cut through it)
+        def bump(k, x0, x1, y0, y1, h, nu=10, nv=12, sink=0.035):
+            O, I = [], []
+            for j in range(nv + 1):
+                v = j / nv
+                y = y0 + (y1 - y0) * v
+                ro, ri = [], []
+                for i in range(nu + 1):
+                    u = i / nu
+                    x = x0 + (x1 - x0) * u
+                    zs = z(abs(x), y)
+                    ro.append(Vector((x, y, zs + h(u, v))))
+                    ri.append(Vector((x, y, zs - sink)))
+                O.append(ro)
+                I.append(ri)
+            return solid_grid(k, O, I, [(j, i) for j in range(nv) for i in range(nu)], smooth=50.0)
+        edge = lambda u: max(0.0, 1 - abs(2 * u - 1) ** 6)
+        y0, y1 = ym - yl * 0.12, ym + yl * 0.2
+        bump(kind(S, "Scoop", "Body"), -0.85, 0.85, y0, y1, lambda u, v: 0.02 + 0.4 * (1 - v) ** 1.3 * edge(u))
+        sbox(kind(S, "Scoop", "Dark"), -0.62, y0 - 0.03, z(0, y0) + 0.04, 0.62, y0 + 0.03, z(0, y0) + 0.36)
+        y0, y1 = ym - yl * 0.05, A0 - 0.15
+        bump(kind(S, "Cowl", "Body"), -1.0, 1.0, y0, y1, lambda u, v: 0.02 + 0.28 * v ** 1.2 * edge(u))
+        for s in (-1, 1):
+            xc = s * W * 0.42
+            bump(kind(S, "Vents", "Body"), xc - 0.65, xc + 0.65, ym - 0.75, ym + 0.75, lambda u, v: 0.025, nu=6, nv=6)
+            for i in range(5):
+                y = ym - 0.6 + i * 0.3
+                bump(kind(S, "Vents", "Dark"), xc - 0.55, xc + 0.55, y - 0.05, y + 0.05, lambda u, v: 0.045, nu=6, nv=1)
+        return
     # Scoop: a raised intake with a dark mouth
     y0, y1 = ym - yl * 0.12, ym + yl * 0.2
     sprism(kind(S, "Scoop", "Body"), [(-0.75, y0, z(0, y0) + 0.42), (0.75, y0, z(0, y0) + 0.42), (0.85, y1, z(0, y1) + 0.02), (-0.85, y1, z(0, y1) + 0.02)],

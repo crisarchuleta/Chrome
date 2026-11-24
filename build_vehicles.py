@@ -875,7 +875,7 @@ def build_frunk():
         for yy, dy in ((y0, -0.05), (y1, 0.05)):      # front wall and firewall, shaped to the hood above them
             e = xo(yy)
             xs = [-e + 2 * e * i / m for i in range(m + 1)]
-            bot = lambda x: fl - 0.05 if abs(x) <= ap else uz(x, yy) - 0.06
+            bot = lambda x: fl - 0.05                       # full height: no slit beside the tub walls
             O = [[Vector((x, yy, bot(x))) for x in xs], [Vector((x, yy, uz(x, yy) + 0.02)) for x in xs]]
             I = [[v + Vector((0, dy, 0)) for v in row] for row in O]
             solid_grid("Under", O, I, [(0, i) for i in range(m)], smooth=40.0)
@@ -1125,6 +1125,15 @@ def set_uv(ob, panel):
 def split_panels():
     body = [o for o in OBJS if o.get("loft")][0]
     bake(body)
+    ySF, ySR = L0 + 1.9, L1 - 1.6                        # smooth: the side prints end on clean cuts, not on facets
+    if S.get("smooth"):
+        bm = bmesh.new()
+        bm.from_mesh(body.data)
+        for yc in (ySF, ySR):
+            g = bm.verts[:] + bm.edges[:] + bm.faces[:]
+            bmesh.ops.bisect_plane(bm, geom=g, plane_co=(0, yc, 0), plane_no=(0, 1, 0), dist=1e-4)
+        bm.to_mesh(body.data)
+        bm.free()
     if S.get("smooth"):                                    # remember the uncut body's shading for the seams
         me = body.data
         for poly in me.polygons:
@@ -1139,7 +1148,7 @@ def split_panels():
     regions = {}
     for f in body.data.polygons:
         c, n = f.center, f.normal
-        if abs(n.x) > 0.5 and abs(c.x) > W - 0.35:
+        if abs(n.x) > 0.5 and abs(c.x) > W - 0.35 and (not S.get("smooth") or ySF < c.y < ySR):
             r = "PanelSideL" if c.x > 0 else "PanelSideR"
         elif S.get("smooth") and n.z > 0.3 and L0 + 0.95 < c.y < A0 - 0.08 and abs(c.x) < 0.75 * station_w(c.y):
             r = "PanelHood"                               # the hood: between the fender peaks, behind the nose cone

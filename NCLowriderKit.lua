@@ -190,7 +190,22 @@ function Kit.Prepare(import)
 				end)
 			end
 			if id and id ~= "" then
-				vinyls:SetAttribute((string.gsub(liv .. "_" .. pan, ":", "__")), id) -- attribute names can't hold ":"
+				local key = (string.gsub(liv .. "_" .. pan, ":", "__")) -- attribute names can't hold ":"
+				vinyls:SetAttribute(key, id)
+				-- keep the imported SurfaceAppearance as the print's template: in Overlay mode the clear pixels show
+				-- the panel's Color (the paint). A bare TextureID shows them black.
+				local old = vinyls:FindFirstChild(key)
+				if old then
+					old:Destroy()
+				end
+				if sa then
+					local t = sa:Clone()
+					t.Name = key
+					pcall(function()
+						t.AlphaMode = Enum.AlphaMode.Overlay
+					end)
+					t.Parent = vinyls
+				end
 				nV += 1
 			else
 				warn("NCLowriderKit.Prepare: " .. p:GetFullName() .. " came in without its image; upload lowrider_vinyls/" .. liv .. "_" .. pan .. ".png and put its id in NCLowriderConfig.VinylIds")
@@ -1352,9 +1367,45 @@ function Kit.VinylId(livery, panel, vid)
 	return v and v:GetAttribute((string.gsub(key, ":", "__"))) or ""
 end
 
+-- the SurfaceAppearance template Prepare kept for this print (nil: only an image id is known)
+local function vinylLook(id)
+	if id == "" then
+		return nil
+	end
+	local f = RS:FindFirstChild("LowriderAssets")
+	local v = f and f:FindFirstChild("Vinyls")
+	if not v then
+		return nil
+	end
+	for k, val in v:GetAttributes() do
+		if val == id then
+			local t = v:FindFirstChild(k)
+			return t and t:IsA("SurfaceAppearance") and t or nil
+		end
+	end
+	return nil
+end
+
 local function printVinyl(p, role, id)
 	if p:IsA("MeshPart") then
-		p.TextureID = id -- clear pixels show the part's Color (the candy paint) through
+		local cur = p:FindFirstChild("VinylLook")
+		local t = vinylLook(id)
+		if cur and (not t or cur:GetAttribute("Id") ~= id) then
+			cur:Destroy()
+			cur = nil
+		end
+		if t then
+			-- Overlay: the print sits on the paint and its clear pixels show the panel's Color
+			if not cur then
+				cur = t:Clone()
+				cur.Name = "VinylLook"
+				cur:SetAttribute("Id", id)
+				cur.Parent = p
+			end
+			p.TextureID = ""
+		else
+			p.TextureID = id
+		end
 	else
 		local d = p:FindFirstChild("Vinyl")
 		if id == "" then
@@ -1516,6 +1567,10 @@ function Kit.ApplyLook(car, look)
 			end
 			if topDown and p:IsA("MeshPart") then
 				p.TextureID = ""
+				local sa = p:FindFirstChild("VinylLook")
+				if sa then
+					sa:Destroy()
+				end
 			end
 		end
 		-- pieces that only the part-made fallback car has
