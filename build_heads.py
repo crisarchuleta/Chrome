@@ -619,7 +619,7 @@ def style_short(H, V, F, S, N, d, p):
         dist = np.linalg.norm(V - c, axis=1)
         T = np.maximum(0.03, dist / np.maximum(nq, 1e-6) - dist)
     if "fade_z" in p:                                    # skin fade: sides and back thin to nothing below a line
-        fz = H.ear_z + p["fade_z"]
+        fz = H.ear_z + p["fade_z"] + p.get("fade_front", 0.0) * smoothstep(0.0, 0.6 * H.R, -(V[:, 1] - H.centre[1]))
         T = T * smoothstep(fz - 0.10, fz + 0.06, V[:, 2] + 0.03 * noise(V, 9))
     if p.get("front_lift"):                              # a little more height at the front (the crop in the reference)
         T += p["front_lift"] * smoothstep(0.0, 0.5 * R, -back) * top_w
@@ -771,7 +771,7 @@ def build_styles(H):
             on_top = smoothstep(H.anchor[2] + 0.1, H.anchor[2] + 0.25, V[:, 2]) * (relv[:, 1] < 0.45 * H.R)
             cov = np.minimum(cov, 1 - on_top * (1 - smoothstep(0.004, 0.012, dpart)))
         if "fade_z" in p:
-            fz = H.ear_z + p["fade_z"]
+            fz = H.ear_z + p["fade_z"] + p.get("fade_front", 0.0) * smoothstep(0.0, 0.6 * H.R, -(V[:, 1] - H.centre[1]))
             fc = smoothstep(fz - 0.2, fz + 0.12, V[:, 2] + 0.03 * noise(V, 9))
             cov = np.minimum(cov, fc)
             field = np.minimum(field, fc - 0.02)
@@ -889,7 +889,7 @@ def build_styles(H):
                         continue
                     q = np.array(hit[0])
                     _, idx, _ = kv.find(q)
-                    if d[idx] < 0.005 or q[2] < fz or (capped and q[2] > H.anchor[2] + 0.2):
+                    if d[idx] < 0.005 or q[2] < fz + 0.16 * smoothstep(0.0, 0.6 * H.R, -(q[1] - H.centre[1])) or (capped and q[2] > H.anchor[2] + 0.2):
                         segs.append([])                         # (only inside the hairline and above the fade)
                         continue
                     segs[-1].append((q, np.array(hit[1])))
@@ -913,7 +913,7 @@ def build_styles(H):
         # squared edge-up and a high skin fade (references hair_ref_3)
         add_short("Twists", "Hanging Twists", dict(base, top=0.02, fade_z=0.2, feather=0.025, parts_y=True),
                   locs_extras(0.45, 14, 220, 0.022, 0.3, end_z=H.ear_z + 0.12, part=True, two_strand=True, gap=0.042, clear_k=0.8))
-        add_short("FlatTwists", "Flat Twists", dict(top=0.012, side=0.012, fade_z=0.19, feather=0.025, groove=0.05, freq=40,
+        add_short("FlatTwists", "Flat Twists", dict(top=0.012, side=0.012, fade_z=0.19, fade_front=0.16, feather=0.025, groove=0.05, freq=40,
                                                     parts_phi=[-FT_SPAN + 2 * FT_SPAN * k / 15 for k in range(1, 15)], parts_axis=FT_AXIS),
                   flat_twists(15, 0.034))
     else:
