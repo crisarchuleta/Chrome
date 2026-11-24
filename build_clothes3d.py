@@ -150,7 +150,7 @@ for body in bodies:
                     elif m.type != "ARMATURE":
                         ob.modifiers.remove(m)  # (no Solidify in the game copy, see split_by_material)
                 NG.limit_influences(ob)
-            NG.unpose(o.objs, arm)
+            NG.unpose(o.objs, arm, rest=b)
         for ob in o.objs:
             parts += split_by_material(ob, it, len(parts), b)
         if it["slot"] == "Top" and parts:
