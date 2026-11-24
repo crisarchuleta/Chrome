@@ -211,9 +211,12 @@ fits, baggy stacked denim, chunky chains, gloves and shades.
   using the item's own colours.
 - `nc_headwear.py` fits the head pieces to each MakeHuman head the same way (cut from the head skin, lifted, smoothed,
   kept outside the head by the collider). `nc_catalog3d.py` sends these Head / Mask / Face items to it:
-  - `hat_combat_helmet`, `hat_nvg_helmet`: high-cut padded shell clear of short hair, rubber edge trim, Y chin strap
-    pulled tight under the jaw; the night-ops one adds side rails, the front shroud, stowed goggles and a back pouch.
-  - `hat_durag`, `hat_durag_velvet`: skin-tight crown from the forehead over the ear tops to the nape, centre seam,
+  - `hat_combat_helmet`, `hat_nvg_helmet`: army (ACH-style) shell clear of short hair, edge just above the brows and
+    over the ear tops with a slight flare, cloth-cover seams, elastic band with two glow tabs at the back, side bolts,
+    Y chin strap pulled tight under the jaw; the night-ops one adds side rails, the front shroud, stowed goggles and a
+    back pouch.
+  - `hat_durag`, `hat_durag_velvet`: skin-tight crown from just above the brows, straight back over the ear tops and
+    down behind the ears to the nape, centre seam,
     rolled tie band, knot at the nape, tail flap and two tie ends (silky is glossy, velvet is matte).
   - `mask_ski` (eye and mouth holes), `mask_ski_open` (one face opening), `mask_ski_pom` (white rib edges and pom):
     knit under tension so it bridges the eye sockets, under the nose and the chin, rib roll on every opening, and a bib

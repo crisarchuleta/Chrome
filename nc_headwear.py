@@ -201,7 +201,7 @@ def build_durag(o, name, color=(0.01, 0.01, 0.01), velvet=False):
     ez, c = h.eye_z, h.c
     P, F = h.faces(sub=1)
     fr = h.front(P)
-    zl = ez + k * np.interp(fr, [-1, -0.62, -0.32, 0.0, 1], [-0.112, -0.085, 0.028, 0.036, 0.05])
+    zl = ez + k * np.interp(fr, [-1, -0.7, -0.4, -0.15, 0.0, 0.5, 1], [-0.1, -0.085, -0.02, 0.018, 0.022, 0.027, 0.03])
     P, F, _ = clip(P, F, zl - P[:, 2], {})
     X, F, E = _shell(o, P, F, 0.0045 * k, 3, 0.004 * k, smooth=3)
     rough = 0.95 if velvet else 0.45
@@ -345,25 +345,74 @@ def build_helmet(o, name, color=(0.33, 0.37, 0.2), nvg=False, strap=True):
     ez, c = h.eye_z, h.c
     P, F = h.faces(sub=0)
     fr = h.front(P)
-    zl = ez + k * np.interp(fr, [-1, -0.55, -0.3, -0.05, 0.3, 1], [-0.05, -0.04, 0.026, 0.032, 0.038, 0.05])
+    # army (ACH-style) edge line: just above the brows, down over the top of the ears, low at the back of the skull
+    zl = ez + k * np.interp(fr, [-1, -0.6, -0.3, -0.05, 0.3, 1], [-0.062, -0.055, -0.01, -0.004, 0.02, 0.034])
     P, F, _ = clip(P, F, zl - P[:, 2], {})
     P, F, _ = subdivide(P, F, {})
-    X, F, E = _shell(o, P, F, 0.026 * k, 10, 0.022 * k, smooth=8)
+    X, F, E = _shell(o, P, F, 0.021 * k, 10, 0.018 * k, smooth=8)
     X = laplace(X, E, 10, taubin=True)
-    X = o.col.push(X, 0.02 * k)
+    X = o.col.push(X, 0.017 * k)
     centre = np.array([c[0], c[1], ez])
-    m_shell = _mat(name + "_Shell", color, rough=0.72)
-    m_dark = _mat(name + "_Trim", (0.02, 0.02, 0.022), rough=0.8)
-    out = [make_object(b, f"{b.obj.name}_{name}", X, F, [m_shell], None, None, thick=0.005 * k, subsurf=1)]
-    col = _col_of(X, F, centre)
     ll = max(boundary_loops(F), key=len)
-    X = _smooth_loop(X, ll, 10, o.col, 0.02 * k)
+    X = _smooth_loop(X, ll, 12, o.col, 0.017 * k)
+    # the edge flares out a little all round, like a real ballistic shell
+    dE = cKDTree(X[ll]).query(X)[0]
+    rad_v = np.c_[X[:, 0] - c[0], X[:, 1] - c[1], np.zeros(len(X))]
+    rad_v /= np.linalg.norm(rad_v, axis=1, keepdims=True) + 1e-12
+    X += rad_v * (0.007 * k * np.clip(1 - dE / (0.035 * k), 0, 1) ** 2)[:, None]
+    X = laplace(X, E, 2, taubin=True)
+    m_shell = _mat(name + "_Shell", color, rough=0.9)
+    m_dark = _mat(name + "_Trim", (0.02, 0.02, 0.022), rough=0.8)
+    m_band = _mat(name + "_Band", np.array(color[:3]) * 0.55, rough=0.95)
+    out = [make_object(b, f"{b.obj.name}_{name}", X, F, [m_shell], None, None, thick=0.004 * k, subsurf=1)]
+    col = _col_of(X, F, centre)
     rim = X[ll].copy()
     for _ in range(4):
         rim = 0.5 * rim + 0.25 * (np.roll(rim, 1, 0) + np.roll(rim, -1, 0))
     parts = []
-    Vt, Ft = make_tube(rim, 0.0055 * k, nseg=8, closed=True)
+    Vt, Ft = make_tube(rim, 0.0042 * k, nseg=8, closed=True)
     parts.append((Vt, Ft, 1))
+    # cloth cover: four seams over the crown meeting at the top, the elastic band round the shell with two
+    # glow tabs at the back, and the retention bolts on each side
+    T0 = 0.004 * k
+    Nx = vnormals(X, F)
+    ax = h.ang(X); upf = (X[:, 2] - ez) / (X[:, 2].max() - ez)
+    topp = X[np.argmax(X[:, 2])]
+    for a in np.radians([45, 135, -45, -135]):
+        e0 = rim[np.argmin(np.abs(np.angle(np.exp(1j * (h.ang(rim) - a)))))]
+        Q = _taut(col, [e0, (e0 + topp) / 2 + np.array([0, 0, 0.03 * k]), topp], T0 + 0.0008 * k, iters=80, n=40)
+        Vt, Ft = make_tube(Q[3:-2], 0.0014 * k, nseg=6)
+        parts.append((Vt, Ft, 2))
+    # elastic band: two rings laid on the shell, bridged into a smooth strap
+    ph = np.linspace(-np.pi, np.pi, 145)[:-1]
+    frp = np.cos(ph)
+    rows = []
+    for dz in (-0.0085 * k, 0.0085 * k):
+        zb_ = ez + 0.05 * k + 0.012 * k * frp + dz
+        Q = h.at(ph, zb_, h.radius_at(ph, float(zb_.mean()), dz=0.03) + 0.008 * k)
+        for _ in range(25):
+            Q = col.push(Q, T0 + 0.0022 * k)
+            Q = 0.5 * Q + 0.25 * (np.roll(Q, 1, 0) + np.roll(Q, -1, 0))
+        rows.append(col.push(Q, T0 + 0.0022 * k))
+    nb = len(ph)
+    Vb = np.vstack(rows)
+    Fb = _orient_out(Vb, [[i, (i + 1) % nb, nb + (i + 1) % nb, nb + i] for i in range(nb)], centre)
+    parts.append((Vb, Fb, 2))
+    for s_ in (1, -1):
+        j0 = int(np.argmin(np.abs(np.angle(np.exp(1j * (ph - s_ * np.radians(160)))))))
+        js = [(j0 + d) % nb for d in range(-2, 3)]
+        Vt = np.vstack([rows[0][js], rows[1][js]])
+        cc = Vt.mean(0); Vt = cc + (Vt - cc) * np.array([1, 1, 0.6]); Vt += (cc - centre) / np.linalg.norm(cc - centre) * 0.0012 * k
+        Ft = _orient_out(Vt, [[i, i + 1, 5 + i + 1, 5 + i] for i in range(4)], centre)
+        parts.append((Vt, Ft, 3))
+    for s_ in (1, -1):
+        sel = np.where((np.abs(ax - s_ * np.radians(90)) < np.radians(4)) & (upf > 0.08) & (upf < 0.3))[0]
+        if len(sel):
+            p = X[sel].mean(0); nrm = Nx[sel].mean(0); nrm /= np.linalg.norm(nrm)
+            if np.dot(nrm, p - centre) < 0:
+                nrm = -nrm
+            Vb, Fb = _blob(p + nrm * T0, np.array([0.006, 0.006, 0.006]) * k, n=6, m=10)
+            parts.append((Vb, Fb, 1))
     if strap:
         # Y strap: in front of and behind the ear, meeting under the ear, then tight under the chin
         def rim_at(frv, side):
@@ -393,12 +442,12 @@ def build_helmet(o, name, color=(0.33, 0.37, 0.2), nvg=False, strap=True):
         fr_x = h.front(X); ax = np.abs(h.ang(X))
         # side rails: a strip just above the rim, temple to behind the ear
         rail = (ax > np.radians(55)) & (ax < np.radians(130)) & (up > 0.24) & (up < 0.36)
-        pt = _patch(X, F, rail, 0.0045 * k)
+        pt = _patch(X, F, rail, T0 + 0.0045 * k)
         if pt:
             parts.append((pt[0], pt[1], 1))
         # front shroud
         shroud = (ax < np.radians(17)) & (up > 0.3) & (up < 0.6)
-        pt = _patch(X, F, shroud, 0.004 * k)
+        pt = _patch(X, F, shroud, T0 + 0.004 * k)
         if pt:
             parts.append((pt[0], pt[1], 1))
             sc = pt[0].mean(0)
@@ -420,15 +469,17 @@ def build_helmet(o, name, color=(0.33, 0.37, 0.2), nvg=False, strap=True):
                 ring = [a1 + 0.0002 * k * dirv + 0.011 * k * (np.cos(t) * np.array([1.0, 0, 0]) + np.sin(t) * np.cross(dirv, [1.0, 0, 0]))
                         for t in np.linspace(0, 2 * np.pi, 14, endpoint=False)]
                 Vl = np.vstack([ring, [a1 + dirv * 0.001 * k]]); ci = len(Vl) - 1
-                parts.append((Vl, [[i, (i + 1) % 14, ci] for i in range(14)], 2))
+                parts.append((Vl, [[i, (i + 1) % 14, ci] for i in range(14)], 4))
         # counterweight pouch at the back
         pouch = (ax > np.radians(150)) & (up > 0.15) & (up < 0.42)
-        pt = _patch(X, F, pouch, 0.009 * k)
+        pt = _patch(X, F, pouch, T0 + 0.009 * k)
         if pt:
             parts.append((pt[0], pt[1], 1))
     Vd, Fd, md = merge_parts(parts)
     m_lens = _mat(name + "_Lens", (0.05, 0.25, 0.12), rough=0.05, metal=0.3)
-    out.append(make_object(b, f"{b.obj.name}_{name}_Gear", Vd, Fd, [m_shell, m_dark, m_lens], md, None, thick=0, subsurf=1))
+    m_tab = _mat(name + "_Tab", (0.55, 0.6, 0.35), rough=0.6)
+    md = [{2: 2, 3: 3}.get(m, m) for m in md]
+    out.append(make_object(b, f"{b.obj.name}_{name}_Gear", Vd, Fd, [m_shell, m_dark, m_band, m_tab, m_lens], md, None, thick=0, subsurf=1))
     o.objs.extend(out)
     _add_collider(o, X, F, centre, 0.006 * k)
     return out[0]
@@ -562,9 +613,9 @@ def build_goggles(o, name, frame=(0.01, 0.01, 0.01), lens=(0.8, 0.37, 0.05), up=
     b = o.b; k = b.k; h = Head(b)
     ez, c = h.eye_z, h.c
     zc = ez + (0.075 if up else 0.009) * k
-    hz = 0.027 * k
-    amax = np.radians(74)
-    clr = (0.008 if up else 0.022) * k
+    hz = 0.0215 * k
+    amax = np.radians(64)
+    clr = (0.006 if up else 0.013) * k
     nu, nv = 41, 9
     U = np.linspace(-1, 1, nu)
 
@@ -589,7 +640,7 @@ def build_goggles(o, name, frame=(0.01, 0.01, 0.01), lens=(0.8, 0.37, 0.05), up=
 
     def lens_pt(u, v, extra=0.0):
         phi = u * amax
-        r = np.interp(u, U, Rc) + clr + 0.006 * k * (1 - v ** 2) + extra
+        r = np.interp(u, U, Rc) + clr + 0.004 * k * (1 - v ** 2) + extra
         z = zc + v * hz
         r = r - tilt * (z - zc)
         return h.at(phi, z, r)
@@ -608,7 +659,7 @@ def build_goggles(o, name, frame=(0.01, 0.01, 0.01), lens=(0.8, 0.37, 0.05), up=
     ouv = np.array([[u, v_rng(u)[0]] for u in U] + [[u, v_rng(u)[1]] for u in U[::-1]])
     # front rim: slightly bigger outline, a touch proud of the lens
     cen_uv = np.array([0.0, 0.0])
-    rim_out = np.array([lens_pt(np.clip(u * 1.04, -1.04, 1.04), v * 1.0 + np.sign(v) * 0.18, 0.003 * k) for u, v in ouv])
+    rim_out = np.array([lens_pt(np.clip(u * 1.04, -1.04, 1.04), v * 1.0 + np.sign(v) * 0.14, 0.0025 * k) for u, v in ouv])
     rim_in = np.array([lens_pt(u, v, 0.0025 * k) for u, v in ouv])
     # foam/side wall back to the face
     face = []
@@ -634,7 +685,7 @@ def build_goggles(o, name, frame=(0.01, 0.01, 0.01), lens=(0.8, 0.37, 0.05), up=
         Q[1:-1] = 0.5 * Q[1:-1] + 0.25 * (Q[:-2] + Q[2:]); Q = o.col.push(Q, 0.006 * k)
     Q = np.vstack([side_pts[1], Q, side_pts[0]])
     Nq = np.zeros_like(Q); Nq[:, :2] = Q[:, :2] - c; Nq /= np.linalg.norm(Nq, axis=1, keepdims=True)
-    Vs, Fs = _ribbon(Q, Nq, 0.034 * k)
+    Vs, Fs = _ribbon(Q, Nq, 0.024 * k)
     Fs = _orient_out(Vs, Fs, centre)
     m_frame = _mat(name + "_Frame", frame, rough=0.55)
     m_lens = _mat(name + "_Lens", lens, rough=0.06, metal=0.55)
