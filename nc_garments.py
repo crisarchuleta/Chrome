@@ -1185,6 +1185,41 @@ def rehang(b, X, F, sel, hang_from, ease=0.0):
     return X
 
 
+def _leg_falloff(b, X, z_top, slope=0.1, nb_z=80, nb_p=32):
+    """Cloth below a bump (the base-shorts hem, a thick thigh) falls away gradually instead of printing a ridge:
+    per leg and angle, the radius from the leg axis may shrink by at most `slope` per unit height going down."""
+    k = b.k; X = X.copy()
+    for side in ("l", "r"):
+        A_ = b.J[side + "-upper-leg"]; B_ = b.J[side + "-ankle"]
+        m = (b.side(X) == side) & (X[:, 2] < z_top) & (X[:, 2] > B_[2])
+        if m.sum() < 50:
+            continue
+        d = B_ - A_; L = np.linalg.norm(d); d /= L
+        t = np.clip((X[m] - A_) @ d, 0, L)
+        ax = A_ + t[:, None] * d
+        rv = X[m] - ax; r = np.linalg.norm(rv, axis=1)
+        ph = np.arctan2(rv[:, 1], rv[:, 0])
+        zt = (z_top - X[m, 2])
+        bi = np.clip((zt / (z_top - B_[2]) * nb_z).astype(int), 0, nb_z - 1)
+        bj = ((ph + np.pi) / (2 * np.pi) * nb_p).astype(int) % nb_p
+        G = np.zeros((nb_z, nb_p)); np.maximum.at(G, (bi, bj), r)
+        dz = (z_top - B_[2]) / nb_z
+        for i in range(1, nb_z):
+            G[i] = np.maximum(G[i], G[i - 1] - slope * dz)
+        for _ in range(2):
+            G = np.maximum(G, 0.5 * G + 0.25 * (np.roll(G, 1, 1) + np.roll(G, -1, 1)))
+        # interpolate in z so the envelope has no steps between bins
+        fz = zt / (z_top - B_[2]) * nb_z - 0.5
+        i0 = np.clip(np.floor(fz).astype(int), 0, nb_z - 1); i1 = np.clip(i0 + 1, 0, nb_z - 1); u = np.clip(fz - i0, 0, 1)
+        env = G[i0, bj] * (1 - u) + G[i1, bj] * u
+        rn = np.minimum(np.maximum(r, env), r + 0.012 * k)  # only evens out small bumps
+        sg = 1.0 if side == "l" else -1.0
+        inner = np.clip((rv[:, 0] * sg / np.maximum(r, 1e-9) + 0.5) / 0.4, 0, 1)  # leave the inseam alone
+        rn = r + (rn - r) * inner
+        X[m] = ax + rv * (rn / np.maximum(r, 1e-9))[:, None]
+    return X
+
+
 def build_pants(o, name, fit="baggy", color=(0.06, 0.065, 0.075), accent=None, stack=True, cuffed=False,
                 cargo=False, camo_pal=None, thick=0.004, shorts=False):
     b = o.low; k = b.k; J = b.J; P0 = b.co; reg = b.reg
@@ -1246,6 +1281,7 @@ def build_pants(o, name, fit="baggy", color=(0.06, 0.065, 0.075), accent=None, s
     D = laplace(X - X0, E, 45)
     X = X0 + D
     X = laplace(X, E, 6, taubin=True)
+    X = _leg_falloff(b, X, b.crotch_z - 0.02 * k)
     X = o.col_noarm.push(X, 0.006 * k)
     # pant legs: hang straight down past the cut and stack on top of the shoes
     loops = boundary_loops(F)

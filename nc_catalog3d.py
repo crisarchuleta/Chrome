@@ -1,6 +1,7 @@
 """Maps NCLookCatalog clothing items (Top / Outer / Bottom / Shoes) to the 3D garment maker, so every catalog
 piece gets a fitted mesh on every body. Colours come from the item's default c1 / c2."""
 import re
+import numpy as np
 import nc_garments as NG
 
 LINE = re.compile(r'^\s*I\("([a-z0-9_]+)",\s*"(Top|Outer|Bottom|Shoes|Head|Mask|Face)",\s*"((?:[^"\\]|\\.)*)",\s*\d+,\s*"([a-z]+)",\s*(\{[^}]*\}|nil),\s*([^,]+),\s*"(#[0-9A-Fa-f]{6})"(?:,\s*([^,]+),\s*"(#[0-9A-Fa-f]{6})")?')
@@ -59,6 +60,33 @@ SHOE_MAP = {  # catalog id -> (SHOE_STYLES key, extra args)
 }
 
 
+def _plaid_zones(b, co, per=0.05, skirt=False):
+    """(axis point, axis dir, e1, e2, band count, selector) for each tube a plaid wraps: each leg below the
+    crotch, and the hips / body above it."""
+    k = b.k; J = b.J; zc = b.crotch_z + 0.02 * k
+    zones = []
+    if skirt:
+        zc = -1e9  # a skirt is one tube round the body
+    def frame(d):
+        d = d / np.linalg.norm(d); e1 = np.array([1.0, 0, 0]) - d[0] * d; e1 /= np.linalg.norm(e1)
+        return d, e1, np.cross(d, e1)
+    for sd, sg in ((() if skirt else (("l", 1), ("r", -1)))):
+        A_ = np.array(J[sd + "-upper-leg"]); d, e1, e2 = frame(np.array(J[sd + "-ankle"]) - A_)
+        m = (co[:, 2] < zc) & ((co[:, 0] - b.cx) * sg > 0)
+        if m.sum() < 10:
+            continue
+        q = co[m] - A_; q = q - np.outer(q @ d, d); r = np.percentile(np.linalg.norm(q, axis=1), 80)
+        N_ = max(8, 2 * int(round(np.pi * r / (per * k))))
+        zones.append((A_, d, e1, e2, N_, (lambda c, sg=sg: c[2] < zc and (c[0] - b.cx) * sg > 0)))
+    A_ = np.array([b.cx, b.yc, J["pelvis"][2]]); d, e1, e2 = frame(np.array([0, 0, 1.0]))
+    m = co[:, 2] >= zc
+    if m.sum() >= 10:
+        q = co[m] - A_; q[:, 2] = 0; r = np.percentile(np.linalg.norm(q, axis=1), 80)
+        N_ = max(8, 2 * int(round(np.pi * r / (per * k))))
+        zones.append((A_, d, e1, e2, N_, (lambda c: c[2] >= zc)))
+    return zones
+
+
 def apply_pattern(o, n0, kind, c1, c2, arms_only=False, name=""):
     """Stripes / plaid as face materials on the garments built since o.objs[n0]. The mesh is first cut exactly
     along the pattern lines (bmesh bisect), so the colour edges are straight and crisp and survive the game
@@ -89,13 +117,23 @@ def apply_pattern(o, n0, kind, c1, c2, arms_only=False, name=""):
         else:
             for zc in np.arange(np.floor(z0 / per_p) * per_p, z1 + per_p, per_p):
                 cuts += [((0, 0, float(zc)), (0, 0, 1.0)), ((0, 0, float(zc + 0.34 * per_p)), (0, 0, 1.0))]
-            for cx_ in ([J["l-knee"][0], J["r-knee"][0]] if co[:, 2].min() < b.crotch_z else [b.cx]):
-                xs0 = np.arange(cx_ - 0.4 * k, cx_ + 0.4 * k, per_p)
-                for xc in xs0:  # vertical bands: planes facing the front (they run down the front and back)
-                    cuts += [((float(xc), 0, 0), (1.0, 0, 0)), ((float(xc + 0.34 * per_p), 0, 0), (1.0, 0, 0))]
         for pco, pno in cuts:
             geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
             bmesh.ops.bisect_plane(bm, geom=geom, plane_co=pco, plane_no=pno, dist=1e-6)
+        if kind != "stripes":
+            # vertical bands run AROUND each tube (planes through the leg / body axis), so they stay even all the
+            # way round instead of swelling into rings where a flat cut grazes the side of the hip or thigh
+            for zone in _plaid_zones(b, co, skirt="skirt" in ob.name.lower()):
+                A_, d_, e1, e2, N_, sel = zone
+                for i_ in range(N_ // 2):
+                    for off in (0.0, 0.34):
+                        a_ = 2 * np.pi * (i_ + off) / N_
+                        rad_ = np.cos(a_) * e1 + np.sin(a_) * e2
+                        fs = [f for f in bm.faces if sel(np.array(f.calc_center_median()))]
+                        if not fs:
+                            continue
+                        es = list({e for f in fs for e in f.edges}); vs_ = list({v for f in fs for v in f.verts})
+                        bmesh.ops.bisect_plane(bm, geom=vs_ + es + fs, plane_co=tuple(A_), plane_no=tuple(np.cross(d_, rad_)), dist=1e-6)
         nv0 = len(me.vertices)
         bm.to_mesh(me); bm.free()
         if "nc_arm" in me.attributes:  # vertices the cuts added: take the sleeve flag of the edge they split
@@ -114,6 +152,7 @@ def apply_pattern(o, n0, kind, c1, c2, arms_only=False, name=""):
         me.materials.append(NG.material(nm_ + "_P1", mid)); me.materials.append(NG.material(nm_ + "_P2", dark))
         i_mid, i_dark = len(me.materials) - 2, len(me.materials) - 1
         co = np.array([v.co for v in me.vertices])
+        zones = _plaid_zones(b, co, skirt="skirt" in ob.name.lower()) if kind != "stripes" else []
         if arms_only and "nc_arm" in me.attributes:  # bmesh carries the per-vertex arm flag through the cuts
             armv = np.zeros(len(me.vertices), np.int32); me.attributes["nc_arm"].data.foreach_get("value", armv)
         for poly in me.polygons:
@@ -129,11 +168,12 @@ def apply_pattern(o, n0, kind, c1, c2, arms_only=False, name=""):
                 if int(np.floor(c[2] / per_s)) % 2:
                     poly.material_index = i_dark
             else:
-                if c[2] < b.crotch_z + 0.02 * k:
-                    cxl = J["l-knee"][0] if c[0] > b.cx else J["r-knee"][0]
-                else:
-                    cxl = b.cx
-                a = ((c[0] - cxl) / per_p) % 1.0 < 0.34
+                a = False
+                for A_, d_, e1, e2, N_, sel in zones:
+                    if sel(c):
+                        q_ = c - A_; q_ = q_ - (q_ @ d_) * d_
+                        a = (np.arctan2(q_ @ e2, q_ @ e1) / (2 * np.pi) * N_) % 1.0 < 0.34
+                        break
                 bnd = (c[2] / per_p) % 1.0 < 0.34
                 if a and bnd:
                     poly.material_index = i_dark
