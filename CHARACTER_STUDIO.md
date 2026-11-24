@@ -79,6 +79,23 @@ studio goes through the same code.
   top-button flannels, zoot suits with suspenders, folded bandanas, hairnets, rosaries, two-tone shoes and script ink.
   It's fashion only, with no gang names, colours, numbers or symbols, so it stays inside Roblox rules.
 
+### Shoes and the white tank (2026-11-24)
+
+- **Sneakers.** The 10 catalog sneakers use `build_shoe`, the shoe maker matched to the person's shoe references
+  (`nc_catalog3d.SHOE_MAP`). The styles are court low and high, runner, skate and canvas high. Each shoe is sized from
+  that body's own foot:
+  - The toe box is never narrower or lower than the toes.
+  - The sole never rises above the lowest toe.
+  - The collision push only works at the heel and collar, so the toe box stays smooth. Before this, the heavier
+    bodies' toes crumpled the front or poked out under it.
+  - Dress shoes, boots and sandals still use the older `build_sneakers` maker.
+- **Tank coverage.** Every top covers the white base-layer tank on all 10 bodies:
+  - A crevice liner covers the armpit and side crease.
+  - Small holes in the body shell are filled.
+  - Sleeveless armholes hug the strap edge.
+  - Open-front jackets show the tank on purpose.
+  - `tools/qa/tankcheck.py <Body>` measures how much tank shows through (it flags anything over 0.3%).
+
 ## Real tattoos on the MakeHuman bodies (NCInk)
 
 The MakeHuman bodies get real printed ink, done the same way as the car vinyls: a transparent PNG on a thin layer
