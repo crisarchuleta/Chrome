@@ -156,7 +156,7 @@ V.List = {
 		suspensions = { "stock", "bags" },
 		defaults = { part_FrontBumper = "", part_RearBumper = "", part_Grille = "", part_Headlights = "Slim", part_Taillights = "Slim",
 			part_Mirrors = "Sport", part_Hood = "", part_Spoiler = "", part_Exhaust = "", part_Top = "", part_Seats = "Buckets",
-			part_Doors = "Smooth", part_Dash = "Digital", part_Steering = "Sport", part_Shifter = "THandle", part_Rim = "Split", part_KO = "Cap",
+			part_Doors = "Smooth", part_Dash = "Digital", part_Steering = "Sport", part_Shifter = "THandle", part_Rim = "Split", part_KO = "",
 			part_Tire = "Classic", ww = "", paint = "midnight", fin_Rim = "satin", fin_Spokes = "satin", tint = "dark" },
 	},
 	-- bikes (build_bikes.py): two wheels, the driving script balances them and leans them into turns; Space = wheelie
