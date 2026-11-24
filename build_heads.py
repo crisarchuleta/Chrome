@@ -906,12 +906,18 @@ def build_styles(H):
             return (1 - behind) * (np.array([side * 1.0, 0.45, 0.0]) + flow_back(loc, nrm) * 0.3) + behind * flow_back(loc, nrm)
         return f
 
+    def flow_tie(pt):
+        """slicked tight towards a tie point (a ponytail or bun): every hair heads for it over the scalp"""
+        pt = np.asarray(pt, float)
+        return lambda loc, nrm: pt - loc
+
     FLOWS = {"crown": flow_crown, "back": flow_back}
 
     def make_cards(key, p, cov, T, fade_top=None, hl_=None):
         cp = p["cards"]
         rng = np.random.default_rng(zlib.crc32(key.encode()))     # (stable: str hash() changes every run)
-        flow = flow_part(cp["part"] * H.R) if cp.get("flow") == "part" else FLOWS[cp.get("flow", "crown")]
+        flow = (flow_part(cp["part"] * H.R) if cp.get("flow") == "part" else
+                flow_tie(cp["tie"]) if cp.get("flow") == "tie" else FLOWS[cp.get("flow", "crown")])
         tmin, tmax = p["side"], max(p["top"], p["side"] + 1e-4)
         tw = np.clip((T - tmin) / (tmax - tmin), 0, 1)
         builders = {"full": Builder(), "cap": Builder()}
@@ -926,7 +932,9 @@ def build_styles(H):
             tsurf = T * cp["base"] * (0.15 + 0.85 * smoothstep(0.0, cp.get("edge_ramp", 0.07), hl_ if hl_ is not None else 1.0))
         else:
             tsurf = np.minimum(T, 0.003)
-        tsurf = np.maximum(tsurf, 0) + 0.007
+        # (+0.007 the shell's lift, +0.006 more: Roblox's imported, skinned head sits a little proud of the reference
+        #  in places and cut card tips off along its polygon edges, leaving square opaque ends)
+        tsurf = np.maximum(tsurf, 0) + 0.013
         floor_at = lambda loc: tsurf[kdv.find(loc)[1]]
 
         def height_at(frac):
@@ -967,6 +975,8 @@ def build_styles(H):
                     length = min(length, room)
                 # keep the card about as long as the strand texture is tall for its width (1:4 in the atlas): a short
                 # card as wide as it is long squashes the strands into a brush-shaped block
+                if cp.get("flow") == "tie":                      # (stops at the tie, never past it and back)
+                    length = min(length, float(np.linalg.norm(np.asarray(cp["tie"]) - root)) - 0.03)
                 if length < 0.045:                               # (a stub reads as a hard-ended block or a speck
                     continue                                     #  on the side: the shell carries the short hair)
                 w_i = min(width, length * 0.4)
@@ -982,7 +992,7 @@ def build_styles(H):
                 vz = np.array(vv)
                 if (vz[:, 2] < cap_line(H, vz) - 0.01).all() and hfrac < 0.95:
                     lo_h = np.array([np.linalg.norm(q - H.nearest(q)[0]) for q in vz]).max()
-                    if lo_h < 0.02:
+                    if lo_h < 0.028:
                         builders["cap"].add(vv, ff, uu, ww)
         if cp.get("defer"):                                # (long hair: its hanging strands are added later)
             return builders["full"], builders["cap"]
@@ -1034,6 +1044,63 @@ def build_styles(H):
         loops = np.array([l.vertex_index for l in ob.data.loops])
         uvl.data.foreach_set("uv", np.stack([np.array(b_.u)[loops], np.array(b_.w)[loops]], 1).ravel())
         return ob
+
+    def ribbon_cards(P_, A_, hw, rng_, capped, kind="STRAIGHT_DENSE", seg_len=0.4, overlap=(0.5, 0.65)):
+        """strand cards along a path: P_ points (n x 3), A_ unit vectors across the ribbon, hw half widths (n).
+        Cut into overlapping cards of ~seg_len, each one whole strand texture (tips taper, nothing stretched), the
+        last one ending on the strand tips. Under a hat, only cards fully below the cap line."""
+        P_ = np.asarray(P_, float)
+        if len(P_) < 2:
+            return
+        A_ = np.asarray(A_, float)
+        hw = np.broadcast_to(np.asarray(hw, float), (len(P_),))
+        sarc = np.r_[0, np.cumsum(np.linalg.norm(np.diff(P_, axis=0), axis=1))]
+        if sarc[-1] < 0.04:
+            return
+        seg = min(seg_len, sarc[-1])
+        s0 = -rng_.uniform(0, 0.3) * seg
+        while True:
+            if s0 + seg > sarc[-1]:
+                s0 = sarc[-1] - seg
+            a_s, e_s = max(s0, 0.0), min(s0 + seg, sarc[-1])
+            idx = np.nonzero((sarc >= a_s - 1e-9) & (sarc <= e_s + 1e-9))[0]
+            if len(idx) >= 2:
+                sp_ = P_[idx]
+                if not capped or (sp_[:, 2] < cap_line(H, sp_) - 0.02).all():
+                    u0, u1 = HC.kind_u(kind)
+                    w_ = (u1 - u0) * rng_.uniform(0.9, 1.0)
+                    us = u0 + rng_.uniform(0, (u1 - u0) - w_)
+                    if rng_.random() < 0.5:
+                        us, w_ = us + w_, -w_
+                    m = len(idx)
+                    h_ = hw[idx][:, None]
+                    vv = list(map(tuple, sp_ - A_[idx] * h_)) + list(map(tuple, sp_ + A_[idx] * h_))
+                    ff = [[j, j + 1, m + j + 1, m + j] for j in range(m - 1)]
+                    vc = list(np.clip((sarc[idx] - s0) / seg * 0.98 + 0.01, 0.01, 0.995))
+                    SHEET_CARDS["cap" if capped else "full"].append((vv, ff, [us] * m + [us + w_] * m, vc + vc))
+            if s0 + seg >= sarc[-1] - 1e-6:
+                break
+            s0 += seg * rng_.uniform(*overlap)
+
+    def frizz_cards(pts, radius, rng_, capped, k=1.35, kind="STRAIGHT_WISPY"):
+        """two crossed wispy cards along a rope (loc, twist, ponytail clump): loose hairs round its outline"""
+        P_ = np.asarray(pts, float)
+        if len(P_) < 3:
+            return
+        P2 = P_.copy()
+        for _ in range(2):
+            P2[1:-1] = 0.25 * P2[:-2] + 0.5 * P2[1:-1] + 0.25 * P2[2:]
+        t_ = np.gradient(P2, axis=0)
+        t_ /= np.maximum(np.linalg.norm(t_, axis=1), 1e-9)[:, None]
+        ref = np.where(np.abs(t_[:, 2:3]) > 0.9, np.array([[1.0, 0, 0]]), np.array([[0, 0, 1.0]]))
+        e1 = np.cross(t_, ref)
+        e1 /= np.maximum(np.linalg.norm(e1, axis=1), 1e-9)[:, None]
+        e2 = np.cross(t_, e1)
+        rad = np.broadcast_to(np.asarray(radius, float), (len(P_),))
+        rot = rng_.uniform(0, math.pi)
+        for ang in (rot, rot + math.pi / 2):
+            A_ = e1 * math.cos(ang) + e2 * math.sin(ang)
+            ribbon_cards(P2, A_, rad * k, rng_, capped, kind=kind, seg_len=0.5)
 
     def add_short(key, label, p, extras=None):
         T, hl = style_short(H, V, F, S, N, d, p)
@@ -1176,6 +1243,7 @@ def build_styles(H):
     def locs_extras(length, n_front, n_all, radius, front_len, end_z=None, part=False, two_strand=False, gap=0.075, clear_k=1.3):
         def ex(b, T, capped=False):
             r2 = random.Random(11)
+            rng_f = np.random.default_rng(zlib.crc32(f"frizz{length}{n_all}".encode()))
             ears = H.co[H.mask["ears"]]
             kde = KDTree(len(ears))
             for ii, pe in enumerate(ears):
@@ -1229,6 +1297,7 @@ def build_styles(H):
                 else:
                     vv, ff = tube(pts, rad, sides=7, twist=0.6, bumps=0.08, bump_freq=5.0)
                     b.add(vv, ff)
+                frizz_cards(pts[1:], rad[1:], rng_f, capped)
         return ex
 
     # rows lie in planes through a front-to-back axis well below the head (under the jaw), so they run nearly
@@ -1347,6 +1416,7 @@ def build_styles(H):
             return np.interp((a_ + math.pi) / (2 * math.pi) * nb - 0.5, xb, zb, period=nb)
 
         def ex(b, T, capped=False):
+            rng_f = np.random.default_rng(zlib.crc32(b"flat_twists_frizz"))
             for path, rw in rows:
                 if capped:                                      # (under a hat: only the band below the crown)
                     keep = [k for k, (q, _) in enumerate(path) if q[2] <= cap_line(H, q)[0] - 0.01]
@@ -1363,6 +1433,14 @@ def build_styles(H):
                 P = [q + n_ * (0.008 + r_ * (0.1 + 0.45 * e_)) for (q, n_), r_, e_ in zip(path, rw, env)]
                 for vv, ff in rope(P, rad, turns=70.0, normals=[n_ for _, n_ in path], flat=0.5, sides=8):
                     b.add(vv, ff)
+                # loose hairs along the row, lying on the scalp (one flat card each side, not crossed: a flat twist
+                # hugs the head)
+                Pa, Na = np.array(P), np.array([n_ for _, n_ in path])
+                t_ = np.gradient(Pa, axis=0)
+                t_ /= np.maximum(np.linalg.norm(t_, axis=1), 1e-9)[:, None]
+                A_ = np.cross(Na, t_)
+                A_ /= np.maximum(np.linalg.norm(A_, axis=1), 1e-9)[:, None]
+                ribbon_cards(Pa + Na * 0.004, A_, np.array(rad) * 1.9, rng_f, capped, kind="STRAIGHT_WISPY", seg_len=0.3)
         return ex, twist_line
 
 
@@ -1403,6 +1481,7 @@ def build_styles(H):
             b.add(vv, ff)
             # the hair wound round into the bun: thick strands wrapped round it at different tilts (like the reference)
             r5 = random.Random(9)
+            rng_b = np.random.default_rng(zlib.crc32(b"bun_frizz"))
             for k in range(8):
                 tilt = math.radians(-60 + 120 * k / 7 + r5.uniform(-8, 8))
                 spin = r5.uniform(0, math.pi)
@@ -1418,8 +1497,13 @@ def build_styles(H):
                 rr.append(0.03)
                 vv, ff = tube(pts, rr, sides=8, twist=0.5, bumps=0.06, bump_freq=10.0)
                 b.add(vv, ff)
+                frizz_cards(pts, rr, rng_b, capped, k=1.3)
 
-        add_short("LowBun", "Slick Low Bun", slickback, bun)
+        tie_card = lambda tie: dict(flow="tie", tie=tie, base=0.3, edge_ramp=0.14, len_top=0.3, len_side=0.2, jitter=0.05, segs=6,
+                                    layers=[("STRAIGHT_DENSE", 0.024, 0.8, 0.04, 1.0, 0.6),
+                                            ("STRAIGHT_DENSE", 0.022, 0.85, 0.036, 1.0, 0.1, "front"),
+                                            ("STRAIGHT_DENSE", 0.027, 0.9, 0.036, 1.0, 0.75)], defer=True)
+        add_short("LowBun", "Slick Low Bun", dict(slickback, groove=0.04, cards=tie_card(nape + np.array([0, 0.08, 0]))), bun)
 
         def ponytail(b, T, capped=False):
             root = np.array([0.0, H.centre[1] + 0.85 * H.R, H.anchor[2] + 0.12])
@@ -1442,6 +1526,7 @@ def build_styles(H):
             e1 /= np.maximum(np.linalg.norm(e1, axis=1), 1e-9)[:, None]
             e2 = np.cross(tang, e1)
             r3 = random.Random(5)
+            rng_p = np.random.default_rng(zlib.crc32(b"pony_frizz"))
             core = [0.06 * (1 - 0.8 * (j / n) ** 1.6) for j in range(n)]
             vv, ff = tube(pts, [c * 0.8 for c in core], sides=10, twist=0.1)
             b.add(vv, ff)
@@ -1458,9 +1543,10 @@ def build_styles(H):
                     rr.append(0.026 * (1 - 0.85 * (j / ln) ** 1.4) + 0.002)
                 vv, ff = tube(q, rr, sides=6, twist=0.4, bumps=0.06)
                 b.add(vv, ff)
+                frizz_cards(q, rr, rng_p, capped, k=1.35)
             vv, ff = tube([root - np.array([0, 0.02, 0]), root + np.array([0, 0.05, 0])], [0.06, 0.06], sides=14)
             b.add(vv, ff)                                              # the hair tie
-        add_short("Ponytail", "High Ponytail", dict(slick, part=None), ponytail)
+        add_short("Ponytail", "High Ponytail", dict(slick, part=None, groove=0.04, cards=tie_card(np.array([0.0, H.centre[1] + 0.85 * H.R, H.anchor[2] + 0.12]))), ponytail)
 
         def curtain(length, flare, curl, part_x=None):
             def ex(b, T, capped=False):

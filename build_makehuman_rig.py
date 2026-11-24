@@ -771,6 +771,11 @@ def texture_pieces(pieces, name):
         if not clothes:
             for uvl in list(me.uv_layers):
                 me.uv_layers.remove(uvl)
+            # one UV for every corner, in the middle of the square: with no UV Roblox puts every vertex at the (0,1)
+            # corner, and its body-colour composite (all R15 parts share one texture, a region each) samples the
+            # region's edge there, so a limb blends in its neighbour's colour (the pale left leg, Studio 2026-11-24)
+            mid = me.uv_layers.new(name="UVMap")
+            mid.data.foreach_set("uv", np.full(len(me.loops) * 2, 0.5, np.float32))
             me.materials.clear()
             me.materials.append(skin)
             for p in me.polygons:
@@ -787,6 +792,10 @@ def texture_pieces(pieces, name):
         bpy.ops.mesh.select_all(action="SELECT")
         bpy.ops.uv.smart_project(angle_limit=math.radians(60), island_margin=0.004, scale_to_bounds=True)
         bpy.ops.object.mode_set(mode="OBJECT")
+        # (pulled in off the square's border, which the composite above bleeds into from the next part's region)
+        _uv = np.empty(len(me.loops) * 2, np.float32)
+        me.uv_layers["NC_Bake"].data.foreach_get("uv", _uv)
+        me.uv_layers["NC_Bake"].data.foreach_set("uv", 0.5 + (_uv - 0.5) * 0.94)
         me.uv_layers["NC_Bake"].active_render = True              # (edit mode reallocates the layers: by name)
         me.uv_layers.active = me.uv_layers["NC_Bake"]             # (the bake writes through the active UV)
         rib_uv = me.uv_layers.get("UVMap")

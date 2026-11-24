@@ -29,7 +29,7 @@ def kind_u(kind):
     """the U range of a card kind in the atlas (a small margin so mip filtering doesn't bleed between columns)"""
     k = KINDS.index(kind)
     w = 1.0 / NK
-    return k * w + 0.012, (k + 1) * w - 0.012
+    return k * w + 0.025, (k + 1) * w - 0.025      # (wide gutters: Roblox's low mips blurred the next column in)
 
 
 def _smooth(x, k):
@@ -108,7 +108,7 @@ def _column(rng, kind, H, W):
     alpha = np.clip(cov * 1.15, 0, 1)
     # and the card's long edges always thin out, so no card shows its outline whichever way it lies
     xn = (np.arange(W) + 0.5) / W
-    edge = np.clip(np.minimum(xn - 0.012 * NK, 1 - 0.012 * NK - xn) / 0.2, 0, 1) ** 1.5
+    edge = np.clip(np.minimum(xn - 0.025 * NK, 1 - 0.025 * NK - xn) / 0.2, 0, 1) ** 1.5
     alpha *= edge[None, :]
     # and the card as a whole is a lock that narrows to its tip (and a little at the root): Roblox samples this atlas
     # at low resolution / high mip levels on cards seen edge-on, where single hairs blur into the card's rectangle,

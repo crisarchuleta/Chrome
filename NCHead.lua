@@ -230,7 +230,9 @@ function H.WearHair(fr, pp, parent, hair, skin, hatOn)
 	local cards = "Hair_" .. style .. (hatOn and "_CapCards" or "_Cards")
 	local hasCards = H.has(fr, cards)
 	local opaque = hasCards and H.CARD_SHELL_T < H.SOFT_T
-	if not H.put(fr, name, parent, { Color = hair, Material = Enum.Material.SmoothPlastic, CastShadow = true,
+	-- (the shell casts no shadow: Roblox's shadow ignores its soft edge, so the geometric edge of the shell, which
+	--  reaches past the visible hairline, printed a dark sliver on the forehead and an outline at the fade)
+	if not H.put(fr, name, parent, { Color = hair, Material = Enum.Material.SmoothPlastic, CastShadow = false,
 		Transparency = hasCards and H.CARD_SHELL_T or nil, Opaque = opaque }) then
 		return false
 	end
