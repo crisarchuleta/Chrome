@@ -224,7 +224,7 @@ fits, baggy stacked denim, chunky chains, gloves and shades.
   - `hat_knight_helm`: flat-top great helm sized to clear the head by 1.4 cm and resting above the shoulders, eye slits
     with a nose bar, brow band, ridge and bottom band with rivets, cross-shaped breathing holes.
   - `eye_ski_goggles`, `eye_goggles_up`: wide toric lens with a nose notch, foam frame sealing to the face, elastic strap
-    (pushed-up pair sits on the forehead).
+    (pushed-up pair sits on the forehead, turned 75 degrees to the left).
   Checked from five angles on Male_Average, Male_Skinny, Male_Muscular, Female_Skinny and Female_Heavy with the skin
   rendered bright green: nothing pokes through.
 - `build_wardrobe.py` builds them on all ten bodies. It saves `NeonCoast_Wardrobe_<Body>.blend` (one collection per

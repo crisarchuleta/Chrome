@@ -201,7 +201,7 @@ def build_durag(o, name, color=(0.01, 0.01, 0.01), velvet=False):
     ez, c = h.eye_z, h.c
     P, F = h.faces(sub=1)
     fr = h.front(P)
-    zl = ez + k * np.interp(fr, [-1, -0.7, -0.4, -0.15, 0.0, 0.5, 1], [-0.1, -0.085, -0.02, 0.018, 0.022, 0.027, 0.03])
+    zl = ez + k * np.interp(fr, [-1, -0.5, -0.36, -0.25, -0.1, 0.0, 0.5, 1], [-0.1, -0.097, -0.075, 0.006, 0.02, 0.022, 0.027, 0.03])
     P, F, _ = clip(P, F, zl - P[:, 2], {})
     X, F, E = _shell(o, P, F, 0.0045 * k, 3, 0.004 * k, smooth=3)
     rough = 0.95 if velvet else 0.45
@@ -230,30 +230,46 @@ def build_durag(o, name, color=(0.01, 0.01, 0.01), velvet=False):
     Q = _taut(col, arc, 0.0012 * k, iters=150)
     Vt, Ft = make_tube(Q[2:-2], 0.0016 * k, nseg=6)
     parts.append((Vt, Ft, 0))
-    # knot at the nape
-    nape = bpt.copy()
-    Nn = np.array([0, 1.0, -0.2]); Nn /= np.linalg.norm(Nn)
-    kc = nape + Nn * 0.009 * k + np.array([0, 0, 0.004 * k])
-    Vk, Fk = _blob(kc, np.array([0.02, 0.011, 0.013]) * k, noise=0.25, seed=3)
-    parts.append((Vk, Fk, 0))
-    # tail flap + two tie ends hanging down the back of the neck, standing a little off the body
-    def hang(x0, width0, width1, length, extra, seed):
-        rows = 12
-        Q = np.array([kc + np.array([x0 * t * 0.6, 0.0, -length * t]) for t in np.linspace(0, 1, rows)])
-        for _ in range(40):
-            Q[1:] = o.col.push(Q[1:], 0.006 * k + extra)
-            Q[1:-1] = 0.5 * Q[1:-1] + 0.25 * (Q[:-2] + Q[2:])
-        Q[1:] = o.col.push(Q[1:], 0.006 * k + extra)
-        out_n = np.zeros_like(Q); out_n[:, 1] = 1.0
-        w = np.linspace(width0, width1, rows)
-        V, Fr = _ribbon(Q, out_n, w)
-        V += np.random.default_rng(seed).normal(0, 0.0004 * k, V.shape)
-        return V, Fr
-    Vt, Ftl = hang(0.0, 0.07 * k, 0.062 * k, 0.15 * k, 0.004 * k, 1)
+    # tail flap: the cloth carries on from the whole back edge and hangs down the back of the neck
+    back = base[h.front(base) < -0.42]
+    back = back[np.argsort(back[:, 0])]
+    xs = np.linspace(back[0, 0], back[-1, 0], 15)
+    top = np.stack([xs, np.interp(xs, back[:, 0], back[:, 1]), np.interp(xs, back[:, 0], back[:, 2])], 1)
+    top[:, 2] = np.minimum(top[:, 2], top[:, 2].min() + 0.012 * k)  # even out the root line
+    xm = top[:, 0].mean()
+    L = 0.15 * k
+    rows = []
+    for t in np.linspace(0, 1, 12):
+        r = top.copy()
+        r[:, 0] = xm + (r[:, 0] - xm) * (1 - 0.3 * t)
+        r[:, 2] -= L * t
+        r[:, 1] += 0.004 * k
+        rows.append(r)
+    G = np.array(rows)  # (12, 15, 3)
+    for _ in range(40):
+        flat = G[1:].reshape(-1, 3)
+        G[1:] = o.col.push(flat, 0.005 * k).reshape(11, 15, 3)
+        G[1:-1] = 0.5 * G[1:-1] + 0.25 * (G[:-2] + G[2:])
+        G[:, 1:-1] = 0.6 * G[:, 1:-1] + 0.2 * (G[:, :-2] + G[:, 2:])
+    G[1:] = o.col.push(G[1:].reshape(-1, 3), 0.006 * k).reshape(11, 15, 3)
+    nr, nc = G.shape[:2]
+    Vt = G.reshape(-1, 3)
+    Ftl = [[i * nc + j, i * nc + j + 1, (i + 1) * nc + j + 1, (i + 1) * nc + j] for i in range(nr - 1) for j in range(nc - 1)]
     parts.append((Vt, _orient_out(Vt, Ftl, centre + np.array([0, -0.2 * k, 0])), 0))
-    for x0, L, ex, sd in ((0.035 * k, 0.17 * k, 0.009 * k, 2), (-0.03 * k, 0.14 * k, 0.011 * k, 4)):
-        Vt, Ftl = hang(x0, 0.024 * k, 0.02 * k, L, ex, sd)
-        parts.append((Vt, _orient_out(Vt, Ftl, centre + np.array([0, -0.2 * k, 0])), 1))
+    # small flat knot at the nape and two flat tie ends lying on the flap
+    nape = G[0, nc // 2]
+    Nn = np.array([0, 1.0, -0.15]); Nn /= np.linalg.norm(Nn)
+    kc = nape + Nn * 0.008 * k
+    Vk, Fk = _blob(kc, np.array([0.017, 0.007, 0.01]) * k, noise=0.2, seed=3)
+    parts.append((Vk, Fk, 1))
+    flapcol = _col_of(Vt, Ftl, centre)
+    for dx, Lt, sd in ((0.016 * k, 0.16 * k, 2), (-0.014 * k, 0.13 * k, 4)):
+        Q = np.array([kc + np.array([dx * t, 0, -Lt * t]) for t in np.linspace(0, 1, 12)])
+        Q[1:] = flapcol.push(Q[1:], 0.0035 * k)
+        for _ in range(6):
+            Q[1:-1] = 0.5 * Q[1:-1] + 0.25 * (Q[:-2] + Q[2:]); Q[1:] = flapcol.push(Q[1:], 0.0035 * k)
+        V, Fr = _ribbon(Q, _surf_normals(flapcol, Q), np.linspace(0.026, 0.022, 12) * k)
+        parts.append((V, _orient_out(V, Fr, centre + np.array([0, -0.2 * k, 0])), 1))
     Vd, Fd, md = merge_parts(parts)
     out.append(make_object(b, f"{b.obj.name}_{name}_Ties", Vd, Fd, [m_main, m_dark], md, None, thick=0.0012 * k, subsurf=1))
     o.objs.extend(out)
@@ -607,14 +623,14 @@ def build_knight_helm(o, name, color=(0.66, 0.68, 0.72)):
 
 
 # ----------------------------------------------------------------------------------------------------- goggles
-def build_goggles(o, name, frame=(0.01, 0.01, 0.01), lens=(0.8, 0.37, 0.05), up=False):
+def build_goggles(o, name, frame=(0.01, 0.01, 0.01), lens=(0.8, 0.37, 0.05), up=False, yaw=0.0):
     """Ski goggles: one wide toric lens with a nose notch, a foam frame that seals against the face, and the
     elastic strap round the head. up=True wears them pushed up on the forehead."""
     b = o.b; k = b.k; h = Head(b)
     ez, c = h.eye_z, h.c
     zc = ez + (0.075 if up else 0.009) * k
     hz = 0.0215 * k
-    amax = np.radians(64)
+    amax = np.radians(52)
     clr = (0.006 if up else 0.013) * k
     nu, nv = 41, 9
     U = np.linspace(-1, 1, nu)
@@ -624,7 +640,8 @@ def build_goggles(o, name, frame=(0.01, 0.01, 0.01), lens=(0.8, 0.37, 0.05), up=
         notch = 0 if up else 0.5 * np.exp(-(u / 0.17) ** 2)
         return -e + notch * e, e
     # lens radius per angle: clear of the face (incl. nose / brow) across the lens height, smoothed into a torus
-    phis = U * amax
+    phi0 = np.radians(yaw)  # turn the whole pair round the head (pushed-up pair sits towards one side)
+    phis = U * amax + phi0
     zz = np.linspace(zc - hz, zc + hz, 7)
     Rc = np.zeros(nu)
     for z in zz:
@@ -639,7 +656,7 @@ def build_goggles(o, name, frame=(0.01, 0.01, 0.01), lens=(0.8, 0.37, 0.05), up=
     tilt = 0.25 if up else 0.08  # lens leans back at the top
 
     def lens_pt(u, v, extra=0.0):
-        phi = u * amax
+        phi = u * amax + phi0
         r = np.interp(u, U, Rc) + clr + 0.004 * k * (1 - v ** 2) + extra
         z = zc + v * hz
         r = r - tilt * (z - zc)
@@ -673,11 +690,11 @@ def build_goggles(o, name, frame=(0.01, 0.01, 0.01), lens=(0.8, 0.37, 0.05), up=
     n = len(ouv)
     Vf = np.vstack([rim_in, rim_out, face])
     Ff = [[i, (i + 1) % n, n + (i + 1) % n, n + i] for i in range(n)] + [[n + i, n + (i + 1) % n, 2 * n + (i + 1) % n, 2 * n + i] for i in range(n)]
-    Ff = _orient_out(Vf, Ff, centre - np.array([0, 0.05 * k, 0]))
+    Ff = _orient_out(Vf, Ff, centre - 0.05 * k * np.array([np.sin(phi0), -np.cos(phi0), 0]))
     # strap round the back of the head
     side_pts = [rim_out[np.argmin(ouv[:, 0])], rim_out[np.argmax(ouv[:, 0])]]
     zs = zc + (0.004 if not up else 0.0) * k
-    ph = np.linspace(amax * 0.97, 2 * np.pi - amax * 0.97, 60)
+    ph = np.linspace(amax * 0.97, 2 * np.pi - amax * 0.97, 60) + phi0
     rr = h.radius_at(ph, zs, dz=0.02) + 0.007 * k
     Q = h.at(ph, np.full(len(ph), zs), rr)
     Q = o.col.push(Q, 0.006 * k)
@@ -711,7 +728,7 @@ def build_item(o, it, hexc):
     elif f == "knighthelm":
         build_knight_helm(o, nm, color=c1)
     elif f == "goggles":
-        build_goggles(o, nm, frame=c1, lens=c2, up=bool(p.get("up")))
+        build_goggles(o, nm, frame=c1, lens=c2, up=bool(p.get("up")), yaw=75.0 if p.get("up") else 0.0)
     else:
         return False
     return True
