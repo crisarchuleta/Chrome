@@ -138,7 +138,11 @@ def make_textures():
     st2 = 0.5 + 0.3 * rf.uniform(0, 1, strands)
     a2 = np.clip((u[None, :] - st2[sid][:, None]) / 0.12, 0, 1) * np.clip(core[:, None] * 2.5, 0, 1)
     falpha = np.clip(np.maximum(dots, a2) + smoothstep(0.6, 0.85, u)[None, :], 0, 1)
-    falpha[:, u < 0.08] = 0.0                                             # (np.roll wrapped full-hair dots into column 0)
+    # fewer and fewer dots towards the edge (not fainter ones: the shell is drawn with an alpha cut-off, and a hard
+    # zero at u 0.08 left a vertical notch at the temples)
+    thin_ = rf.random((n, n)) < (smoothstep(0.03, 0.16, u) ** 1.5)[None, :]
+    falpha = np.where(thin_, falpha, 0.0)
+    falpha[:, u < 0.03] = 0.0                                             # (np.roll wrapped full-hair dots into column 0)
     fcol = (0.74 + 0.26 * rf.random((n, n))) * (0.9 + 0.1 * smoothstep(0.3, 0.9, u)[None, :])
     # (full hair is one even shade: the crown's UVs barely move, so a speckled column there would print one random
     # light or dark texel over a whole patch of the head)

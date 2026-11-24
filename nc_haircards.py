@@ -110,6 +110,13 @@ def _column(rng, kind, H, W):
     xn = (np.arange(W) + 0.5) / W
     edge = np.clip(np.minimum(xn - 0.012 * NK, 1 - 0.012 * NK - xn) / 0.2, 0, 1) ** 1.5
     alpha *= edge[None, :]
+    # and the card as a whole is a lock that narrows to its tip (and a little at the root): Roblox samples this atlas
+    # at low resolution / high mip levels on cards seen edge-on, where single hairs blur into the card's rectangle,
+    # and the far-side card ends showed as square blocks. Blurred, a tapering lock still reads as hair.
+    vv_ = (np.arange(H) / (H - 1))[:, None]
+    half = 0.5 * (1 - 0.7 * np.clip((vv_ - 0.5) / 0.5, 0, 1) ** 1.3) * (0.8 + 0.2 * np.clip(vv_ / 0.15, 0, 1))
+    lock = np.clip((half - np.abs(xn[None, :] - 0.5)) / 0.12, 0, 1) ** 1.2
+    alpha *= lock
     return alpha, col, nx
 
 
