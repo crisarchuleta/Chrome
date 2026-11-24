@@ -219,9 +219,9 @@ fits, baggy stacked denim, chunky chains, gloves and shades.
     over the ear tops with a slight flare, cloth-cover seams, elastic band with two glow tabs at the back, side bolts,
     Y chin strap pulled tight under the jaw; the night-ops one adds side rails, the front shroud, stowed goggles and a
     back pouch.
-  - `hat_durag`, `hat_durag_velvet`: skin-tight crown from just above the brows, straight back over the ear tops and
-    down behind the ears to the nape, centre seam,
-    rolled tie band, knot at the nape, tail flap and two tie ends (silky is glossy, velvet is matte).
+  - `hat_durag`, `hat_durag_velvet`: matched to `references/head/durag.jpg`: snug crown with a centre seam, hem level
+    round the head from the upper forehead over the ear tops to the base of the skull, a wide stitched tie band, the
+    knot at the base of the skull, a wide tail flap that hugs the back of the neck and two flat tie ends over it.
   - `mask_ski` (eye and mouth holes), `mask_ski_open` (one face opening), `mask_ski_pom` (white rib edges and pom):
     knit under tension so it bridges the eye sockets, under the nose and the chin, rib roll on every opening, and a bib
     that runs over the neck base.
