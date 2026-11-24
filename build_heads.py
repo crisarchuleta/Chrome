@@ -121,6 +121,23 @@ def make_textures():
     col = (shade[sid][:, None] * (0.86 + 0.14 * core[:, None])) * np.ones((1, n))
     col = col * (0.92 + 0.08 * np.sin(u[None, :] * 40 + sid[:, None]))
     T["NC_HairEdge"] = np.dstack([col, col, col, alpha])
+    # skin fades (hair_ref_1..3): clipper-short hair is not strands but fine dark stubble whose DENSITY falls off down
+    # the side of the head; from a step back it reads as an even shadow going from the hair colour to skin. Low U is
+    # sparse stubble, it fills in up the fade, and short strands only start near the top where the hair gets longer
+    rf = np.random.default_rng(11)                                        # (own seed: brows stay as they were)
+    r = rf.random((n, n))
+    dens = smoothstep(0.0, 0.62, u) ** 1.25
+    dots = (r < dens[None, :]).astype(float)
+    dots = np.maximum(dots, np.roll(dots, 1, 1) * 0.85)                  # each hair a tiny dash, down the head
+    dots = np.clip(dots + 0.1 * (np.roll(dots, 1, 0) + np.roll(dots, -1, 0)), 0, 1)
+    st2 = 0.5 + 0.3 * rf.uniform(0, 1, strands)
+    a2 = np.clip((u[None, :] - st2[sid][:, None]) / 0.12, 0, 1) * np.clip(core[:, None] * 2.5, 0, 1)
+    falpha = np.clip(np.maximum(dots, a2) + smoothstep(0.6, 0.85, u)[None, :], 0, 1)
+    fcol = (0.74 + 0.26 * rf.random((n, n))) * (0.9 + 0.1 * smoothstep(0.3, 0.9, u)[None, :])
+    # (full hair is one even shade: the crown's UVs barely move, so a speckled column there would print one random
+    # light or dark texel over a whole patch of the head)
+    fcol = fcol + (0.88 - fcol) * smoothstep(0.8, 0.95, u)[None, :]
+    T["NC_HairFade"] = np.dstack([fcol, fcol, fcol, falpha])
     # (stubble maps are made per piece by stubble_texture, from its own coverage)
     # brows: short hairs slanting up towards the tail; U along the brow (inner end 0), V across (0 bottom, 1 top)
     bw, bh = 512, 128
@@ -772,7 +789,7 @@ def build_styles(H):
             cov = np.minimum(cov, 1 - on_top * (1 - smoothstep(0.004, 0.012, dpart)))
         if "fade_z" in p:
             fz = H.ear_z + p["fade_z"] + p.get("fade_front", 0.0) * smoothstep(0.0, 0.6 * H.R, -(V[:, 1] - H.centre[1]))
-            fc = smoothstep(fz - 0.2, fz + 0.12, V[:, 2] + 0.03 * noise(V, 9))
+            fc = smoothstep(fz - 0.3, fz + 0.1, V[:, 2] + 0.03 * noise(V, 9))
             cov = np.minimum(cov, fc)
             field = np.minimum(field, fc - 0.02)
         hair = shell(f"Hair_{key}", V, F, N, T, field=field, lift=0.002, uv=(cov, ev))
@@ -788,7 +805,7 @@ def build_styles(H):
             b.add_obj(cap)
             extras(b, T, capped=True)
             cap = b.make(f"Hair_{key}_Cap")
-        out[key] = {"label": label, "hair": hair, "cap": cap, "fade": None}
+        out[key] = {"label": label, "hair": hair, "cap": cap, "fade": None, "skin_fade": "fade_z" in p}
 
     if male:
         add_short("Buzz", "Buzz Cut", dict(top=0.016, side=0.012, feather=0.05, groove=0.06, freq=40))
@@ -867,10 +884,10 @@ def build_styles(H):
     FT_AXIS = 0.5
     FT_SPAN = 38.0
 
-    def flat_twists(n_rows, radius):
+    def flat_twists(n_rows, radius, drop=0):
         """two-strand flat twists in rows from the hairline over the crown to the fade (references hair_ref_2): each row
         lies in a plane through a front-to-back axis at ear height, so the rows fan evenly over the top and sides"""
-        phis = [math.radians(-FT_SPAN + 2 * FT_SPAN * (k + 0.5) / n_rows) for k in range(n_rows)]
+        phis = [math.radians(-FT_SPAN + 2 * FT_SPAN * (k + 0.5) / n_rows) for k in range(n_rows)][drop:n_rows - drop]
         kv = KDTree(len(V))
         for ii, vv_ in enumerate(V):
             kv.insert(vv_, ii)
@@ -914,8 +931,8 @@ def build_styles(H):
         add_short("Twists", "Hanging Twists", dict(base, top=0.02, fade_z=0.2, feather=0.025, parts_y=True),
                   locs_extras(0.45, 14, 220, 0.022, 0.3, end_z=H.ear_z + 0.12, part=True, two_strand=True, gap=0.042, clear_k=0.8))
         add_short("FlatTwists", "Flat Twists", dict(top=0.012, side=0.012, fade_z=0.19, fade_front=0.16, feather=0.025, groove=0.05, freq=40,
-                                                    parts_phi=[-FT_SPAN + 2 * FT_SPAN * k / 15 for k in range(1, 15)], parts_axis=FT_AXIS),
-                  flat_twists(15, 0.034))
+                                                    parts_phi=[-FT_SPAN + 2 * FT_SPAN * k / 15 for k in range(3, 13)], parts_axis=FT_AXIS),
+                  flat_twists(15, 0.034, drop=2))
     else:
         add_short("Locs", "Long Locs", base, locs_extras(1.8, 10, 80, 0.026, 0.38))
 
@@ -1349,10 +1366,11 @@ for gender in ("Male", "Female"):
     A = H.anchor
     pieces = {}
     hair_col = tex_material("NC_Hair", TEX["NC_HairEdge"])
+    fade_col = tex_material("NC_HairFaded", TEX["NC_HairFade"])
     for key, st in styles.items():
         for kind in ("hair", "cap"):
             ob = st[kind]
-            ob.data.materials.append(hair_col)
+            ob.data.materials.append(fade_col if st.get("skin_fade") else hair_col)
             pieces[ob.name] = (ob, {"hair": "Hair", "cap": "HairCap"}[kind], key, st["label"])
     for name, ob in face.items():
         kind = name.split("_")[0]
@@ -1370,10 +1388,20 @@ for gender in ("Male", "Female"):
         if tris > 18000:
             md = ob.modifiers.new("D", "DECIMATE")
             md.ratio = 17000 / tris
+            uvl = ob.data.uv_layers.get("UVMap")
+            if uvl is not None and kind in ("Hair", "HairCap"):
+                # only the solid hair (twists, locs, full scalp) is thinned: collapsing edges in the see-through edge
+                # and fade would drag hairline UVs across whole triangles and leave bald triangles in the fade
+                umin = np.ones(len(ob.data.vertices))
+                np.minimum.at(umin, np.array([l.vertex_index for l in ob.data.loops]), np.array([d.uv[0] for d in uvl.data]))
+                vg = ob.vertex_groups.new(name="NC_Decimate")
+                vg.add([int(i) for i in np.nonzero(umin > 0.95)[0]], 1.0, "REPLACE")
+                md.vertex_group = vg.name
             bpy.context.view_layer.objects.active = ob
             bpy.ops.object.select_all(action="DESELECT")
             ob.select_set(True)
             bpy.ops.object.modifier_apply(modifier=md.name)
+            ob.vertex_groups.clear()
     # every piece measured from the eyes' midpoint; Roblox puts a MeshPart's pivot at its bounding-box centre
     info = []
     for name, (ob, kind, key, label) in pieces.items():
