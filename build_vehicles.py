@@ -20,6 +20,7 @@ from nc_kit import lin, COLORS
 from nc_extra import setup_render
 import bpy, bmesh
 from mathutils import Vector, Matrix
+from mathutils.bvhtree import BVHTree
 
 OUT = os.environ.get("NC_OUT", nc_kit.OUT)
 PREV = os.path.join(OUT, "previews")
@@ -117,10 +118,11 @@ SPECS = {
     # 9.7 ft wheelbase. Low rounded nose with a closed face and a low intake, raked windshield, strong tumblehome,
     # long glass roof into a liftback, big multi-spoke wheels, no exhaust; a front trunk where the engine would be and
     # a charge port where the gas door would be
-    "VireoE": dict(name="Vireo E", flavour="sports", W=3.7, L0=-9.6, L1=9.15, WB=11.17, WR=1.3, WX=3.15, TW=1.0,
-                   ZB=0.75, BELT=3.05, NOSE=2.2, HOOD=2.95, TAIL=3.15, CROWN=0.02,
+    "VireoE": dict(name="Vireo E", flavour="sports", W=3.7, L0=-9.6, L1=9.15, WB=11.17, WR=1.4, WX=3.15, TW=1.0,
+                   ZB=0.75, BELT=3.45, NOSE=2.5, HOOD=3.47, TAIL=3.6, CROWN=0.02, HCROWN=-0.3,
                    A0=-3.6, A1=-0.1, C0=3.4, C1=7.3, ROOF=5.25, TUCK=0.75, B=1.0, Q=3.9, doors=4, rear="hatch",
-                   electric=True, lowpro=0.5, smooth=True, stock={"Exhaust": "", "Spoiler": "", "Rim": "Mesh", "Top": "Sunroof", "Seats": "Buckets",
+                   electric=True, lowpro=0.5, smooth=True, rim_dark=True,
+                   stock={"Exhaust": "", "Spoiler": "", "Rim": "Mesh", "Top": "", "Seats": "Buckets", "Grille": "", "FrontBumper": "", "RearBumper": "",
                                          "Dash": "Digital", "Steering": "Sport"}, paint=(0.025, 0.025, 0.03)),
 }
 # ------------------------------------------------------------------ real-world proportions (vehicle QA, 2026-11-24)
@@ -243,14 +245,21 @@ def make_stations():
     """y, half width, rocker, belt, deck, crown from the nose to the tail"""
     nb = NOSE - 0.25
     if S.get("smooth"):
-        # a rounded nose: plan and profile both follow a quarter ellipse over the first 2.2 studs
+        # a modern nose: the hood falls in one convex curve from the cowl to a low nose cone that rolls under, the
+        # fenders stand above the hood (HCROWN < 0 dips the middle), and the plan rounds off over the first 2.4 studs
+        hc = S.get("HCROWN", CROWN)
+        ye = A0 - 0.6
         st = []
-        for i in range(7):
-            u = i / 6
-            e = math.sqrt(max(0.0, 1 - (1 - u) ** 2))
-            top = NOSE - 0.25 * (1 - e) + (HOOD - NOSE) * 0.18 * e
-            st.append((L0 + 2.2 * u, W * (0.88 + 0.12 * e), ZB + 0.3 * (1 - e), top - 0.1 - 0.35 * (1 - e), top, CROWN * e))
-        st += [(A0 - 0.6, W, ZB, HOOD - 0.12, HOOD - 0.02, CROWN), (A0, W, ZB, BELT, HOOD, CROWN)]
+        for i in range(13):
+            u = (i / 12) ** 1.7
+            y = L0 + (ye - L0) * u
+            d = y - L0
+            e = math.sqrt(max(0.0, 1 - (1 - min(1.0, d / 2.6)) ** 2))
+            f = math.sqrt(max(0.0, 1 - (1 - min(1.0, d / 1.2)) ** 2))
+            v = (y - L0) / (A0 - L0)
+            top = NOSE + (HOOD - NOSE) * (1 - (1 - v) ** 2) - 0.6 * (1 - f)
+            st.append((y, W * (0.82 + 0.18 * e), ZB + 0.3 * (1 - e), top - 0.07 - 0.55 * (1 - f), top, hc * f))
+        st.append((A0, W, ZB, BELT, HOOD + 0.06, hc * 0.5))
     else:
         st = [(L0, W - 0.5, ZB + 0.35, nb - 0.2, nb - 0.12, 0.0), (L0 + 0.2, W - 0.22, ZB + 0.15, nb, NOSE - 0.05, CROWN * 0.4),
               (L0 + 0.8, W - 0.05, ZB, nb + 0.05, NOSE + (HOOD - NOSE) * 0.1, CROWN), (A0 - 0.6, W, ZB, BELT - 0.1, HOOD - 0.02, CROWN),
@@ -259,7 +268,7 @@ def make_stations():
     yf = WY_F - ARCH - 0.3
     for i in range(len(st) - 1):
         a, b = st[i], st[i + 1]
-        if a[0] + 0.3 < yf < b[0] - 0.3:
+        if a[0] + 0.3 < yf < b[0] - 0.3 and not S.get("smooth"):
             t = (yf - a[0]) / (b[0] - a[0])
             lerp = lambda k: a[k] + (b[k] - a[k]) * t
             belt = max(lerp(3), WR + ARCH + 0.14)
@@ -267,8 +276,12 @@ def make_stations():
             break
     # (smooth noses: a station already over the arch is lifted the same way)
     if S.get("smooth"):
-        st = [(y, w, zb, max(bl, WR + ARCH + 0.14) if abs(y - WY_F) < ARCH + 0.6 else bl,
-              max(tp, max(bl, WR + ARCH + 0.14) + 0.06) if abs(y - WY_F) < ARCH + 0.6 else tp, cr) for (y, w, zb, bl, tp, cr) in st]
+        def lift(y, bl, tp):
+            dy = abs(y - WY_F)
+            need = WR + math.sqrt(max(0.0, (ARCH + 0.2) ** 2 - dy * dy)) + 0.14
+            bl2 = max(bl, need)
+            return bl2, max(tp, bl2 + 0.06)
+        st = [(y, w, zb, *lift(y, bl, tp), cr) for (y, w, zb, bl, tp, cr) in st]
     cab_end = C1 if REAR != "liftgate" else L1 - 0.8
     st.append(((A0 + cab_end) / 2, W, ZB, BELT, BELT + 0.1, CROWN * 0.6))
     if REAR in ("trunk", "hatch"):
@@ -278,11 +291,11 @@ def make_stations():
     tb = (TAIL if REAR in ("trunk", "hatch") else BELT) - 0.2
     if S.get("smooth"):  # a rounded tail with a small lip
         y0 = st[-1][0]
-        for i in range(1, 6):
-            u = i / 5
+        for i in range(1, 8):
+            u = i / 7
             e = math.sqrt(max(0.0, 1 - u ** 2))
-            st.append((y0 + (L1 - y0) * u, W * (0.9 + 0.1 * e) - 0.03, ZB + 0.25 * (1 - e), tb + 0.15 - 0.35 * (1 - e),
-                       TAIL - 0.3 * (1 - e) ** 2, CROWN * e))
+            st.append((y0 + (L1 - y0) * u, W * (0.86 + 0.14 * e) - 0.03, ZB + 0.25 * (1 - e), tb + 0.15 - 0.5 * (1 - e),
+                       TAIL - 0.4 * (1 - e) ** 1.5, CROWN * e))
         return st
     st += [(L1 - 0.2, W - 0.2, ZB + 0.12, tb, tb + 0.12, CROWN * 0.4), (L1, W - 0.45, ZB + 0.3, tb - 0.15, tb - 0.05, 0.0)]
     return st
@@ -606,6 +619,144 @@ def greenhouse():
             sbeam("RoofBody", (s * gx(zb), C1, zb), (s * gx(ROOF), C0, ROOF), 0.16, 0.24)
 
 
+# ------------------------------------------------------------------ smooth greenhouse (modern bodies)
+# One curved canopy instead of flat panels on posts: the roofline is a smooth curve from the windshield base over a
+# crown near the B pillar down the liftback to the deck, and every cross-section is a superellipse (rounded top,
+# tumblehome sides). The canopy grid is then cut by angle and position into windshield, roof, hatch glass, pillars,
+# side glass and a chrome window surround.
+GH_P = 2 / 3.2                                   # superellipse exponent (2/n)
+
+
+def solid_grid(kind, O, I, cells, smooth=30.0):
+    """a closed piece from two matching grids (outer, inner) over the given (j, i) cells"""
+    bm = bmesh.new()
+    vo, vi = {}, {}
+
+    def vert(j, i):
+        if (j, i) not in vo:
+            vo[(j, i)] = bm.verts.new(O[j][i])
+            vi[(j, i)] = bm.verts.new(I[j][i])
+        return vo[(j, i)], vi[(j, i)]
+    cells = set(cells)
+    for (j, i) in cells:
+        q = [(j, i), (j, i + 1), (j + 1, i + 1), (j + 1, i)]
+        o = [vert(*k)[0] for k in q]
+        n = [vert(*k)[1] for k in q]
+        bm.faces.new(o)
+        bm.faces.new(list(reversed(n)))
+        for a, b, nb in ((0, 1, (j - 1, i)), (1, 2, (j, i + 1)), (2, 3, (j + 1, i)), (3, 0, (j, i - 1))):
+            if nb not in cells:
+                bm.faces.new((o[b], o[a], n[a], n[b]))
+    bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-6)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    return new_obj(bm, kind, style=PREFIX, smooth=smooth)
+
+
+def gh_frame():
+    zb = BELT + 0.05
+    yend = C1 + 0.17
+    zend = max(zb + 0.04, deck_z(0, yend) + 0.02)
+    pk = A1 + (C0 - A1) * 0.45
+    mws = (ROOF + 0.02 - zb) / (A1 - A0)
+    mrear = (zend - (ROOF - 0.1)) / (yend - C0)
+    knots = [(A0, zb, 1.2 * mws), (A1, ROOF + 0.02, 0.35 * mws), (pk, ROOF + 0.14, 0.0), (C0, ROOF - 0.1, 0.8 * mrear),
+             (yend, zend, 1.15 * mrear)]
+    return zb, yend, knots
+
+
+GH_ZB, GH_YEND, GH_KNOTS = gh_frame()
+
+
+def gh_zr(y):
+    """roofline (outer skin, centre line)"""
+    k = GH_KNOTS
+    y = min(max(y, k[0][0]), k[-1][0])
+    for (y0, z0, m0), (y1, z1, m1) in zip(k, k[1:]):
+        if y <= y1:
+            h = y1 - y0
+            t = (y - y0) / h
+            return ((2 * t ** 3 - 3 * t ** 2 + 1) * z0 + (t ** 3 - 2 * t ** 2 + t) * h * m0 + (-2 * t ** 3 + 3 * t ** 2) * z1
+                    + (t ** 3 - t ** 2) * h * m1)
+    return k[-1][1]
+
+
+def gh_xb(y):
+    """half width of the canopy at the belt"""
+    sm = lambda t: (lambda c: c * c * (3 - 2 * c))(min(1.0, max(0.0, t)))
+    return W - 0.3 - 0.2 * (1 - sm((y - A0) / 1.0)) - 0.35 * sm((y - Q) / (GH_YEND - Q))
+
+
+def gh_pt(y, phi):
+    c, s_ = math.cos(phi), math.sin(phi)
+    xb, h = gh_xb(y), max(0.0, gh_zr(y) - GH_ZB)
+    return Vector((xb * math.copysign(abs(c) ** GH_P, c), y, GH_ZB + h * abs(s_) ** GH_P))
+
+
+def roof_z(x, y):
+    """height of the canopy's outer skin at (x, y)"""
+    xb, h = gh_xb(y), max(0.0, gh_zr(y) - GH_ZB)
+    u = min(1.0, abs(x) / xb)
+    c = u ** (1 / GH_P)
+    return GH_ZB + h * math.sqrt(max(0.0, 1 - c * c)) ** GH_P
+
+
+def greenhouse_smooth():
+    ys = [A0 + i * 0.1 for i in range(int((GH_YEND - A0) / 0.1) + 1)]
+    keys = [A0, A0 + 0.9, A1, B - 0.1, B + 0.14, C0, GH_YEND]
+    for (nm, s_, y0, y1) in DOORS:
+        keys += [y0, y1]
+    if Q:
+        keys += [Q - 0.1, Q + 0.12]
+    keys = [k for k in keys if A0 <= k <= GH_YEND]
+    ys = sorted(set(keys) | {y for y in ys if min(abs(y - k) for k in keys) > 0.035})
+    # side angles (deg): chrome sill | side glass | chrome | rail | roof / windshield / hatch glass
+    th = [0, 3, 11.25, 19.5, 27.75, 36, 39, 42.5, 46] + [46 + i * 5.5 for i in range(1, 9)]
+    phis = [math.radians(t) for t in th] + [math.radians(180 - t) for t in reversed(th[:-1])]
+    O = [[gh_pt(y, ph) for ph in phis] for y in ys]
+    nj, ni = len(ys), len(phis)
+    N = []
+    for j in range(nj):
+        row = []
+        for i in range(ni):
+            dy = O[min(j + 1, nj - 1)][i] - O[max(j - 1, 0)][i]
+            dp = O[j][min(i + 1, ni - 1)] - O[j][max(i - 1, 0)]
+            n = dp.cross(dy)
+            if n.length < 1e-6:
+                n = Vector((0, 0, 1))
+            n.normalize()
+            if n.dot(O[j][i] - Vector((0, O[j][i].y, GH_ZB - 1.0))) < 0:
+                n = -n
+            row.append(n)
+        N.append(row)
+    q_end = lambda z: (Q if Q else B) + 1.55 - 1.1 * (z - GH_ZB) / (ROOF - GH_ZB)
+
+    def kind_of(yc, t, zc):
+        if t > 46:
+            return "Glass" if yc < A1 else ("PanelRoof" if yc < C0 else "RoofGlass__Lid")
+        if t > 39:
+            return "RoofBody"
+        dlo = A0 + 0.9 < yc < q_end(zc)
+        if t > 36 or t < 3:
+            return "RoofChrome" if dlo else "RoofBody"
+        if not dlo or B - 0.1 < yc < B + 0.14 or (Q and Q - 0.1 < yc < Q + 0.12):
+            return "RoofBody"
+        return "RoofGlass"
+    thick = {"Glass": 0.05, "RoofGlass": 0.05, "RoofGlass__Lid": 0.05, "PanelRoof": 0.1, "RoofBody": 0.08, "RoofChrome": 0.06}
+    groups = {}
+    for j in range(nj - 1):
+        for i in range(ni - 1):
+            ph = (phis[i] + phis[i + 1]) / 2
+            t = math.degrees(min(ph, math.pi - ph))
+            yc = (ys[j] + ys[j + 1]) / 2
+            zc = (O[j][i].z + O[j + 1][i + 1].z) / 2
+            groups.setdefault(kind_of(yc, t, zc), []).append((j, i))
+    for k, cells in groups.items():
+        t = thick[k]
+        I = [[O[j][i] - N[j][i] * t for i in range(ni)] for j in range(nj)]
+        solid_grid(k, O, I, cells, smooth=40.0 if k != "RoofChrome" else 20.0)
+    HINGE_OF["RoofGlass__Lid"] = "Lid"
+
+
 # ------------------------------------------------------------------ hood, rear opening, gas door, engine bay
 def build_rear():
     xw = W - 0.57
@@ -644,6 +795,9 @@ def build_rear():
             xb = gx(zb)
             k = "RoofGlass__Lid"
             HINGE_OF[k] = "Lid"
+            if S.get("smooth"):                           # the hatch glass is part of the curved canopy
+                HINGES["Lid"] = {"pivot": (0.0, C0, gh_zr(C0)), "axis": (1, 0, 0), "open": 48, "kind": "hatch"}
+                return
             sprism(k, [(-(xt - 0.06), C0, ROOF), (xt - 0.06, C0, ROOF), (xb - 0.1, y0, deck_z(0, y0) + 0.02), (-(xb - 0.1), y0, deck_z(0, y0) + 0.02)],
                    [(-(xt - 0.06), C0 - 0.06, ROOF - 0.04), (xt - 0.06, C0 - 0.06, ROOF - 0.04), (xb - 0.1, y0 - 0.06, deck_z(0, y0) - 0.03), (-(xb - 0.1), y0 - 0.06, deck_z(0, y0) - 0.03)])
             HINGES["Lid"] = {"pivot": (0.0, C0, ROOF), "axis": (1, 0, 0), "open": 48, "kind": "hatch"}
@@ -732,6 +886,8 @@ def split_onto_doors():
             return None
         if kind == "RoofGlass":
             return W - 0.32 - TUCK - 0.2, BELT, ROOF
+        if kind == "RoofChrome":                          # window surround + door trim strips ride on the doors
+            return W - 0.32 - TUCK - 0.2, DOOR_Z0 - 0.1, ROOF
         return None
     for ob in list(OBJS):
         if ob.get("style") != PREFIX or "__" in ob["kind"]:
@@ -783,6 +939,77 @@ def split_onto_doors():
     for k, v in OPT_INFO.items():
         if v["slot"] in HINGE_SLOTS and "hinge" not in v and HINGE_SLOTS[v["slot"]] in HINGES:
             v["hinge"] = HINGE_SLOTS[v["slot"]]
+
+
+# ------------------------------------------------------------------ pieces that hug the body (smooth bodies)
+_BVH = []
+
+
+def body_bvh():
+    """a ray-cast tree of the outer skin: body, door skins, lids"""
+    if _BVH:
+        return _BVH[0]
+    bm = bmesh.new()
+    for ob in OBJS:
+        if ob.get("loft") or ob["kind"].startswith("PanelDoor") or ob["kind"] in ("Lid", "PanelHood", "PanelRoof"):
+            bake(ob)
+            me = ob.data.copy()
+            me.transform(ob.matrix_world)
+            bm.from_mesh(me)
+            bpy.data.meshes.remove(me)
+    _BVH.extend([BVHTree.FromBMesh(bm), bm])
+    return _BVH[0]
+
+
+def decal(kind, c00, c10, c11, c01, d, nu=10, nv=3, out=0.03, inn=0.03, smooth=30.0):
+    """a thin piece over the body: the quad c00 c10 c11 c01 is cast along d onto the skin and thickened along its
+    normal (out above the skin, inn below it)"""
+    tree = body_bvh()
+    d = Vector(d).normalized()
+    c00, c10, c11, c01 = Vector(c00), Vector(c10), Vector(c11), Vector(c01)
+    O, I = [], []
+    for j in range(nv + 1):
+        v = j / nv
+        ro, ri = [], []
+        for i in range(nu + 1):
+            u = i / nu
+            p = (c00 * (1 - u) + c10 * u) * (1 - v) + (c01 * (1 - u) + c11 * u) * v
+            loc, n, _, _ = tree.ray_cast(p - d * 4.0, d, 12.0)
+            if loc is None:                                # off the edge of the skin: snap to the nearest surface
+                q = p - d * (p - Vector((0, p.y, BELT * 0.7))).dot(d)
+                loc, n, _, _ = tree.find_nearest(q)
+                if loc is None:
+                    loc, n = p, -d
+            n = Vector(n)
+            if n.dot(d) > 0:
+                n = -n
+            ro.append(loc + n * out)
+            ri.append(loc - n * inn)
+        O.append(ro)
+        I.append(ri)
+    return solid_grid(kind, O, I, [(j, i) for j in range(nv) for i in range(nu)], smooth)
+
+
+def smooth_details():
+    """the fixed details of a smooth modern body: lower intake, fog-lamp slats, rear diffuser, door trim"""
+    yF, yR = L0 - 1.0, L1 + 1.0
+    decal("Dark", (-W * 0.42, yF, ZB + 0.42), (W * 0.42, yF, ZB + 0.42), (W * 0.42, yF, ZB + 0.8), (-W * 0.42, yF, ZB + 0.8),
+          (0, 1, 0), nu=14, nv=3, out=0.02, inn=0.05)
+    for s_ in (-1, 1):
+        x0, x1 = s_ * W * 0.56, s_ * W * 0.8
+        decal("Dark", (x0, yF, ZB + 0.4), (x1, yF, ZB + 0.4), (x1, yF, ZB + 0.78), (x0, yF, ZB + 0.78), (0, 1, 0), nu=6, nv=3,
+              out=0.015, inn=0.05)
+        for k in range(3):
+            z = ZB + 0.48 + k * 0.11
+            decal("Chrome", (x0, yF, z), (x1, yF, z), (x1, yF, z + 0.035), (x0, yF, z + 0.035), (0, 1, 0), nu=6, nv=1,
+                  out=0.035, inn=0.02)
+        # chrome strip low along the doors
+        xs = s_ * (W + 1.0)
+        y0, y1 = WY_F + ARCH + 0.2, WY_R - ARCH - 0.2
+        decal("RoofChrome", (xs, y0, DOOR_Z0 + 0.14), (xs, y1, DOOR_Z0 + 0.14), (xs, y1, DOOR_Z0 + 0.19), (xs, y0, DOOR_Z0 + 0.19),
+              (-s_, 0, 0), nu=60, nv=1, out=0.025, inn=0.02)
+    decal("Dark", (-W * 0.6, yR, ZB + 0.3), (W * 0.6, yR, ZB + 0.3), (W * 0.6, yR, ZB + 0.6), (-W * 0.6, yR, ZB + 0.6),
+          (0, -1, 0), nu=14, nv=3, out=0.03, inn=0.05)
 
 
 exec(compile(open(os.path.join(HERE, "build_vehicle_parts.py")).read(), "build_vehicle_parts.py", "exec"), globals())
@@ -869,7 +1096,7 @@ def split_panels():
 src = cutters_and_body()
 build_doors(src)
 bpy.data.meshes.remove(src)
-greenhouse()
+greenhouse_smooth() if S.get("smooth") else greenhouse()
 build_rear()
 build_fuel_door()
 if S.get("electric"):
@@ -877,6 +1104,8 @@ if S.get("electric"):
 else:
     build_engine_bay()
 build_parts()
+if S.get("smooth"):
+    smooth_details()
 if S.get("fins"):                                         # 60s tail fins along the rear fenders
     for s_ in (-1, 1):
         y0, y1 = C1 + 0.4, L1 - 0.15
@@ -1063,10 +1292,24 @@ def shot(name, loc, tgt):
 
 Lr = max(-L0, L1)
 fz = (ROOF * 0.4)
+if S.get("rim_dark"):                                     # previews: the car's stock wheels are black
+    for ob in wheel:
+        info = WHEEL_INFO.get(ob.get("pkind", ""))
+        if info and info["mat"] in ("Rim", "Spokes", "Dish", "Hub", "Chrome"):
+            for m in ob.data.materials:
+                b_ = m.node_tree.nodes.get("Principled BSDF") if m and m.node_tree else None
+                if b_:
+                    b_.inputs["Base Color"].default_value = (0.02, 0.02, 0.022, 1)
+                    b_.inputs["Roughness"].default_value = 0.3
 show()
 shot("front34", (-Lr * 1.55, -Lr * 2.1, ROOF * 1.4 + 2), (0, -1.0, fz))
 shot("rear34", (Lr * 1.4, Lr * 2.2, ROOF * 1.4 + 2), (0, 1.0, fz))
 shot("side", (Lr * 2.6, 0.0, ROOF * 0.6), (0, 0, fz))
+if S.get("smooth"):                                      # the reference photo's angle: front left, standing height
+    lens = cam.data.lens
+    cam.data.lens = 26
+    shot("photo", (Lr * 1.05, -Lr * 1.6, 5.8), (Lr * 0.1, -Lr * 0.12, 2.4))
+    cam.data.lens = lens
 for i, (nm, b, liv, paint) in enumerate(SHOWCASE):
     show(b, liv, paint)
     shot(nm, (-Lr * 1.55, -Lr * 2.1, ROOF * 1.4 + 2) if i % 2 == 0 else (Lr * 1.4, Lr * 2.2, ROOF * 1.4 + 2), (0, 0, fz))

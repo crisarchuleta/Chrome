@@ -118,8 +118,14 @@ def headlights():
         for dx in (-0.25, 0.25):
             scyl(kind(S, "Dual", "Chrome"), (x + dx, y + 0.08, zc), (x + dx, y - 0.05, zc), 0.24, seg=20)
             scyl(kind(S, "Dual", "Head"), (x + dx, y - 0.05, zc), (x + dx, y - 0.09, zc), 0.19, seg=20)
-        sbox(kind(S, "Slim", "Dark"), x - 0.55, y - 0.05, z1 - 0.3, x + 0.55, y + 0.08, z1 - 0.06, bev=0.03)
-        sbox(kind(S, "Slim", "Head"), x - 0.5, y - 0.08, z1 - 0.2, x + 0.5, y, z1 - 0.12)
+        if SMOOTH:  # swept lamps over the nose corners, running back along the fender tops (cast onto the skin)
+            pts = [(0.44, L0 + 0.12), (0.86, L0 + 0.55), (0.87, L0 + 1.12), (0.47, L0 + 0.46)]
+            P = lambda k, g: (s * (W * pts[k][0] + g * (1 if k in (1, 2) else -1)), pts[k][1] + g * (1 if k in (2, 3) else -1), 8.0)
+            decal(kind(S, "Slim", "Dark"), P(0, 0.07), P(1, 0.07), P(2, 0.07), P(3, 0.07), (0, 0, -1), nu=12, nv=3, out=0.02, inn=0.06)
+            decal(kind(S, "Slim", "Head"), P(0, 0.0), P(1, 0.0), P(2, 0.0), P(3, 0.0), (0, 0, -1), nu=12, nv=3, out=0.04, inn=0.02)
+        else:
+            sbox(kind(S, "Slim", "Dark"), x - 0.55, y - 0.05, z1 - 0.3, x + 0.55, y + 0.08, z1 - 0.06, bev=0.03)
+            sbox(kind(S, "Slim", "Head"), x - 0.5, y - 0.08, z1 - 0.2, x + 0.5, y, z1 - 0.12)
         for dx in (-0.25, 0.25):
             scyl(kind(S, "Quad", "Chrome"), (x + dx, y + 0.08, zc + 0.12), (x + dx, y - 0.05, zc + 0.12), 0.18, seg=16)
             scyl(kind(S, "Quad", "Head"), (x + dx, y - 0.05, zc + 0.12), (x + dx, y - 0.09, zc + 0.12), 0.14, seg=16)
@@ -154,8 +160,16 @@ def taillights():
             scyl(kind(S, "Twin", "Tail"), (s * (xo - 0.3 - dx), y - 0.04, zc), (s * (xo - 0.3 - dx), y + 0.08, zc), 0.22, seg=18)
         sbox(kind(S, "Stacked", "Tail"), s * (xo - 1.0), y - 0.04, zc + 0.02, s * xo, y + 0.08, z1 - 0.04)
         sbox(kind(S, "Stacked", "Light"), s * (xo - 1.0), y - 0.04, z0 + 0.04, s * xo, y + 0.08, zc - 0.02)
-        sbox(kind(S, "Slim", "Dark"), s * (xo - 1.3), y - 0.03, zc - 0.12, s * xo, y + 0.08, zc + 0.12)
-        sbox(kind(S, "Slim", "Tail"), s * (xo - 1.25), y + 0.08, zc - 0.05, s * (xo - 0.05), y + 0.11, zc + 0.05)
+        if SMOOTH:  # slim lamps across the tail corners, wrapping onto the rear fenders
+            yb, zt = L1 + 1.0, TAIL - 0.45
+            q = [(s * W * 0.42, yb, zt - 0.12), (s * W * 0.86, yb, zt - 0.2), (s * W * 0.86, yb, zt + 0.06), (s * W * 0.42, yb, zt + 0.0)]
+            decal(kind(S, "Slim", "Tail"), *q, (0, -1, 0), nu=10, nv=2, out=0.035, inn=0.03)
+            xs = s * (W + 1.0)
+            q = [(xs, L1 - 0.55, zt - 0.12), (xs, L1 - 0.02, zt - 0.2), (xs, L1 - 0.02, zt + 0.06), (xs, L1 - 0.55, zt + 0.02)]
+            decal(kind(S, "Slim", "Tail"), *q, (-s, 0, 0), nu=6, nv=2, out=0.035, inn=0.03)
+        else:
+            sbox(kind(S, "Slim", "Dark"), s * (xo - 1.3), y - 0.03, zc - 0.12, s * xo, y + 0.08, zc + 0.12)
+            sbox(kind(S, "Slim", "Tail"), s * (xo - 1.25), y + 0.08, zc - 0.05, s * (xo - 0.05), y + 0.11, zc + 0.05)
 
 
 def hoods():
@@ -251,6 +265,18 @@ def tops():
     S = "Top"
     xt = gx(ROOF)
     yr0, yr1 = A1 + 0.2, C0 - 0.2
+    if SMOOTH:  # glass panel / light bar following the curved roof
+        ya, yb = yr0 + 0.25, yr0 + 0.35 + min(2.4, (yr1 - yr0) * 0.5)
+        for mat, g, out in (("Dark", 0.03, 0.02), ("Glass", 0.0, 0.035)):
+            xa = xt * 0.56 + g
+            decal(kind(S, "Sunroof", mat), (-xa, ya - g, 9), (xa, ya - g, 9), (xa, yb + g, 9), (-xa, yb + g, 9), (0, 0, -1), nu=8, nv=8,
+                  out=out, inn=0.0)
+        zl = roof_z(xt - 0.2, A1 + 0.3)
+        sbox(kind(S, "Lightbar", "Dark"), -(xt - 0.2), A1 + 0.05, zl, xt - 0.2, A1 + 0.3, zl + 0.26, bev=0.03)
+        for i in range(6):
+            x = -(xt - 0.5) + i * (2 * (xt - 0.5)) / 5
+            sbox(kind(S, "Lightbar", "Light"), x - 0.18, A1 + 0.02, zl + 0.04, x + 0.18, A1 + 0.05, zl + 0.22)
+        return
     sbox(kind(S, "Sunroof", "Glass"), -xt * 0.55, yr0 + 0.3, ROOF + 0.13, xt * 0.55, yr0 + 0.3 + min(2.4, (yr1 - yr0) * 0.5), ROOF + 0.16)
     sbox(kind(S, "Sunroof", "Dark"), -xt * 0.58, yr0 + 0.25, ROOF + 0.12, xt * 0.58, yr0 + 0.35 + min(2.4, (yr1 - yr0) * 0.5), ROOF + 0.14)
     if TRUCKISH:
@@ -424,6 +450,29 @@ def shifters():
 
 def headliner():
     S = "Headliner"
+    if SMOOTH:  # follows the curved roof
+        y0, y1 = A1 + 0.2, C0 - 0.2
+        xt = min(gh_xb(y0), gh_xb(y1)) * 0.7
+
+        def skin(xa, xb_, off, t, nx=16, ny=14):
+            O = [[Vector((xa + (xb_ - xa) * i / nx, y0 + (y1 - y0) * j / ny, 0)) for i in range(nx + 1)] for j in range(ny + 1)]
+            for row in O:
+                for v in row:
+                    v.z = roof_z(v.x, v.y) - off
+            return O, [[v - Vector((0, 0, t)) for v in row] for row in O], [(j, i) for j in range(ny) for i in range(nx)]
+        O, I, cells = skin(-xt, xt, 0.13, 0.04)
+        for v in ("Plain", "Pleated", "Stars"):
+            solid_grid(kind(S, v, "Seat"), O, I, cells)
+        for i in range(int(2 * xt / 0.45)):
+            x = -xt + 0.2 + i * 0.45
+            O, I, cells = skin(x - 0.03, x + 0.03, 0.17, 0.03, nx=1)
+            solid_grid(kind(S, "Pleated", "SeatTrim"), O, I, cells)
+        import random as _r
+        rnd = _r.Random(7)
+        for i in range(70):
+            x, y = rnd.uniform(-xt + 0.1, xt - 0.1), rnd.uniform(y0 + 0.1, y1 - 0.1)
+            cube(kind(S, "Stars", "Neon"), Vector((x, y, roof_z(x, y) - 0.18)), (0.035, 0.035, 0.02), 0, PREFIX)
+        return
     xt = gx(ROOF) - 0.1
     z = ROOF - 0.05
     y0, y1 = A1 + 0.1, C0 - 0.1
