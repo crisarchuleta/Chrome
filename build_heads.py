@@ -69,7 +69,9 @@ def set_uv(ob, u, v, period=None):
     me = ob.data
     uvl = me.uv_layers.new(name="UVMap")
     loops = np.array([l.vertex_index for l in me.loops])
-    uu = np.clip(np.asarray(u, float)[loops], 0.004, 0.996)
+    # (well inside the texture: the image wraps, so a sample at the very edge blends in the opposite column, and the
+    #  bare-skin edge of the shell printed a dotted line of full-hair texels)
+    uu = np.clip(np.asarray(u, float)[loops], 0.015, 0.985)
     vv = np.asarray(v, float)[loops].copy()
     if period:
         for poly in me.polygons:
@@ -121,6 +123,7 @@ def make_textures():
     alpha = np.clip(a * thin + smoothstep(0.6, 0.85, u)[None, :], 0, 1)
     col = (shade[sid][:, None] * (0.86 + 0.14 * core[:, None])) * np.ones((1, n))
     col = col * (0.92 + 0.08 * np.sin(u[None, :] * 40 + sid[:, None]))
+    alpha[:, u < 0.03] = 0.0                                              # (a clear border: no texels at the very edge)
     T["NC_HairEdge"] = np.dstack([col, col, col, alpha])
     # skin fades (hair_ref_1..3): clipper-short hair is not strands but fine dark stubble whose DENSITY falls off down
     # the side of the head; from a step back it reads as an even shadow going from the hair colour to skin. Low U is
@@ -134,6 +137,7 @@ def make_textures():
     st2 = 0.5 + 0.3 * rf.uniform(0, 1, strands)
     a2 = np.clip((u[None, :] - st2[sid][:, None]) / 0.12, 0, 1) * np.clip(core[:, None] * 2.5, 0, 1)
     falpha = np.clip(np.maximum(dots, a2) + smoothstep(0.6, 0.85, u)[None, :], 0, 1)
+    falpha[:, u < 0.03] = 0.0                                             # (np.roll wrapped full-hair dots into column 0)
     fcol = (0.74 + 0.26 * rf.random((n, n))) * (0.9 + 0.1 * smoothstep(0.3, 0.9, u)[None, :])
     # (full hair is one even shade: the crown's UVs barely move, so a speckled column there would print one random
     # light or dark texel over a whole patch of the head)
@@ -665,7 +669,7 @@ def style_short(H, V, F, S, N, d, p):
     if p.get("part") is not None:                        # side part: a combed line, hair swept away from it
         px = p["part"] * R
         dist = np.abs(rel[:, 0] - px)
-        T *= 1 - 0.75 * np.exp(-(dist / 0.025) ** 2) * top_w * (rel[:, 1] < 0.35 * R)
+        T *= 1 - 0.4 * np.exp(-(dist / 0.025) ** 2) * top_w * (rel[:, 1] < 0.35 * R)
         T += p.get("sweep", 0.0) * top_w * smoothstep(0.0, 0.5 * R, -(rel[:, 0] - px) * np.sign(p["part"]))
         T = combed(V, N, np.array([px, 0, 0]), 0, p.get("groove", 0.25), T, "lines", np.array([0, 1.0, 0]))
     elif p.get("slickback"):                             # combed straight back from the hairline, no part
@@ -873,6 +877,8 @@ def build_styles(H):
                     length = min(length, room)
                 # keep the card about as long as the strand texture is tall for its width (1:4 in the atlas): a short
                 # card as wide as it is long squashes the strands into a brush-shaped block
+                if length < 0.045:                               # (a stub reads as a hard-ended block or a speck
+                    continue                                     #  on the side: the shell carries the short hair)
                 w_i = min(width, length * 0.4)
                 segs_i = max(3, int(round(cp.get("segs", 6) * min(1.0, length / (0.6 * cp["len_top"])))))
                 vv, ff, uu, ww = HC.grow_card(H, root, flow, length, height_at(hfrac * rng.uniform(0.85, 1.1)), w_i,
