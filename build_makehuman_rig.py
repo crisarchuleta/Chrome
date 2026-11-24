@@ -517,7 +517,7 @@ def head_lock(body, P, FB):
     locked = 0
     for v in body.data.vertices:
         above = (v.co.y - cy) * ny + (v.co.z - cz) * nz
-        t = max(0.0, min(1.0, (above + 0.01) / 0.05))
+        t = max(0.0, min(1.0, (above + 0.28) / 0.28))       # (blending down the whole neck: a head turn twists it evenly, no fold)
         t = t * t * (3 - 2 * t)
         if t <= 0:
             continue

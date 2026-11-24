@@ -701,13 +701,21 @@ def fade_band(name, V, F, N, hl, T, p, width=0.06):
 FRONT_RAISE = 0.0
 
 
+def cap_line(H, P):
+    """the lower edge of a cap's band (NCLookBuilder F.cap): 1.3 cm over the brows at the front, just above the ears
+    at the sides and low on the back of the head (0.2 head units). In skull radii over the eyes: 0.41 front, 0.11 back.
+    Anything thicker than ~0.012 above it comes through the cap, which sits 0.03 head units off the skin."""
+    rel = np.atleast_2d(P) - H.centre
+    front = np.clip(-rel[:, 1] / H.R, -1, 1) * 0.5 + 0.5
+    return H.anchor[2] + H.R * (0.11 + 0.30 * front)
+
+
 def cap_version(H, V, T, p):
     """under a hat: everything above the cap line pressed flat (the hat covers it), the rest unchanged"""
     rel = V - H.centre
-    capline = H.anchor[2] + 0.28 + 0.25 * np.clip(rel[:, 1] / H.R, -1, 1) * 0.6
+    capline = cap_line(H, V)
     T2 = T.copy()
-    # (a cap's back strap and side band sit lower than its crown line: Curly Top came through a dad cap there)
-    over = V[:, 2] > capline - 0.10
+    over = V[:, 2] > capline - 0.03
     T2[over] = np.minimum(T2[over], 0.008)
     return T2
 
@@ -857,9 +865,7 @@ def build_styles(H):
                 # under a hat only the band below it shows: a card goes in the cap set only if all of it stays well
                 # under the cap line (the same line cap_version uses) and close to the scalp, or it pokes through
                 vz = np.array(vv)
-                rb = (root - H.centre)[1]
-                capline = H.anchor[2] + 0.28 + 0.25 * float(np.clip(rb / H.R, -1, 1)) * 0.6
-                if vz[:, 2].max() < capline - 0.13 and hfrac < 0.95:
+                if (vz[:, 2] < cap_line(H, vz) - 0.01).all() and hfrac < 0.95:
                     lo_h = np.array([np.linalg.norm(q - H.nearest(q)[0]) for q in vz]).max()
                     if lo_h < 0.02:
                         builders["cap"].add(vv, ff, uu, ww)
@@ -976,7 +982,8 @@ def build_styles(H):
             extras(b, T)
             hair = b.make(f"Hair_{key}")
         Tc = cap_version(H, V, T, p)
-        cap = shell(f"Hair_{key}_Cap", V, F, N, Tc, field=field, lift=0.007, uv=(cov, ev))
+        # (and nothing at all above the cap line: even pressed flat, hair there showed through a snug cap)
+        cap = shell(f"Hair_{key}_Cap", V, F, N, Tc, field=np.minimum(field, cap_line(H, V) + 0.02 - V[:, 2]), lift=0.007, uv=(cov, ev))
         if extras and p.get("cap_extras", True):
             b = Builder()
             b.add_obj(cap)
@@ -1051,7 +1058,7 @@ def build_styles(H):
                 chosen = [i for i in chosen if abs(rel[i][0]) > 0.035 or rel[i][1] > 0.45 * H.R]
             for k, i in enumerate(chosen):
                 root = V[i] + N[i] * (T[i] * 0.6)
-                if capped and V[i][2] > H.anchor[2] + 0.2:
+                if capped and V[i][2] > cap_line(H, V[i])[0] - 0.01:
                     continue
                 is_front = rel[i][1] < -0.25 * H.R and rel[i][2] > 0.1
                 L = front_len if is_front else length
@@ -1200,7 +1207,7 @@ def build_styles(H):
         def ex(b, T, capped=False):
             for path, rw in rows:
                 if capped:                                      # (under a hat: only the band below the crown)
-                    keep = [k for k, (q, _) in enumerate(path) if q[2] <= H.anchor[2] + 0.2]
+                    keep = [k for k, (q, _) in enumerate(path) if q[2] <= cap_line(H, q)[0] - 0.01]
                     if len(keep) < 4:
                         continue
                     runs = np.split(np.array(keep), np.nonzero(np.diff(keep) > 1)[0] + 1)
