@@ -242,11 +242,13 @@ function H.WearHair(fr, pp, parent, hair, skin, hatOn)
 		Transparency = opaque and H.CARD_SHELL_T or nil, Opaque = opaque }) then
 		return false
 	end
-	-- rope locs and twists are too many triangles for one MeshPart: their hair comes as <name>_2, _3 ...
+	-- hair over 18k triangles comes as <name>_2, _3 ... (every style can now; the parts are the same hair as the
+	-- first one, so they get the same look, or a card style's sheet would sort over its cards)
 	do
 		local k = 2
 		while H.has(fr, name .. "_" .. k) do
-			H.put(fr, name .. "_" .. k, parent, { Color = hair, Material = Enum.Material.SmoothPlastic, CastShadow = false })
+			H.put(fr, name .. "_" .. k, parent, { Color = hair, Material = Enum.Material.SmoothPlastic, CastShadow = false,
+				Transparency = opaque and H.CARD_SHELL_T or nil, Opaque = opaque })
 			k += 1
 		end
 	end
