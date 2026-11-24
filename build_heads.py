@@ -860,6 +860,8 @@ def build_styles(H):
             if os.environ.get("NC_DBG"):
                 print("NC_DBG", key, layer[6] if len(layer) > 6 else "-", len(_roots), float(weight.max()))
             for root, i in _roots:
+                if cov[i] < 0.3 or V[i][2] < H.ear_z + 0.06:     # (no cards right on the bare edge, where one floats
+                    continue                                     #  as a speck, or on the sideburns: the shell does those)
                 # (the back of a crop is short: the long top hair is the front and crown, so no bowl-shaped fringe)
                 backness = float(smoothstep(-0.1 * H.R, 0.8 * H.R, relc[i, 1]))   # (a long blend: no step at the crown)
                 length = (cp["len_side"] + (cp["len_top"] - cp["len_side"]) * tw[i] * (1 - 0.55 * backness)) * lmul * rng.uniform(0.8, 1.15)
