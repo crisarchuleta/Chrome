@@ -46,6 +46,15 @@ function S.Prepare(model)
 				-- keep the imported SurfaceAppearance too (alpha mode Transparency): NCInk.Apply prefers it over
 				-- TextureID, because a script can clone a SurfaceAppearance at runtime but can't set its ColorMap
 				local sa = mp:FindFirstChildOfClass("SurfaceAppearance")
+				if not sa and mp.TextureID ~= "" then
+					-- the GLB import gives TextureIDs: build the SurfaceAppearance from it (Studio/command bar only)
+					local ok, made = pcall(function()
+						local x = Instance.new("SurfaceAppearance")
+						x.ColorMap = mp.TextureID
+						return x
+					end)
+					sa = ok and made or nil
+				end
 				if sa then
 					local old = sas:FindFirstChild(name)
 					if old then

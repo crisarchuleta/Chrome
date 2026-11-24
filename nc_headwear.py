@@ -195,81 +195,105 @@ def _col_of(X, F, centre):
 
 # ------------------------------------------------------------------------------------------------------- durag
 def build_durag(o, name, color=(0.01, 0.01, 0.01), velvet=False):
-    """Skin-tight durag: crown cut from the forehead, over the tops of the ears, down to the nape; a centre seam
-    over the top, the tie band along the edge, the knot at the nape and the tail flap with both tie ends."""
+    """Durag, matched to references/head/durag.jpg: snug crown with a centre seam; the hem runs level round the head
+    from the upper forehead, just over the tops of the ears, to the base of the skull; a wide stitched tie band along
+    the hem; the ties knot at the base of the skull, and a wide tail flap hangs from under the knot down the back of
+    the neck with the two flat tie ends lying over it."""
     b = o.b; k = b.k; h = Head(b)
     ez, c = h.eye_z, h.c
     P, F = h.faces(sub=1)
     fr = h.front(P)
-    zl = ez + k * np.interp(fr, [-1, -0.5, -0.36, -0.25, -0.1, 0.0, 0.5, 1], [-0.1, -0.097, -0.075, 0.006, 0.02, 0.022, 0.027, 0.03])
+    zl = ez + k * np.interp(fr, [-1, -0.7, -0.4, -0.15, 0.0, 1], [-0.05, -0.044, -0.012, 0.022, 0.03, 0.046])
     P, F, _ = clip(P, F, zl - P[:, 2], {})
     X, F, E = _shell(o, P, F, 0.0045 * k, 3, 0.004 * k, smooth=3)
-    rough = 0.95 if velvet else 0.45
-    m_main = _mat(name + "_Main", color, rough=rough, sheen=0.0)
-    m_dark = _mat(name + "_Seam", np.array(color[:3]) * 0.7, rough=rough)
     ll = max(boundary_loops(F), key=len)
-    X = _smooth_loop(X, ll, 8, o.col, 0.004 * k)
-    # rolled hem
-    base = X[ll].copy(); N = vnormals(X, F)
-    X, F, R, _ = _extend_loop(X, F, ll, None, [base - N[ll] * 0.003 * k + np.array([0, 0, 0.002 * k])], np.array(["M"] * len(X), dtype=object), "Hem")
-    out = [make_object(b, f"{b.obj.name}_{name}", X, F, [m_main], None, None, thick=0.0015 * k, subsurf=1)]
+    X = _smooth_loop(X, ll, 10, o.col, 0.004 * k)
+    rough = 0.95 if velvet else 0.42
+    m_main = _mat(name + "_Main", color, rough=rough)
+    m_dark = _mat(name + "_Seam", np.array(color[:3]) * 0.6, rough=rough)
     centre = np.array([c[0], c[1], ez])
-    col = _col_of(X[:len(R)], F, centre)
-    nhead = len(base)
-    # tie band: the strip along the edge where the ties wrap round (raised 1.5 mm)
+    out = [make_object(b, f"{b.obj.name}_{name}", X, F, [m_main], None, None, thick=0.0015 * k, subsurf=1)]
+    col = _col_of(X, F, centre)
+    base = X[ll].copy()
     parts = []
-    hem = base + N[ll] * 0.0012 * k
-    for _ in range(4):
-        hem = 0.5 * hem + 0.25 * (np.roll(hem, 1, 0) + np.roll(hem, -1, 0))
-    Vt, Ft = make_tube(hem, 0.0032 * k, nseg=8, closed=True)  # the tie band rolled along the edge
+    # tie band: a wide flat strip along the hem (rows pushed onto the crown), rolled lower edge, stitch line on top
+    Hb = 0.03 * k
+    rows = []
+    for t in (0.0, 0.5, 1.0):
+        r = base + np.array([0, 0, Hb * t])
+        for _ in range(12):
+            _, j = col.tree.query(r)
+            r = col.P[j] + col.N[j] * 0.0022 * k  # lie on the crown, never float off it
+            r = 0.5 * r + 0.25 * (np.roll(r, 1, 0) + np.roll(r, -1, 0))
+        _, j = col.tree.query(r)
+        r = col.P[j] + col.N[j] * 0.0022 * k
+        for _ in range(8):  # nearest-vertex snapping is a little stepped: even it out along the loop
+            r = 0.5 * r + 0.25 * (np.roll(r, 1, 0) + np.roll(r, -1, 0))
+            r = col.push(r, 0.0022 * k)
+        rows.append(r)
+    rows[0] = base + (rows[0] - base) * 0.5
+    nb = len(base)
+    Vb = np.vstack(rows)
+    Fb = _orient_out(Vb, [[r * nb + i, r * nb + (i + 1) % nb, (r + 1) * nb + (i + 1) % nb, (r + 1) * nb + i]
+                          for r in range(len(rows) - 1) for i in range(nb)], centre)
+    parts.append((Vb, Fb, 0))
+    Vt, Ft = make_tube(rows[0], 0.0028 * k, nseg=8, closed=True)
     parts.append((Vt, Ft, 0))
-    # centre seam over the top, forehead to nape
-    fpt = base[np.argmax(h.front(base) - 3 * np.abs(base[:, 0] - c[0]) / k)]
+    _, j = col.tree.query(rows[-1] + np.array([0, 0, 0.004 * k])); st = col.P[j] + col.N[j] * 0.0018 * k
+    for _ in range(8):
+        st = 0.5 * st + 0.25 * (np.roll(st, 1, 0) + np.roll(st, -1, 0)); st = col.push(st, 0.0018 * k)
+    Vt, Ft = make_tube(st, 0.0008 * k, nseg=5, closed=True)
+    parts.append((Vt, Ft, 1))
+    # centre seam over the top, from the band to the back
+    fpt = rows[-1][np.argmax(h.front(rows[-1]) - 3 * np.abs(rows[-1][:, 0] - c[0]) / k)]
     bpt = base[np.argmin(h.front(base) + 3 * np.abs(base[:, 0] - c[0]) / k)]
     arc = [fpt, np.array([c[0], c[1] - 0.04 * k, h.top + 0.06 * k]), np.array([c[0], c[1] + 0.06 * k, h.top + 0.04 * k]), bpt]
     Q = _taut(col, arc, 0.0012 * k, iters=150)
-    Vt, Ft = make_tube(Q[2:-2], 0.0016 * k, nseg=6)
-    parts.append((Vt, Ft, 0))
-    # tail flap: the cloth carries on from the whole back edge and hangs down the back of the neck
-    back = base[h.front(base) < -0.42]
+    Vt, Ft = make_tube(Q[1:-4], 0.0012 * k, nseg=6)
+    parts.append((Vt, Ft, 1))
+    # tail flap: from the back of the hem, as wide as the neck, down onto the upper back
+    back = base[np.abs(h.ang(base)) > np.radians(104)]
     back = back[np.argsort(back[:, 0])]
-    xs = np.linspace(back[0, 0], back[-1, 0], 15)
+    xs = np.linspace(back[0, 0], back[-1, 0], 17)
     top = np.stack([xs, np.interp(xs, back[:, 0], back[:, 1]), np.interp(xs, back[:, 0], back[:, 2])], 1)
-    top[:, 2] = np.minimum(top[:, 2], top[:, 2].min() + 0.012 * k)  # even out the root line
     xm = top[:, 0].mean()
-    L = 0.15 * k
-    rows = []
-    for t in np.linspace(0, 1, 12):
+    L = 0.21 * k
+    nr = 14
+    G = []
+    for t in np.linspace(0, 1, nr):
         r = top.copy()
-        r[:, 0] = xm + (r[:, 0] - xm) * (1 - 0.3 * t)
+        r[:, 0] = xm + (r[:, 0] - xm) * (1 - 0.12 * t)
         r[:, 2] -= L * t
         r[:, 1] += 0.004 * k
-        rows.append(r)
-    G = np.array(rows)  # (12, 15, 3)
-    for _ in range(40):
+        G.append(r)
+    G = np.array(G)
+    nc = G.shape[1]
+    for it in range(60):
         flat = G[1:].reshape(-1, 3)
-        G[1:] = o.col.push(flat, 0.005 * k).reshape(11, 15, 3)
+        _, j = o.col.tree.query(flat)
+        hug = o.col.P[j] + o.col.N[j] * 0.006 * k  # the flap clings to the neck and upper back
+        flat = flat + 0.35 * (hug - flat)
+        G[1:] = o.col.push(flat, 0.005 * k).reshape(nr - 1, nc, 3)
         G[1:-1] = 0.5 * G[1:-1] + 0.25 * (G[:-2] + G[2:])
         G[:, 1:-1] = 0.6 * G[:, 1:-1] + 0.2 * (G[:, :-2] + G[:, 2:])
-    G[1:] = o.col.push(G[1:].reshape(-1, 3), 0.006 * k).reshape(11, 15, 3)
-    nr, nc = G.shape[:2]
+    G[1:] = o.col.push(G[1:].reshape(-1, 3), 0.006 * k).reshape(nr - 1, nc, 3)
+    G[-1, :, 2] += 0.005 * k * (np.linspace(-1, 1, nc) ** 2)  # softly rounded end
     Vt = G.reshape(-1, 3)
     Ftl = [[i * nc + j, i * nc + j + 1, (i + 1) * nc + j + 1, (i + 1) * nc + j] for i in range(nr - 1) for j in range(nc - 1)]
     parts.append((Vt, _orient_out(Vt, Ftl, centre + np.array([0, -0.2 * k, 0])), 0))
-    # small flat knot at the nape and two flat tie ends lying on the flap
-    nape = G[0, nc // 2]
-    Nn = np.array([0, 1.0, -0.15]); Nn /= np.linalg.norm(Nn)
-    kc = nape + Nn * 0.008 * k
-    Vk, Fk = _blob(kc, np.array([0.017, 0.007, 0.01]) * k, noise=0.2, seed=3)
-    parts.append((Vk, Fk, 1))
     flapcol = _col_of(Vt, Ftl, centre)
-    for dx, Lt, sd in ((0.016 * k, 0.16 * k, 2), (-0.014 * k, 0.13 * k, 4)):
-        Q = np.array([kc + np.array([dx * t, 0, -Lt * t]) for t in np.linspace(0, 1, 12)])
-        Q[1:] = flapcol.push(Q[1:], 0.0035 * k)
+    # knot at the base of the skull and the two flat tie ends over the flap
+    nape = G[1, nc // 2]
+    kc = nape + np.array([0, 0.01 * k, 0.006 * k])
+    Vk, Fk = _blob(kc, np.array([0.024, 0.011, 0.016]) * k, noise=0.25, seed=3)
+    parts.append((Vk, Fk, 0))
+    for dx, Lt, sd in ((0.02 * k, 0.17 * k, 2), (-0.017 * k, 0.15 * k, 4)):
+        Q = np.array([kc + np.array([dx * t, 0, -Lt * t]) for t in np.linspace(0, 1, 14)])
+        Q[1:] = flapcol.push(Q[1:], 0.003 * k)
         for _ in range(6):
-            Q[1:-1] = 0.5 * Q[1:-1] + 0.25 * (Q[:-2] + Q[2:]); Q[1:] = flapcol.push(Q[1:], 0.0035 * k)
-        V, Fr = _ribbon(Q, _surf_normals(flapcol, Q), np.linspace(0.026, 0.022, 12) * k)
-        parts.append((V, _orient_out(V, Fr, centre + np.array([0, -0.2 * k, 0])), 1))
+            Q[1:-1] = 0.5 * Q[1:-1] + 0.25 * (Q[:-2] + Q[2:]); Q[1:] = flapcol.push(Q[1:], 0.003 * k)
+        V, Fr = _ribbon(Q, _surf_normals(flapcol, Q), np.linspace(0.03, 0.026, 14) * k)
+        parts.append((V, _orient_out(V, Fr, centre + np.array([0, -0.2 * k, 0])), 0))
     Vd, Fd, md = merge_parts(parts)
     out.append(make_object(b, f"{b.obj.name}_{name}_Ties", Vd, Fd, [m_main, m_dark], md, None, thick=0.0012 * k, subsurf=1))
     o.objs.extend(out)
@@ -630,7 +654,7 @@ def build_goggles(o, name, frame=(0.01, 0.01, 0.01), lens=(0.8, 0.37, 0.05), up=
     ez, c = h.eye_z, h.c
     zc = ez + (0.075 if up else 0.009) * k
     hz = 0.0215 * k
-    amax = np.radians(52)
+    amax = np.radians(52 if up else 42)
     clr = (0.006 if up else 0.013) * k
     nu, nv = 41, 9
     U = np.linspace(-1, 1, nu)
