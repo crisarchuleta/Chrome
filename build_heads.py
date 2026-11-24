@@ -1279,12 +1279,12 @@ def build_styles(H):
 
     # --- locs / twists: a short base, then real strands that hang (the front ones fall over the eyes)
     def locs_extras(length, n_front, n_all, radius, front_len, end_z=None, part=False, two_strand=False, gap=0.075, clear_k=1.3,
-                    frame_face=False, hat_tail=False, curl_tips=False, turns=30.0, hem=None, ringlet=None, layered=False):
+                    frame_face=False, hat_tail=False, curl_tips=False, turns=30.0, hem=None, ringlet=None, layered=False, seed=11):
         """frame_face: the front locs fall beside the face (not over it); hat_tail: under a hat each loc keeps the part
         below the cap band, so the locs hang out from under the hat all round (person's photos 2026-11-24);
         curl_tips: the last few cm twist into a loose hook like real rope-twist locs"""
         def ex(b, T, capped=False):
-            r2 = random.Random(11)
+            r2 = random.Random(seed)
             rng_f = np.random.default_rng(zlib.crc32(f"frizz{length}{n_all}".encode()))
             ears = H.co[H.mask["ears"]]
             kde = KDTree(len(ears))
@@ -1364,7 +1364,7 @@ def build_styles(H):
                 if frame_face:
                     # in front of the ears, below the brows, the loc is pushed out beside the cheek: the face stays open
                     # and the front locs frame it (centre part, like the photos)
-                    face_hw = 0.6 * H.R + radius * 1.2
+                    face_hw = 0.6 * H.R + radius * 1.2 + (ringlet[0] * 1.5 if ringlet is not None else 0.0)   # (curls swing wider)
                     # one side for the whole loc, from its root: a loc whose drape crossed the middle was pushed to one
                     # side over the face and fell back to the other below it, running diagonally across the chest
                     sx = math.copysign(1.0, rel[i][0] if abs(rel[i][0]) > 1e-4 else (1.0 if k % 2 else -1.0))
@@ -1459,7 +1459,7 @@ def build_styles(H):
                             Pp[j] = q - d_ / dl * (dl - want) * wf
                     for _ in range(3):
                         Pp[2:-1] = 0.25 * Pp[1:-2] + 0.5 * Pp[2:-1] + 0.25 * Pp[3:]
-                    fhw = 0.6 * H.R + radius * 1.2
+                    fhw = 0.6 * H.R + radius * 1.2 + (ringlet[0] * 1.5 if ringlet is not None else 0.0)
                     for j in range(2, len(Pp)):
                         q = Pp[j]
                         dx = q[0] - H.centre[0]
@@ -1667,12 +1667,21 @@ def build_styles(H):
     def add_curls():
         # natural curls (person 2026-11-24: "shoulder length curly hair natural, long curly hair"): springy coils
         # from all over the scalp, no part, face open, volume off the head; under a hat they hang out under the band
-        add_short("Curls", "Shoulder Length Curls", dict(base, groove=0.25),
+        def both(*exs):
+            def ex(b, T, capped=False):
+                for e_ in exs:
+                    e_(b, T, capped)
+            return ex
+        # (a close layer of short tight curls all over the scalp under the long ones: the scalp showed as a smooth
+        #  shiny patch at the crown and a see-through strip by the ear between the long curls)
+        under = lambda: locs_extras(0.24, 12, 230, 0.022, 0.24, gap=0.04, clear_k=1.0, frame_face=True, hat_tail=True,
+                                    ringlet=(0.015, 0.008, 0.05, 3, 5, False), seed=7)
+        add_short("Curls", "Shoulder Length Curls", dict(base, groove=0.25), both(under(),
                   locs_extras(1.15, 12, 290, 0.03, 1.15, gap=0.039, clear_k=2.4, frame_face=True, hat_tail=True,
-                              layered=0.72, ringlet=(0.024, 0.009, 0.07, 3, 6, False)))
-        add_short("LongCurls", "Long Curls", dict(base, groove=0.25),
-                  locs_extras(1.75, 12, 240, 0.032, 1.75, gap=0.042, clear_k=2.3, frame_face=True, hat_tail=True,
-                              layered=1.35, ringlet=(0.026, 0.0095, 0.08, 3, 6, False)))
+                              layered=0.72, ringlet=(0.024, 0.009, 0.07, 3, 6, False))))
+        add_short("LongCurls", "Long Curls", dict(base, groove=0.25), both(under(),
+                  locs_extras(1.75, 12, 250, 0.034, 1.75, gap=0.041, clear_k=2.3, frame_face=True, hat_tail=True,
+                              layered=1.35, ringlet=(0.03, 0.0095, 0.08, 3, 6, False))))
 
     if male:
         # thick two-strand rope-twist locs to the collarbone from a centre part, framing the face, tips curling;
@@ -1888,6 +1897,11 @@ def build_styles(H):
                 tip = np.clip((rows - rr) / max(rows * 0.2, 1), 0, 1) ** 0.8
                 uu = tip.ravel()                                  # (front edges stay solid: hair runs along them)
                 ww = (cc / (cols - 1) * 16 + 0.15 * np.sin(rr * 0.3)).ravel()
+                if capped:
+                    # under a hat only the sheet below the band (the untrimmed sheet stood ~3 cm over every hat)
+                    VA_ = np.array(verts)
+                    over_ = VA_[:, 2] > cap_line(H, VA_) - 0.03
+                    faces = [f_ for f_ in faces if not over_[f_].any()]
                 b.add(verts, faces, np.r_[uu, uu], np.r_[ww, ww])
                 # strand cards: guide strands from roots all over the scalp, combed along the style's flow over the
                 # head until they turn down, then falling on the sheet's outer surface (which already drapes over the
