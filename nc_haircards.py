@@ -75,7 +75,8 @@ def _strand_paths(rng, kind, n, H, W):
         width = rng.uniform(1.0, 2.1) * (W / 256)
         shade = rng.uniform(0.62, 1.0)
         # every hair ends before the card does, at its own length: the card's tip is a fringe of single ends
-        v_end = rng.uniform(0.35, 0.94) if kind != "STRAIGHT_DENSE" else rng.uniform(0.6, 0.95)
+        # (dense cards too end in a long fringe: hairs ending together read as a square-cut card end)
+        v_end = rng.uniform(0.35, 0.94) if kind != "STRAIGHT_DENSE" else rng.uniform(0.42, 0.95)
         v_start = rng.uniform(0.0, 0.3)                                 # (roots spread out: no hard card edge)
         out.append((x, width, shade, v_start, v_end))
     return out

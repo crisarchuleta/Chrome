@@ -138,7 +138,7 @@ def make_textures():
     st2 = 0.5 + 0.3 * rf.uniform(0, 1, strands)
     a2 = np.clip((u[None, :] - st2[sid][:, None]) / 0.12, 0, 1) * np.clip(core[:, None] * 2.5, 0, 1)
     falpha = np.clip(np.maximum(dots, a2) + smoothstep(0.6, 0.85, u)[None, :], 0, 1)
-    falpha[:, u < 0.03] = 0.0                                             # (np.roll wrapped full-hair dots into column 0)
+    falpha[:, u < 0.08] = 0.0                                             # (np.roll wrapped full-hair dots into column 0)
     fcol = (0.74 + 0.26 * rf.random((n, n))) * (0.9 + 0.1 * smoothstep(0.3, 0.9, u)[None, :])
     # (full hair is one even shade: the crown's UVs barely move, so a speckled column there would print one random
     # light or dark texel over a whole patch of the head)
@@ -1519,7 +1519,7 @@ def build_styles(H):
                 kk_ = np.arange(cols)[:, None]
                 fend = smoothstep(0.0, 9.0, np.minimum(kk_, cols - 1 - kk_).astype(float))
                 hacc = np.maximum.accumulate(head_r, axis=1) + 0.012
-                R = hacc + (R - hacc) * (0.25 + 0.75 * fend)
+                R = hacc + (R - hacc) * (0.6 + 0.4 * fend)
                 G = np.zeros((cols, rows + 1, 3))
                 for k, a in enumerate(angs):
                     G[k, :, 0] = axis[0] + math.sin(a) * R[k]
@@ -1531,7 +1531,7 @@ def build_styles(H):
                 k_idx = np.arange(cols)[:, None]
                 groove = 0.01 * np.sin(k_idx * 2.1) + 0.007 * np.sin(k_idx * 5.3 + 1.0)
                 taper = np.linspace(1.0, 0.45, rows + 1)[None, :]
-                taper = taper * (0.2 + 0.8 * fend)
+                taper = taper * (0.55 + 0.45 * fend)
                 outer = G + outn * ((groove + 0.03) * taper)[..., None]
                 inner = G - outn * 0.008
                 nv = cols * (rows + 1)
@@ -1577,7 +1577,13 @@ def build_styles(H):
                         out_ += wk * np.interp(jf, np.arange(rows + 1), surfR[kk])
                     return out_
 
-                flow_ = flow_part(part_x * H.R) if part_x is not None else flow_back
+                flow0 = flow_part(part_x * H.R) if part_x is not None else flow_back
+
+                def flow_(loc, nrm):
+                    # in front of the ears the hair falls down the side of the face (the front locks), not back
+                    a_ = abs(math.atan2(loc[0] - axis[0], loc[1] - axis[1]))
+                    k_ = smoothstep(math.radians(70), math.radians(95), a_) * smoothstep(H.anchor[2] + 0.25, H.anchor[2] + 0.05, loc[2])
+                    return (1 - k_) * flow0(loc, nrm) + k_ * np.array([0.0, 0.25, -1.0])
                 rng_ = np.random.default_rng(zlib.crc32(f"strands{length}{flare}".encode()))
                 kdT = KDTree(len(V))
                 for ii_, vv_ in enumerate(V):
@@ -1608,6 +1614,8 @@ def build_styles(H):
                         r_ = math.hypot(q[0] - axis[0], q[1] - axis[1])
                         z_ = q[2]
                         floor_z = (shoulder_z + rng_.uniform(-0.02, 0.06)) if abs(ang) > math.radians(55) else -9.0
+                        kq = int(np.clip((ang - a_lo) / (a_hi - a_lo) * (cols - 1), 0, cols - 1))
+                        floor_z = max(floor_z, z0 - col_len(angs[kq]) + rng_.uniform(0.0, 0.08))   # (inside the sheet's cut)
                         while L < total and z_ - step_h > floor_z:   # then down, onto the sheet
                             z_ -= step_h
                             L += step_h
@@ -1630,6 +1638,8 @@ def build_styles(H):
                         s0 = max(0.0, sarc[n_surf - 1] - 0.15) - rng_.uniform(0, 0.3) * seg_len
                         s_floor = max(0.0, sarc[n_surf - 1] - 0.15)
                         while s0 < sarc[-1] - 0.05:
+                            if s0 + seg_len > sarc[-1]:                    # (the last card ends on the strand tips:
+                                s0 = max(s_floor - 0.3 * seg_len, sarc[-1] - seg_len)   # no square-cut end)
                             a_s, e_s = max(s0, s_floor), min(s0 + seg_len, sarc[-1])
                             idx = np.nonzero((sarc >= a_s) & (sarc <= e_s))[0]
                             if len(idx) >= 2:
@@ -1637,6 +1647,8 @@ def build_styles(H):
                                 if capped:
                                     keep = seg_p[:, 2] < cap_line(H, seg_p) - 0.02
                                     if not keep.all():
+                                        if s0 + seg_len >= sarc[-1] - 1e-6:
+                                            break
                                         s0 += seg_len * rng_.uniform(0.5, 0.65)
                                         continue
                                 hw = wcard * 0.5 * np.clip(0.6 + 0.4 * (sarc[idx] / 0.25), 0.6, 1.0)[:, None]
@@ -1651,6 +1663,8 @@ def build_styles(H):
                                 ff = [[j, j + 1, m + j + 1, m + j] for j in range(m - 1)]
                                 vcoord = list(np.clip((sarc[idx] - s0) / seg_len * 0.98 + 0.01, 0.01, 0.995))
                                 SHEET_CARDS["cap" if capped else "full"].append((vv, ff, [us] * m + [us + sp] * m, vcoord + vcoord))
+                            if s0 + seg_len >= sarc[-1] - 1e-6:
+                                break
                             s0 += seg_len * rng_.uniform(0.5, 0.65)
             return ex
         add_short("LongStraight", "Long Straight", dict(slick, top=0.05, side=0.04, groove=0.3,
