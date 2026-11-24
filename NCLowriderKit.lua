@@ -514,6 +514,7 @@ end
 local GAUGE0 = { Centre = { -1.55, 2.62, -2.3 }, Size = { 1.6, 0.418 }, Tilt = 16.7 }
 local PLAQUE0 = { Centre = { 0, 3.35, 4.68 }, Size = { 2.0, 0.6 } }
 local MAX_MPH = 120
+local GEARS = { "P", "R", "N", "D", "L" }
 
 local function facePart(name, size, localCF, chassis, origin)
 	local p = Instance.new("Part")
@@ -580,6 +581,28 @@ local function buildSpeedo(car, chassis, origin, vd)
 	needle.BorderSizePixel = 0
 	needle.ZIndex = 3
 	needle.Parent = face
+	-- P R N D L gear readout along the bottom of the dial (Kit.SetGear lights the one you're in)
+	local gear = Instance.new("Frame")
+	gear.Name = "Gear"
+	gear.AnchorPoint = Vector2.new(0.5, 1)
+	gear.Position = UDim2.new(0.5, 0, 0.99, 0)
+	gear.Size = UDim2.new(0.42, 0, 0.2, 0)
+	gear.BackgroundTransparency = 1
+	gear.ZIndex = 5
+	gear.Parent = face
+	for i, letter in GEARS do
+		local l = Instance.new("TextLabel")
+		l.Name = letter
+		l.Position = UDim2.new((i - 1) / #GEARS, 0, 0, 0)
+		l.Size = UDim2.new(1 / #GEARS, 0, 1, 0)
+		l.BackgroundTransparency = 1
+		l.Font = Enum.Font.GothamBlack
+		l.TextScaled = true
+		l.Text = letter
+		l.TextTransparency = letter == "P" and 0 or 0.7
+		l.ZIndex = 5
+		l.Parent = gear
+	end
 	local digits = Instance.new("TextLabel")
 	digits.Name = "Digits"
 	digits.Size = UDim2.fromScale(1, 1)
@@ -642,6 +665,60 @@ local function styleSpeedo(car, look)
 	face.Needle.Visible = not st.digital
 	face.Digits.TextColor3 = st.ink
 	face.Digits.Visible = st.digital == true
+	for _, l in face.Gear:GetChildren() do
+		l.TextColor3 = l.TextTransparency < 0.5 and st.needle or st.ink
+	end
+	face.Gear:SetAttribute("Lit", st.needle)
+	face.Gear:SetAttribute("Ink", st.ink)
+end
+
+-- lights one letter of the P R N D L readout (call on clients)
+function Kit.SetGear(car, letter)
+	local p = car:FindFirstChild("GaugeFace")
+	local g = p and p:FindFirstChild("Speedo")
+	local row = g and g.Dial:FindFirstChild("Gear")
+	if not row or row:GetAttribute("Now") == letter then
+		return
+	end
+	row:SetAttribute("Now", letter)
+	local lit, ink = row:GetAttribute("Lit") or Color3.fromRGB(220, 30, 30), row:GetAttribute("Ink") or Color3.new(0, 0, 0)
+	for _, l in row:GetChildren() do
+		local on = l.Name == letter
+		l.TextTransparency = on and 0 or 0.7
+		l.TextColor3 = on and lit or ink
+	end
+end
+
+-- turns the steering wheel (call on clients; steer -1..1 = full lock left..right, about 1.4 turns lock to lock)
+local steerCache = setmetatable({}, { __mode = "k" }) -- [car] = { welds = { {weld, base} }, look = string }
+function Kit.SetSteer(car, steer)
+	local vd = VD(Vehicles.Of(car))
+	local spec = vd.Car.Steer
+	local opt = car:FindFirstChild("Opt")
+	if not (spec and opt) then
+		return
+	end
+	local cache = steerCache[car]
+	if not cache or cache.n ~= #opt:GetChildren() then
+		cache = { n = #opt:GetChildren(), welds = {} }
+		for _, part in opt:GetChildren() do
+			local w = part:GetAttribute("Slot") == "Steering" and part:FindFirstChild("Weld")
+			if w then
+				table.insert(cache.welds, { w, w.C0 })
+			end
+		end
+		steerCache[car] = cache
+	end
+	if #cache.welds == 0 then
+		return
+	end
+	local origin = car.PrimaryPart.Origin.CFrame
+	local centre = v3(spec.Centre)
+	local turn = CFrame.new(centre) * CFrame.fromAxisAngle(v3(spec.Axis), -steer * math.rad(250)) * CFrame.new(-centre)
+	for _, it in cache.welds do
+		-- base C0 = origin * rel  ->  origin * turn * rel
+		it[1].C0 = origin * turn * origin:Inverse() * it[2]
+	end
 end
 
 -- moves a car's speedometer (call on clients; mph = road speed)

@@ -514,6 +514,29 @@ local function hopMeter(car, s, dt)
 end
 
 ---------------------------------------------------------------------------------------------------- main loop
+-- the steering wheel follows the driver's steering, and the dash shows the gear: P parked / nobody driving,
+-- R backing up, N stopped with no throttle, D driving, L creeping forward under 8 mph in a lowrider on the juice
+local function dashLive(car, s, seat, fwd)
+	local ds = seat or car:FindFirstChild("DriveSeat")
+	local driven = ds and ds.Occupant ~= nil
+	s.wheelSteer = (s.wheelSteer or 0) + (((ds and ds.SteerFloat) or 0) - (s.wheelSteer or 0)) * 0.25
+	Kit.SetSteer(car, s.wheelSteer)
+	local gear = "P"
+	if driven then
+		local th = ds.ThrottleFloat
+		if fwd < -0.5 or (th < -0.05 and fwd < 1) then
+			gear = "R"
+		elseif math.abs(fwd) < 0.5 and math.abs(th) < 0.05 then
+			gear = "N"
+		elseif fwd < 6 and (s.mode == "lifted" or s.threeWheel) then
+			gear = "L"
+		else
+			gear = "D"
+		end
+	end
+	Kit.SetGear(car, gear)
+end
+
 -- every Kit car in the world: Low & Slow rides plus the city's parked, personal, garage and Coast Patrol cars
 local function cars()
 	local list = {}
@@ -566,6 +589,7 @@ RunService.PreSimulation:Connect(function(dt)
 				hopMeter(c, s, dt)
 			end
 			Kit.SetSpeed(c, math.abs(s.fwdSpeed or 0) / 1.15 * 0.6818) -- studs/s -> mph
+			dashLive(c, s, c == myCar and seat or nil, s.fwdSpeed or 0)
 		elseif (ch.Position - camPos).Magnitude < 350 then
 			-- someone else's car: follow their corner heights and pose the wheels from my own rays
 			local f, r = c:GetAttribute("HydF") or Vector2.zero, c:GetAttribute("HydR") or Vector2.zero
@@ -581,6 +605,7 @@ RunService.PreSimulation:Connect(function(dt)
 			poseWheels(c, s, origin, casts, steer, v, dt)
 			if (ch.Position - camPos).Magnitude < 40 then
 				Kit.SetSpeed(c, math.abs(v) / 1.15 * 0.6818)
+				dashLive(c, s, ds, v)
 			end
 		end
 	end

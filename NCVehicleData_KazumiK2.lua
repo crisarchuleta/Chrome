@@ -2,9 +2,9 @@
 -- Kazumi K2: same layout as NCLowriderData.Car / .Wheel (car frame: front = -Z, origin on the ground between the axles).
 return {
 	Car = {
-		FrontBumper = {0, 1.2, -7.4},
+		FrontBumper = {0, 1.312, -8.12},
 		Gauge = {
-			Centre = {-1.386, 2.47, -2.08},
+			Centre = {-1.386, 2.91, -2.37},
 			Size = {1.4, 0.4},
 			Tilt = 16.0,
 		},
@@ -32,52 +32,52 @@ return {
 				Axis = {0, 1, 0},
 				Kind = "door",
 				Open = -66,
-				Pivot = {-3.28, 1.95, -2.78},
+				Pivot = {-3.28, 2.226, -3.07},
 			},
 			DoorR = {
 				Axis = {0, 1, 0},
 				Kind = "door",
 				Open = 66,
-				Pivot = {3.28, 1.95, -2.78},
+				Pivot = {3.28, 2.226, -3.07},
 			},
 			DoorRL = {
 				Axis = {0, 1, 0},
 				Kind = "door",
 				Open = -66,
-				Pivot = {-3.28, 1.95, 0.7},
+				Pivot = {-3.28, 2.226, 0.76},
 			},
 			DoorRR = {
 				Axis = {0, 1, 0},
 				Kind = "door",
 				Open = 66,
-				Pivot = {3.28, 1.95, 0.7},
+				Pivot = {3.28, 2.226, 0.76},
 			},
 			Fuel = {
 				Axis = {0, 1, 0},
 				Kind = "fuel",
 				Open = -80,
-				Pivot = {-3.33, 1.948, 6.07},
+				Pivot = {-3.33, 2.401, 6.72},
 			},
 			Hood = {
 				Axis = {-1, 0, 0},
 				Kind = "hood",
 				Open = -50,
-				Pivot = {-0.0, 2.828, -2.95},
+				Pivot = {-0.0, 3.268, -3.24},
 			},
 			Lid = {
 				Axis = {-1, 0, 0},
 				Kind = "hatch",
 				Open = 48,
-				Pivot = {-0.0, 4.7, 4.6},
+				Pivot = {-0.0, 5.452, 5.06},
 			},
 		},
 		Hull = {
-			{-3.3, 0.7, -7.4, 3.3, 2.85, 6.8},
-			{-2.991, 2.75, -2.6, 2.991, 4.8, 5.6},
+			{-3.3, 0.812, -8.12, 3.3, 3.29, 7.46},
+			{-2.989, 3.19, -2.89, 2.989, 5.552, 6.16},
 		},
-		ImportMax = {4.0, 5.12, 7.73},
-		ImportMin = {-4.0, -0.22, -6.93},
-		LidHinge = {-0.0, 4.7, 4.6},
+		ImportMax = {4.0, 5.872, 8.45},
+		ImportMin = {-4.0, 0.692, -7.59},
+		LidHinge = {-0.0, 5.452, 5.06},
 		OptInfo = {
 			OptDashBilletChrome = {
 				mat = "Chrome",
@@ -730,8 +730,18 @@ return {
 				slot = "Shifter",
 				variant = "Chain",
 			},
+			OptShifterChainDark = {
+				mat = "Dark",
+				slot = "Shifter",
+				variant = "Chain",
+			},
 			OptShifterCrystalChrome = {
 				mat = "Chrome",
+				slot = "Shifter",
+				variant = "Crystal",
+			},
+			OptShifterCrystalDark = {
+				mat = "Dark",
 				slot = "Shifter",
 				variant = "Crystal",
 			},
@@ -752,6 +762,11 @@ return {
 			},
 			OptShifterWoodKnobChrome = {
 				mat = "Chrome",
+				slot = "Shifter",
+				variant = "WoodKnob",
+			},
+			OptShifterWoodKnobDark = {
+				mat = "Dark",
 				slot = "Shifter",
 				variant = "WoodKnob",
 			},
@@ -896,17 +911,21 @@ return {
 			PanelSideL = "side",
 			PanelSideR = "side",
 		},
-		Pieces = {"Body", "Carpet", "Chrome", "Dark", "DoorJambL", "DoorJambR", "DoorJambRL", "DoorJambRR", "Glass", "HoodInner", "Lid", "OptDashBilletChrome", "OptDashBilletDash", "OptDashClassicChrome", "OptDashClassicDash", "OptDashDigitalDash", "OptDashDigitalGauge", "OptDashDigitalNeon", "OptDashWoodDash", "OptDashWoodWood", "OptDoorsChannelSeat", "OptDoorsChannelSeatTrim", "OptDoorsChannelSeatTrim__DoorL", "OptDoorsChannelSeatTrim__DoorR", "OptDoorsChannelSeatTrim__DoorRL", "OptDoorsChannelSeatTrim__DoorRR", "OptDoorsChannelSeat__DoorL", "OptDoorsChannelSeat__DoorR", "OptDoorsChannelSeat__DoorRL", "OptDoorsChannelSeat__DoorRR", "OptDoorsDiamondSeat", "OptDoorsDiamondSeatTrim", "OptDoorsDiamondSeatTrim__DoorL", "OptDoorsDiamondSeatTrim__DoorR", "OptDoorsDiamondSeatTrim__DoorRL", "OptDoorsDiamondSeatTrim__DoorRR", "OptDoorsDiamondSeat__DoorL", "OptDoorsDiamondSeat__DoorR", "OptDoorsDiamondSeat__DoorRL", "OptDoorsDiamondSeat__DoorRR", "OptDoorsRollsSeat", "OptDoorsRollsSeatTrim", "OptDoorsRollsSeatTrim__DoorL", "OptDoorsRollsSeatTrim__DoorR", "OptDoorsRollsSeatTrim__DoorRL", "OptDoorsRollsSeatTrim__DoorRR", "OptDoorsRollsSeat__DoorL", "OptDoorsRollsSeat__DoorR", "OptDoorsRollsSeat__DoorRL", "OptDoorsRollsSeat__DoorRR", "OptDoorsSmoothChrome", "OptDoorsSmoothChrome__DoorL", "OptDoorsSmoothChrome__DoorR", "OptDoorsSmoothChrome__DoorRL", "OptDoorsSmoothChrome__DoorRR", "OptDoorsSmoothSeat", "OptDoorsSmoothSeatTrim", "OptDoorsSmoothSeatTrim__DoorL", "OptDoorsSmoothSeatTrim__DoorR", "OptDoorsSmoothSeatTrim__DoorRL", "OptDoorsSmoothSeatTrim__DoorRR", "OptDoorsSmoothSeat__DoorL", "OptDoorsSmoothSeat__DoorR", "OptDoorsSmoothSeat__DoorRL", "OptDoorsSmoothSeat__DoorRR", "OptExhaustDualChrome", "OptExhaustQuadChrome", "OptExhaustSideChrome", "OptFrontBumperClassicChrome", "OptFrontBumperSportBody", "OptFrontBumperSportDark", "OptFrontBumperStockBody", "OptFrontBumperStockDark", "OptGlowOnNeon", "OptGrilleBarsChrome", "OptGrilleBarsDark", "OptGrilleBilletChrome", "OptGrilleBilletDark", "OptGrilleEggcrateChrome", "OptGrilleEggcrateDark", "OptGrilleMeshChrome", "OptGrilleMeshDark", "OptHeadlightsDualChrome", "OptHeadlightsDualHead", "OptHeadlightsQuadChrome", "OptHeadlightsQuadHead", "OptHeadlightsQuadLight", "OptHeadlightsSlimDark", "OptHeadlightsSlimHead", "OptHeadlightsSquareChrome", "OptHeadlightsSquareHead", "OptHeadlinerPlainSeat", "OptHeadlinerPleatedSeat", "OptHeadlinerPleatedSeatTrim", "OptHeadlinerStarsNeon", "OptHeadlinerStarsSeat", "OptHoodCowlBody", "OptHoodScoopBody", "OptHoodScoopDark", "OptHoodVentsBody", "OptHoodVentsDark", "OptMirrorsRectBody", "OptMirrorsRectBody__DoorL", "OptMirrorsRectBody__DoorR", "OptMirrorsRectDark", "OptMirrorsRectDark__DoorL", "OptMirrorsRectDark__DoorR", "OptMirrorsRectGlass", "OptMirrorsRectGlass__DoorL", "OptMirrorsRectGlass__DoorR", "OptMirrorsSportBody", "OptMirrorsSportBody__DoorL", "OptMirrorsSportBody__DoorR", "OptMirrorsSportGlass", "OptMirrorsSportGlass__DoorL", "OptMirrorsSportGlass__DoorR", "OptRearBumperClassicChrome", "OptRearBumperSportBody", "OptRearBumperSportDark", "OptRearBumperStockBody", "OptSeatsBucketsDash", "OptSeatsBucketsSeat", "OptSeatsBucketsSeatTrim", "OptSeatsDiamondSeat", "OptSeatsDiamondSeatTrim", "OptSeatsRacingDash", "OptSeatsRacingSeat", "OptSeatsRacingSeatTrim", "OptSeatsRollsSeat", "OptSeatsRollsSeatTrim", "OptShifterChainChrome", "OptShifterCrystalChrome", "OptShifterCrystalNeon", "OptShifterTHandleChrome", "OptShifterTHandleDark", "OptShifterWoodKnobChrome", "OptShifterWoodKnobWood", "OptSkirtsRockerBody", "OptSpoilerDucktailBody", "OptSpoilerGTDark", "OptSpoilerWingBody", "OptSteeringChainChrome", "OptSteeringChainDash", "OptSteeringSportDash", "OptSteeringWoodChrome", "OptSteeringWoodDash", "OptSteeringWoodWood", "OptTaillightsBarTail", "OptTaillightsSlimDark", "OptTaillightsSlimTail", "OptTaillightsStackedLight", "OptTaillightsStackedTail", "OptTaillightsTwinTail", "OptTopLightbarDark", "OptTopLightbarLight", "OptTopSunroofDark", "OptTopSunroofGlass", "PanelDoorL", "PanelDoorR", "PanelDoorRL", "PanelDoorRR", "PanelFuel", "PanelHood", "PanelRoof", "PanelSideL", "PanelSideR", "RoofBody", "RoofGlass", "RoofGlass__DoorL", "RoofGlass__DoorR", "RoofGlass__DoorRL", "RoofGlass__DoorRR", "RoofGlass__Lid", "Seam", "Under"},
+		Pieces = {"Body", "Carpet", "Chrome", "Dark", "DoorJambL", "DoorJambR", "DoorJambRL", "DoorJambRR", "Glass", "HoodInner", "Lid", "OptDashBilletChrome", "OptDashBilletDash", "OptDashClassicChrome", "OptDashClassicDash", "OptDashDigitalDash", "OptDashDigitalGauge", "OptDashDigitalNeon", "OptDashWoodDash", "OptDashWoodWood", "OptDoorsChannelSeat", "OptDoorsChannelSeatTrim", "OptDoorsChannelSeatTrim__DoorL", "OptDoorsChannelSeatTrim__DoorR", "OptDoorsChannelSeatTrim__DoorRL", "OptDoorsChannelSeatTrim__DoorRR", "OptDoorsChannelSeat__DoorL", "OptDoorsChannelSeat__DoorR", "OptDoorsChannelSeat__DoorRL", "OptDoorsChannelSeat__DoorRR", "OptDoorsDiamondSeat", "OptDoorsDiamondSeatTrim", "OptDoorsDiamondSeatTrim__DoorL", "OptDoorsDiamondSeatTrim__DoorR", "OptDoorsDiamondSeatTrim__DoorRL", "OptDoorsDiamondSeatTrim__DoorRR", "OptDoorsDiamondSeat__DoorL", "OptDoorsDiamondSeat__DoorR", "OptDoorsDiamondSeat__DoorRL", "OptDoorsDiamondSeat__DoorRR", "OptDoorsRollsSeat", "OptDoorsRollsSeatTrim", "OptDoorsRollsSeatTrim__DoorL", "OptDoorsRollsSeatTrim__DoorR", "OptDoorsRollsSeatTrim__DoorRL", "OptDoorsRollsSeatTrim__DoorRR", "OptDoorsRollsSeat__DoorL", "OptDoorsRollsSeat__DoorR", "OptDoorsRollsSeat__DoorRL", "OptDoorsRollsSeat__DoorRR", "OptDoorsSmoothChrome", "OptDoorsSmoothChrome__DoorL", "OptDoorsSmoothChrome__DoorR", "OptDoorsSmoothChrome__DoorRL", "OptDoorsSmoothChrome__DoorRR", "OptDoorsSmoothSeat", "OptDoorsSmoothSeatTrim", "OptDoorsSmoothSeatTrim__DoorL", "OptDoorsSmoothSeatTrim__DoorR", "OptDoorsSmoothSeatTrim__DoorRL", "OptDoorsSmoothSeatTrim__DoorRR", "OptDoorsSmoothSeat__DoorL", "OptDoorsSmoothSeat__DoorR", "OptDoorsSmoothSeat__DoorRL", "OptDoorsSmoothSeat__DoorRR", "OptExhaustDualChrome", "OptExhaustQuadChrome", "OptExhaustSideChrome", "OptFrontBumperClassicChrome", "OptFrontBumperSportBody", "OptFrontBumperSportDark", "OptFrontBumperStockBody", "OptFrontBumperStockDark", "OptGlowOnNeon", "OptGrilleBarsChrome", "OptGrilleBarsDark", "OptGrilleBilletChrome", "OptGrilleBilletDark", "OptGrilleEggcrateChrome", "OptGrilleEggcrateDark", "OptGrilleMeshChrome", "OptGrilleMeshDark", "OptHeadlightsDualChrome", "OptHeadlightsDualHead", "OptHeadlightsQuadChrome", "OptHeadlightsQuadHead", "OptHeadlightsQuadLight", "OptHeadlightsSlimDark", "OptHeadlightsSlimHead", "OptHeadlightsSquareChrome", "OptHeadlightsSquareHead", "OptHeadlinerPlainSeat", "OptHeadlinerPleatedSeat", "OptHeadlinerPleatedSeatTrim", "OptHeadlinerStarsNeon", "OptHeadlinerStarsSeat", "OptHoodCowlBody", "OptHoodScoopBody", "OptHoodScoopDark", "OptHoodVentsBody", "OptHoodVentsDark", "OptMirrorsRectBody", "OptMirrorsRectBody__DoorL", "OptMirrorsRectBody__DoorR", "OptMirrorsRectDark", "OptMirrorsRectDark__DoorL", "OptMirrorsRectDark__DoorR", "OptMirrorsRectGlass", "OptMirrorsRectGlass__DoorL", "OptMirrorsRectGlass__DoorR", "OptMirrorsSportBody", "OptMirrorsSportBody__DoorL", "OptMirrorsSportBody__DoorR", "OptMirrorsSportGlass", "OptMirrorsSportGlass__DoorL", "OptMirrorsSportGlass__DoorR", "OptRearBumperClassicChrome", "OptRearBumperSportBody", "OptRearBumperSportDark", "OptRearBumperStockBody", "OptSeatsBucketsDash", "OptSeatsBucketsSeat", "OptSeatsBucketsSeatTrim", "OptSeatsDiamondSeat", "OptSeatsDiamondSeatTrim", "OptSeatsRacingDash", "OptSeatsRacingSeat", "OptSeatsRacingSeatTrim", "OptSeatsRollsSeat", "OptSeatsRollsSeatTrim", "OptShifterChainChrome", "OptShifterChainDark", "OptShifterCrystalChrome", "OptShifterCrystalDark", "OptShifterCrystalNeon", "OptShifterTHandleChrome", "OptShifterTHandleDark", "OptShifterWoodKnobChrome", "OptShifterWoodKnobDark", "OptShifterWoodKnobWood", "OptSkirtsRockerBody", "OptSpoilerDucktailBody", "OptSpoilerGTDark", "OptSpoilerWingBody", "OptSteeringChainChrome", "OptSteeringChainDash", "OptSteeringSportDash", "OptSteeringWoodChrome", "OptSteeringWoodDash", "OptSteeringWoodWood", "OptTaillightsBarTail", "OptTaillightsSlimDark", "OptTaillightsSlimTail", "OptTaillightsStackedLight", "OptTaillightsStackedTail", "OptTaillightsTwinTail", "OptTopLightbarDark", "OptTopLightbarLight", "OptTopSunroofDark", "OptTopSunroofGlass", "PanelDoorL", "PanelDoorR", "PanelDoorRL", "PanelDoorRR", "PanelFuel", "PanelHood", "PanelRoof", "PanelSideL", "PanelSideR", "RoofBody", "RoofGlass", "RoofGlass__DoorL", "RoofGlass__DoorR", "RoofGlass__DoorRL", "RoofGlass__DoorRR", "RoofGlass__Lid", "Seam", "Under"},
 		Plaque = {
-			Centre = {-0.0, 3.25, 5.3},
+			Centre = {-0.0, 3.69, 5.86},
 			Size = {1.8, 0.5},
 		},
-		RearBumper = {0, 1.2, 6.8},
+		RearBumper = {0, 1.312, 7.46},
 		Seats = {
-			Driver = {-1.386, 1.75, -0.25},
-			Passenger = {1.386, 1.75, -0.25},
-			RearL = {-1.386, 1.75, 2.3},
-			RearR = {1.386, 1.75, 2.3},
+			Driver = {-1.386, 1.312, -0.365},
+			Passenger = {1.386, 1.312, -0.365},
+			RearL = {-1.386, 1.312, 2.475},
+			RearR = {1.386, 1.312, 2.475},
+		},
+		Steer = {
+			Axis = {-0.0, 0.41, 0.912},
+			Centre = {-1.386, 2.99, -1.94},
 		},
 		Vinyls = {
 			checker = {"hood", "side", "trunk"},
@@ -925,18 +944,18 @@ return {
 			sunset_fade = {"hood", "side", "trunk"},
 			tropical = {"hood", "side", "trunk"},
 		},
-		WheelRadius = 1.0,
+		WheelRadius = 1.12,
 		Wheels = {
-			FL = {-2.7, 1.0, -4.5},
-			FR = {2.7, 1.0, -4.5},
-			RL = {-2.7, 1.0, 4.5},
-			RR = {2.7, 1.0, 4.5},
+			FL = {-2.7, 1.12, -4.95},
+			FR = {2.7, 1.12, -4.95},
+			RL = {-2.7, 1.12, 4.95},
+			RR = {2.7, 1.12, 4.95},
 		},
 	},
 	Wheel = {
 		Centre = {30.0, 0, 0},
-		ImportMax = {30.555, 1.009, 1.009},
-		ImportMin = {29.588, -1.009, -1.009},
+		ImportMax = {30.555, 1.13, 1.13},
+		ImportMin = {29.588, -1.13, -1.13},
 		OptInfo = {
 			BandBalloonDoubleBand = {
 				mat = "Band",

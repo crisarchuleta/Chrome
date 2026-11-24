@@ -252,7 +252,7 @@ def exhausts():
 
 def visors():
     S = "Visor"
-    z, y = 4.62, -0.9
+    z, y = 4.62 + ROOF_RAISE, -0.9
     for v, m in (("Chrome", "Chrome"), ("Body", "Body")):
         k = opt(S, v, m)
         prism(k, [(-2.95, y, z + 0.02), (2.95, y, z + 0.02), (3.05, y - 0.9, z - 0.15), (-3.05, y - 0.9, z - 0.15)],
@@ -272,10 +272,10 @@ def underglow():
 def tops():
     """roof: vinyl tops (landau = rear half) and the convertible (game hides the hardtop roof, rear + side glass)"""
     S = "Top"
-    ROOF, xs_t, yA1, yC0, yC1, zb, xs_b = 4.62, 2.92, -0.85, 3.3, 5.35, 2.84, 3.42
+    ROOF, xs_t, yA1, yC0, yC1, zb, xs_b = ROOF_Z, 2.92, -0.85, 3.3, 5.35, 2.84, 3.42
 
     def gx(z):
-        return xs_b + (xs_t - xs_b) * (z - zb) / (4.56 - zb)
+        return xs_b + (xs_t - xs_b) * (z - zb) / (ROOF - 0.06 - zb)
     # Vinyl: grained top over the whole roof, Landau: rear half + chrome S-bars on the sail panels
     for v, y0 in (("Vinyl", yA1 - 0.08), ("Landau", 1.2)):
         y1 = yC0 + 0.12
@@ -284,6 +284,7 @@ def tops():
     for s in (-1, 1):
         k = opt(S, "Landau", "Chrome")
         pts = [(2.75, 4.25), (3.25, 4.15), (3.6, 3.85), (3.85, 3.62), (4.25, 3.5), (4.6, 3.3)]
+        pts = [(y, zb + (z - zb) * (ROOF - zb) / (4.62 - zb)) for y, z in pts]                # follow the raised roof
         for (ya, za), (yb, zb2) in zip(pts, pts[1:]):
             beam(k, (s * (gx(za) + 0.06 + (ya - 2.3) * 0.0), ya, za), (s * (gx(zb2) + 0.06), yb, zb2), 0.08, 0.05)
     # Down: folded top under a boot behind the rear seat + a chrome windshield header
@@ -391,7 +392,7 @@ def door_panels():
 
 def headliner():
     S = "Headliner"
-    z = 4.44
+    z = 4.44 + ROOF_RAISE
     for v in ("Plain", "Diamond", "Pleated", "Stars"):
         box(opt(S, v, "Seat"), -2.85, -0.7, z, 2.85, 3.2, z + 0.06)
     for i in range(9):
@@ -426,6 +427,8 @@ def pedals():
         k = opt(S, v, m)
         box(k, 1.0, -2.45, 1.25, 1.35, -2.38, 1.55, bev=0.02)           # brake
         box(k, 1.65, -2.45, 1.2, 1.85, -2.38, 1.6, bev=0.02)            # gas
+        beam(k, (1.175, -2.42, 1.5), (1.175, -2.62, 2.25), 0.06, 0.04)  # pedal arms up under the dash
+        beam(k, (1.75, -2.42, 1.55), (1.75, -2.62, 2.25), 0.05, 0.04)
     for i in range(5):
         torus(opt("Pedals", "Chain", "Chrome"), (1.75, -2.36, 1.24 + i * 0.09), (0, 0, 1) if i % 2 else (1, 0, 0), 0.04, 0.012, seg=8, seg2=4)
 
@@ -469,7 +472,14 @@ def trunks():
 
 
 # ================================================================================================ interior
+def seats_down(n0):
+    """lower the seats just built (OBJS[n0:]) by SEAT_DROP, so they sit on the floor like the real bench"""
+    for ob in OBJS[n0:]:
+        ob.data.transform(Matrix.Translation((0, 0, -SEAT_DROP)))
+
+
 def seat_bench(v, tuck):
+    n0 = len(OBJS)
     k, t = opt("Seats", v, "Seat"), opt("Seats", v, "SeatTrim")
     for yb, depth in ((-0.4, 1.7), (2.6, 1.6)):
         box(k, -3.05, yb, 1.05, 3.05, yb + depth, 1.75, bev=0.12)
@@ -505,8 +515,11 @@ def seat_bench(v, tuck):
                     z = 1.95 + j * 0.25
                     box(t, s * 0.4, yb + depth - 0.41, z, s * 2.9, yb + depth - 0.34, z + 0.04)
 
+    seats_down(n0)
+
 
 def seat_buckets():
+    n0 = len(OBJS)
     k, t = opt("Seats", "Buckets", "Seat"), opt("Seats", "Buckets", "SeatTrim")
     for s in (-1, 1):
         x = s * 1.55
@@ -521,6 +534,7 @@ def seat_buckets():
     box(k, -0.35, -0.6, 1.05, 0.35, 1.0, 1.9, bev=0.1)                          # console
     box(k, -3.05, 2.6, 1.05, 3.05, 4.2, 1.75, bev=0.12)                         # rear bench
     box(k, -3.05, 3.85, 1.75, 3.05, 4.2, 3.3, bev=0.12)
+    seats_down(n0)
 
 
 def steering():
@@ -582,7 +596,7 @@ def dashes():
 def shifters():
     S = "Shifter"
     base = Vector((0.3, -1.4, 1.05))
-    cyl(opt(S, "Column", "Chrome"), (1.3, -2.0, 2.6), (0.85, -1.9, 2.75), 0.03, seg=8)
+    cyl(opt(S, "Column", "Chrome"), (1.53, -2.0, 2.67), (0.85, -1.9, 2.75), 0.03, seg=8)             # lever off the column
     cyl(opt(S, "Column", "Chrome"), (0.85, -1.9, 2.75), (0.8, -1.9, 2.76), 0.06, seg=10)
     for v in ("Chain", "Crystal", "WoodKnob", "THandle"):
         cyl(opt(S, v, "Dark"), base, base + Vector((0, 0, 0.12)), 0.22, seg=16)        # boot
@@ -603,8 +617,8 @@ def shifters():
 def extras():
     # fuzzy dice from the rear-view mirror
     k = opt("Dice", "On", "Fur")
-    box(opt("Dice", "On", "Dark"), -0.02, -0.98, 4.05, 0.02, -0.94, 4.5)
-    for (x, z) in ((-0.18, 3.85), (0.16, 3.75)):
+    box(opt("Dice", "On", "Dark"), -0.02, -0.98, 4.05 + ROOF_RAISE, 0.02, -0.94, 4.5 + ROOF_RAISE)
+    for (x, z) in ((-0.18, 3.85 + ROOF_RAISE), (0.16, 3.75 + ROOF_RAISE)):
         cube(k, Vector((x, -0.96, z)), (0.26, 0.26, 0.26), 0.06, rot=Matrix.Rotation(0.4 if x < 0 else -0.3, 3, "Z"))
     # car club plaque in the rear window (shows generic text the game draws on it)
     k = opt("Plaque", "Chain", "Chrome")
@@ -614,7 +628,8 @@ def extras():
         torus(k, (x, 4.6, z), (0, 1, 0), 0.07, 0.022, seg=8, seg2=4)
     box(opt("Plaque", "Chain", "Gauge"), -1.0, 4.62, 3.05, 1.0, 4.66, 3.65)
     # rear-view mirror (always there)
-    box("Chrome", -0.4, -0.98, 4.38, 0.4, -0.9, 4.55, bev=0.02)
+    box("Chrome", -0.4, -0.98, 4.38 + ROOF_RAISE, 0.4, -0.9, 4.55 + ROOF_RAISE, bev=0.02)
+    box("Chrome", -0.03, -0.97, 4.55 + ROOF_RAISE, 0.03, -0.91, ROOF_Z - 0.02)                 # mirror stalk
 
 
 # ================================================================================================ wheels

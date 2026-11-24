@@ -66,6 +66,23 @@ WX = 3.18                    # wheel centre |x|
 WY_F, WY_R = -6.2, 5.6       # axle positions (wheelbase 11.8)
 ARCH = 1.42
 ZB, BELT, TOP = 0.75, 2.62, 2.80
+# roof height: raised 0.55 (QA 2026-11-24) so a seated 6.6-stud player clears the headliner; the car is 4.55 ft
+# tall (a stock 60s hardtop is ~4.6 ft). SEAT_DROP lowers the seats to sit on the floor like the real bench.
+ROOF_Z, ROOF_RAISE, SEAT_DROP = 5.17, 0.55, 0.2
+
+
+def liner(x0, x1, wy):
+    """wheel well back wall: an arch-sized disc cut flat at the rocker so none of it shows under the car"""
+    bm = bmesh.new()
+    pts = [(wy + ARCH * math.cos(2 * math.pi * i / 32), max(WR + ARCH * math.sin(2 * math.pi * i / 32), ZB - 0.02)) for i in range(32)]
+    v0 = [bm.verts.new((x0, y, z)) for y, z in pts]
+    v1 = [bm.verts.new((x1, y, z)) for y, z in pts]
+    bm.faces.new(v0)
+    bm.faces.new(list(reversed(v1)))
+    for k in range(32):
+        bm.faces.new((v0[k], v0[(k + 1) % 32], v1[(k + 1) % 32], v1[k]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    return new_obj(bm, "Under")
 
 
 def ztop(x, top, crown, w):
@@ -183,26 +200,47 @@ def build_car():
     for ob in list(cutters.objects):
         bpy.data.objects.remove(ob)
     bpy.data.collections.remove(cutters)
-    # trunk tub lining
-    box("TrunkFloor", -3.15, 6.05, 1.25, 3.15, 9.8, 1.32)
+    # trunk tub lining (narrowed between the rear wheel houses, which are hollow humps over the tyres)
+    HX = WX - 0.34 - 0.25                                 # wheel house inner wall (just inboard of the tyre)
+    HTOP = WR + ARCH + 0.06
+    ya, yb = WY_R - ARCH - 0.05, WY_R + ARCH + 0.05       # the rear arch's y range
+
+    def floor_split(kind, xh, y0, y1, z0, z1):
+        for (a, b, x) in ((y0, min(y1, ya), xh), (max(y0, ya), min(y1, yb), min(xh, HX)), (max(y0, yb), y1, xh)):
+            if b > a:
+                box(kind, -x, a, z0, x, b, z1)
+
+    def houses(kind, xh, y0, y1, z0):
+        a, b = max(y0, ya), min(y1, yb)
+        if b <= a:
+            return
+        for s in (-1, 1):
+            box(kind, s * (HX - 0.06), a, z0 - 0.02, s * HX, b, HTOP)          # inner wall
+            box(kind, s * (HX - 0.06), a, HTOP - 0.06, s * xh, b, HTOP)        # top
+            for ye in (a, b):
+                if y0 + 0.01 < ye < y1 - 0.01:
+                    box(kind, s * (HX - 0.06), ye - 0.03, z0 - 0.02, s * xh, ye + 0.03, HTOP)
+
+    floor_split("TrunkFloor", 3.15, 6.05, 9.8, 1.25, 1.32)
+    houses("Under", 3.15, 6.05, 9.8, 1.25)
     for s in (-1, 1):
-        box("Under", s * 3.15, 6.05, 1.25, s * 3.22, 9.8, 2.6)
-    box("Under", -3.2, 6.0, 1.25, 3.2, 6.07, 2.6)
+        box("Under", s * 3.15, yb, 1.25, s * 3.22, 9.8, 2.6)                    # side walls behind the arch
+    box("Under", -HX, 6.0, 1.25, HX, 6.07, 2.6)                                 # front wall, between the houses
     box("Under", -3.2, 9.78, 1.25, 3.2, 9.85, 2.6)
     # wheel-well liners (dark) so the tub reads as a well, not body colour
     for wy in (WY_F, WY_R):
         for s in (-1, 1):
-            cyl("Under", (s * (WX - 0.74), wy, WR), (s * (WX - 0.70), wy, WR), ARCH, seg=32)
+            liner(s * (WX - 0.74), s * (WX - 0.70), wy)
 
     # ---- greenhouse
     zb = 2.84
     xs_b, xs_t = 3.42, 2.92                              # glass line at the belt / roof (tumblehome)
 
     def gx(z):
-        return xs_b + (xs_t - xs_b) * (z - zb) / (4.56 - zb)
+        return xs_b + (xs_t - xs_b) * (z - zb) / (ROOF - 0.06 - zb)
     yA0, yA1 = -2.75, -0.85                               # windshield base / top
     yC0, yC1 = 3.3, 5.35                                  # rear glass top / base
-    ROOF = 4.62
+    ROOF = ROOF_Z
     cube("PanelRoof", Vector((0, (yA1 + yC0) / 2, ROOF + 0.07)), (2 * xs_t + 0.16, yC0 - yA1 + 0.2, 0.16), 0.07)
     # windshield + rear glass
     prism("Glass", [(-3.2, yA0, zb), (3.2, yA0, zb), (xs_t - 0.08, yA1, ROOF), (-(xs_t - 0.08), yA1, ROOF)],
@@ -235,7 +273,8 @@ def build_car():
             box("Seam", s * (W - 0.25), y - 0.012, DOOR_Z0 - 0.03, s * (W - 0.01), y + 0.012, 2.8)
         box("Chrome", s * (W + 0.03) - 0.04, 1.6, 2.38, s * (W + 0.03) + 0.04, 2.15, 2.46, bev=0.02)
     # ---- interior shell: carpet, door cards, steering column (seats, dash, wheel, shifter are parts)
-    box("Carpet", -3.2, -2.6, 0.95, 3.2, 5.6, 1.05)
+    floor_split("Carpet", 3.2, -2.6, 5.6, 0.95, 1.05)
+    houses("Carpet", 3.2, -2.6, 5.3, 0.97)
     cyl("Dash", (1.55, -2.3, 2.45), (1.55, -1.75, 2.85), 0.06, seg=10)               # column
     # ---- trunk lid (hinged at its front edge); the trunk setups are parts
     lid = bmesh.new()
@@ -670,8 +709,8 @@ data = {
         "HingeOf": {k: v for k, v in HINGE_OF.items() if f"Lowrider_{k}" in car_tris},
         # collision hull boxes in the car frame: lower body, greenhouse
         "Hull": [car_box((-W, -10.8, ZB), (W, 10.85, TOP)), car_box((-3.1, -2.6, TOP), (3.1, 5.2, 4.75))],
-        "Seats": {"Driver": car_pt((1.55, 0.35, 1.75)), "Passenger": car_pt((-1.55, 0.35, 1.75)),
-                  "RearL": car_pt((1.55, 3.3, 1.75)), "RearR": car_pt((-1.55, 3.3, 1.75))},
+        "Seats": {"Driver": car_pt((1.55, 0.35, 1.75 - SEAT_DROP - 0.2)), "Passenger": car_pt((-1.55, 0.35, 1.75 - SEAT_DROP - 0.2)),
+                  "RearL": car_pt((1.55, 3.3, 1.75 - SEAT_DROP - 0.2)), "RearR": car_pt((-1.55, 3.3, 1.75 - SEAT_DROP - 0.2))},
         "FrontBumper": car_pt((0, -10.75, 1.22)), "RearBumper": car_pt((0, 10.8, 1.22)),
         # which panel each paint piece prints, and which vinyl images exist per livery
         "PanelOf": PANEL_OF, "Vinyls": {liv: sorted(p) for liv, p in VINYLS.items()},
@@ -680,6 +719,7 @@ data = {
         "Options": options_of(OPT_INFO, car_tris, "Lowrider_"),
         # the dash gauge face (live speedometer) and the club plaque in the rear window
         "Gauge": {"Centre": car_pt((1.55, -2.30, 2.62)), "Size": [1.6, 0.418], "Tilt": 16.7},
+        "Steer": {"Centre": car_pt((1.55, -1.7, 2.92)), "Axis": [0.0, round(0.83 / math.hypot(0.55, 0.83), 4), round(0.55 / math.hypot(0.55, 0.83), 4)]},
         "Plaque": {"Centre": car_pt((0.0, 4.68, 3.35)), "Size": [2.0, 0.6]},
     },
     "Wheel": {"ImportMin": wmn, "ImportMax": wmx, "Centre": imp_pt((WHEEL_X, 0, 0)),

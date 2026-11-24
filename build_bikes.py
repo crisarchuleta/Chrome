@@ -180,34 +180,36 @@ def build_frame():
         tube("Frame", [Vector((x * 0.8, py - 0.1, pz + 0.85)), Vector((s * 0.28, TAILY - 0.5, SZ - 0.45))], 0.07)
         tube("Frame", [Vector((x * 0.9, py + 0.1, pz + 0.2)), Vector((s * 0.28, TAILY - 0.9, SZ - 0.55))], 0.06)
         # swingarm to the rear axle
-        sbeam("Frame", (x, py, pz), (s * 0.36, WY_R, WR), 0.14, 0.22)
-        scyl("Chrome", (s * 0.3, WY_R, WR), (s * 0.48, WY_R, WR), 0.09, seg=12)              # axle nut
+        sbeam("Frame", (x, py, pz), (s * (TW / 2 + 0.12), WY_R, WR), 0.14, 0.22)           # clears the tyre
+        scyl("Chrome", (s * 0.3, WY_R, WR), (s * (TW / 2 + 0.24), WY_R, WR), 0.09, seg=12)   # axle nut
         # footpegs
         scyl("Dark", (s * 0.45, py - 0.35, pz - 0.35), (s * 0.85, py - 0.35, pz - 0.35), 0.06, seg=10)
     if FLAV == "dirt":                                                                       # cradle under the engine
         tube("Frame", [Vector((0, hy - 0.05, HEAD0.z - 0.1)), Vector((0, ENG[0] - 0.15, ENG[2] + 0.5)),
                        Vector((0, ENG[0] + 0.3, ENG[2] - 0.12)), Vector((0, py, ENG[2] - 0.12))], 0.1)
     # rear shock
-    scyl("Chrome", (0, py + 0.2, pz + 0.95), (0, py + 1.2, pz - 0.05), 0.1, seg=12)
-    scyl("Tail", (0, py + 0.35, pz + 0.8), (0, py + 1.0, pz + 0.15), 0.17, seg=14)          # spring
-    sbox("Frame", -0.3, py + 0.95, pz - 0.25, 0.3, py + 1.3, pz + 0.05)                     # shock link
+    sh = max(0.0, (py + 1.3) - (WY_R - WR - 0.1))                                          # keep it ahead of the tyre
+    scyl("Chrome", (0, py + 0.2 - sh, pz + 0.95), (0, py + 1.2 - sh, pz - 0.05), 0.1, seg=12)
+    scyl("Tail", (0, py + 0.35 - sh, pz + 0.8), (0, py + 1.0 - sh, pz + 0.15), 0.17, seg=14)          # spring
+    sbox("Frame", -0.3, py + 0.95 - sh, pz - 0.25, 0.3, py + 1.3 - sh, pz + 0.05)                     # shock link
 
 
 def build_fork():
+    FX = TW / 2 + 0.2                                                                       # fork legs clear the tyre
     for s in (-1, 1):
-        x = s * 0.4
+        x = s * FX
         lo = Vector((x, AX_F.y, AX_F.z))
         mid = lo + RK * (LF * 0.45)
         hi = Vector((x, TOP.y, TOP.z)) + RK * 0.1
         scyl("Chrome", mid - RK * 0.05, hi, 0.12, seg=14)                                  # stanchions
         scyl("Dark", lo, mid, 0.16, seg=14)                                                 # lowers
-        scyl("Chrome", (x, WY_F, WR), (x + s * 0.12, WY_F, WR), 0.09, seg=12)
+        scyl("Chrome", (0, WY_F, WR), (x + s * 0.12, WY_F, WR), 0.06, seg=12)              # axle through the hub
     for z in (0.05, -0.75):                                                                 # triple clamps
         c = TOP + RK * z
-        sbox("Frame", -0.55, c.y - 0.2, c.z - 0.08, 0.55, c.y + 0.2, c.z + 0.08, bev=0.04)
-    # brake disc + caliper
-    ring("Chrome", (-0.3, WY_F, WR), (1, 0, 0), WR * 0.32, WR * 0.62, 0.04, seg=32, style=PREFIX)
-    sbox("Dark", -0.42, WY_F + WR * 0.3, WR + 0.15, -0.28, WY_F + WR * 0.62, WR + 0.5)
+        sbox("Frame", -(FX + 0.15), c.y - 0.2, c.z - 0.08, FX + 0.15, c.y + 0.2, c.z + 0.08, bev=0.04)
+    # brake disc (beside the rim, inside the fork leg) + caliper bolted to the leg
+    ring("Chrome", (-(TW / 2 + 0.05), WY_F, WR), (1, 0, 0), WR * 0.32, WR * 0.62, 0.04, seg=32, style=PREFIX)
+    sbox("Dark", -(FX - 0.02), WY_F + WR * 0.3, WR + 0.15, -(TW / 2 + 0.09), WY_F + WR * 0.62, WR + 0.5)
 
 
 def build_engine():
@@ -221,7 +223,8 @@ def build_engine():
         z = z0 + (z1 - z0) * (0.55 + i * 0.09)
         sbox("Dark", -0.5, cy0 - 0.05, z, 0.5, cy1 + 0.05, z + 0.04)                        # cooling fins
     if FLAV == "sport":
-        sbox("Dark", -0.7, HEAD0.y - 0.05, z0 + 0.6, 0.7, HEAD0.y + 0.15, HEAD0.z - 0.3, bev=0.05)   # radiator
+        ry = max(HEAD0.y - 0.05, WY_F + WR + 0.08)                                         # behind the front tyre
+        sbox("Dark", -0.7, ry, z0 + 0.6, 0.7, ry + 0.2, HEAD0.z - 0.3, bev=0.05)   # radiator
     else:
         for s in (-1, 1):                                                                   # side radiators
             sbox("Dark", s * 0.45, HEAD0.y + 0.15, z1 - 0.9, s * 0.62, HEAD0.y + 0.9, z1 + 0.2, bev=0.03)
@@ -320,7 +323,7 @@ def fairings():
     k = opt(S, "Race", "Body")
     loft(k, [(hy - 0.04, 0.5, hd.z - 0.26, hd.z + 0.2), (hy + 0.35, 0.62, hd.z - 0.6, hd.z + 0.42), (HEAD0.y + 0.25, 0.8, ENG[2] + 0.75, hd.z + 0.42),
              (TY0 + 0.35, 0.8, ENG[2] + 0.55, TZ - 0.5), (ENG[1] - 0.35, 0.62, ENG[2] + 0.45, ENG[3] - 0.2)], p=2.6)
-    sbeam(opt(S, "Race", "Glass"), (0, hy + 0.12, hd.z + 0.4), (0, hy + 0.78, hd.z + 0.95), 0.85, 0.04, up=(0, -0.65, 0.76))
+    sbeam(opt(S, "Race", "Glass"), (0, hy + 0.1, hd.z + 0.24), (0, hy + 0.78, hd.z + 0.95), 0.85, 0.04, up=(0, -0.65, 0.76))
     loft(opt(S, "Race", "Dark"), [(ENG[0] + 0.1, 0.6, ENG[2] - 0.15, ENG[2] + 0.2), (ENG[1] - 0.1, 0.55, ENG[2] - 0.1, ENG[2] + 0.2)], p=3.0)  # belly pan
     # Street: a small cowl round the headlight + flyscreen
     k = opt(S, "Street", "Body")
@@ -411,6 +414,8 @@ def seats():
 def underglow():
     for s in (-1, 1):
         sbox(opt("Glow", "On", "Neon"), s * 0.5, ENG[0], ENG[2] - 0.15, s * 0.58, PIVOT[0] + 0.6, ENG[2] - 0.08)
+        for y in (ENG[0] + 0.25, PIVOT[0] + 0.35):                                          # clips up to the cases
+            sbox(opt("Glow", "On", "Dark"), s * 0.2, y - 0.06, ENG[2] - 0.1, s * 0.56, y + 0.06, ENG[2] + 0.25)
 
 
 exec(compile(re.search(r"^def build_wheels\(ox\):.*?(?=^\S)", open(os.path.join(HERE, "build_vehicle_parts.py")).read(), re.S | re.M).group(0),

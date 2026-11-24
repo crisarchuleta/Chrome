@@ -14,6 +14,7 @@ HX = W - 1.05                                      # headlight centre |x|
 FLOOR = ZB + 0.3
 SY = (A0 + B) / 2 + 0.9                            # front seat y
 GAUGE = ((W * 0.42, A0 + 0.82, BELT - 0.28), 16.0)
+STEER = (Vector((W * 0.42, A0 + 1.25, BELT - 0.2)), Vector((0, 1, 0.45)).normalized())   # the game turns the wheel on this
 
 
 def kind(slot, variant, mat):
@@ -39,6 +40,8 @@ def front_bumpers():
             sbeam(k, (-(x - 0.6), y0 - 0.25, z), (x - 0.6, y0 - 0.25, z), 0.14, 0.14)
         for s in (-1, 1):
             sbeam(k, (s * (x - 0.9), y0 - 0.25, BZ0 + 0.2), (s * (x - 0.9), y0 - 0.25, BZ1 + 0.85), 0.14, 0.14)
+            for z in (BZ0 + 0.3, BZ1 - 0.1):                                             # brackets back to the bumper
+                sbeam(k, (s * (x - 0.9), y0 - 0.3, z), (s * (x - 0.9), y0 + 0.2, z), 0.12, 0.12)
         k = kind(S, "Bull", "Dark")
         sbox(k, -x - 0.1, y0 - 0.15, BZ0, x + 0.1, y1, BZ1 + 0.05, bev=0.06)
         for s in (-1, 1):
@@ -291,6 +294,7 @@ def beds():
 def seats():
     S = "Seats"
     rear = S_REAR_Y()
+    FLOOR = globals()["FLOOR"] + (SEATH - 0.55)       # low-slung cars: the whole seat sits lower
     for v in ("Buckets", "Racing", "Rolls", "Diamond"):
         mat = "Seat"
         for s in (-1, 1):
@@ -323,8 +327,9 @@ def seats():
             for k in range(5 if v != "Diamond" else 0):
                 z = FLOOR + 0.7 + k * 0.18
                 sbox(kind(S, v, "SeatTrim"), -(W - 0.7), rear + 0.38, z, W - 0.7, rear + 0.41, z + 0.04)
-    sbox(kind(S, "Buckets", "Dash"), -0.35, SY - 1.2, FLOOR, 0.35, SY + 0.4, FLOOR + 0.6, bev=0.05)                      # console
-    sbox(kind(S, "Racing", "Dash"), -0.35, SY - 1.2, FLOOR, 0.35, SY + 0.4, FLOOR + 0.6, bev=0.05)
+    F0 = globals()["FLOOR"]
+    sbox(kind(S, "Buckets", "Dash"), -0.35, SY - 1.2, F0, 0.35, SY + 0.4, F0 + 0.6, bev=0.05)                      # console
+    sbox(kind(S, "Racing", "Dash"), -0.35, SY - 1.2, F0, 0.35, SY + 0.4, F0 + 0.6, bev=0.05)
 
 
 def S_REAR_Y():
@@ -380,9 +385,8 @@ def dashes():
 
 def steering():
     S = "Steering"
-    p = Vector((W * 0.42, A0 + 1.25, BELT - 0.2))
-    ax = Vector((0, 1, -0.55)).normalized()
-    col0 = Vector((W * 0.42, A0 + 0.8, BELT - 0.4))
+    p, ax = STEER                                       # wheel centre + axis toward the driver (rear and up)
+    col0 = p - ax * 0.55                                # column on the same axis, so the wheel can turn on it
     for v in ("Sport", "Wood", "Chain"):
         scyl(kind(S, v, "Dash"), col0, p - ax * 0.05, 0.06, seg=10)
     torus(kind(S, "Sport", "Dash"), p, ax, 0.42, 0.05, seg=28, seg2=8, style=PREFIX)
@@ -404,6 +408,8 @@ def shifters():
     p = Vector((0, SY - 0.9, FLOOR + 0.6))
     for v, mat in (("THandle", "Chrome"), ("WoodKnob", "Wood"), ("Crystal", "Neon"), ("Chain", "Chrome")):
         scyl(kind(S, v, "Chrome"), p, p + Vector((0, 0, 0.5)), 0.03, seg=8)
+        # boot + base down to the floor (bench seats have no console under the shifter)
+        sbox(kind(S, v, "Dark"), -0.14, p.y - 0.16, FLOOR - 0.02, 0.14, p.y + 0.16, p.z + 0.04, bev=0.03)
     sbeam(kind(S, "THandle", "Dark"), p + Vector((-0.18, 0, 0.52)), p + Vector((0.18, 0, 0.52)), 0.07, 0.07)
     scyl(kind(S, "WoodKnob", "Wood"), p + Vector((0, 0, 0.45)), p + Vector((0, 0, 0.62)), 0.09, seg=14)
     cube(kind(S, "Crystal", "Neon"), p + Vector((0, 0, 0.58)), (0.16, 0.16, 0.16), 0.03, PREFIX)

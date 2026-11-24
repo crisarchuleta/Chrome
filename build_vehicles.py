@@ -113,13 +113,71 @@ SPECS = {
                          stock={"FrontBumper": "Stock", "RearBumper": "Stock", "Grille": "Mesh", "Headlights": "Square", "Seats": "Rolls",
                                 "Rim": "Steelie", "Tire": "Classic", "Skirts": ""}, paint=(0.12, 0.36, 0.22)),
 }
+# ------------------------------------------------------------------ real-world proportions (vehicle QA, 2026-11-24)
+# The specs above were drawn a little squat. Against real cars of each class (at the world's 1.15 studs per foot, the
+# player is 6.6 studs tall) they came out 10-20% too low, so a seated player's head went through the roof, and most
+# wheels were 2-3 inches small. FIT scales each spec: vs = every height (rocker, belt, hood, deck, roof), ws = wheel
+# radius, ls = every length (overhangs, wheelbase, pillars, bed), plus any keys to set outright. The roof is then raised
+# further if needed so a seated player clears the headliner (see fit_headroom below).
+FIT = {
+    "Ironclad": dict(vs=1.10, ls=0.96),
+    "IronhornTRX": dict(vs=1.14),
+    "KestrelGT": dict(vs=1.20, ws=1.13, ls=0.94),
+    "Dunewalker": dict(vs=1.09),
+    "VantorStrada": dict(vs=1.18, ws=1.13),
+    "AurexHalcyon": dict(vs=1.13, ws=1.12),
+    "KazumiK2": dict(vs=1.16, ws=1.12, ls=1.10),
+    "KazeRS8": dict(vs=1.22, ws=1.15),
+    "HayatoTypeZ": dict(vs=1.21, ws=1.13),
+    "NorrbyDL84": dict(vs=1.10, ws=1.09, set=dict(W=3.35, WX=2.75, WB=10.4)),
+    "PoliceCruiser": dict(vs=1.06, ws=1.13),
+    "MarloweDeville61": dict(vs=1.15, ws=1.15),
+    "DusterRidge54": dict(vs=1.22),
+    "ArmoredTruck": dict(vs=1.28, ws=1.21, ls=1.15, set=dict(W=4.4, WX=3.55, TW=1.15)),
+    "GeneralsCart": dict(ws=1.12, set=dict(W=2.7, WX=2.15, WB=7.8, ROOF=6.9)),
+}
+VERT = ("ZB", "BELT", "NOSE", "HOOD", "TAIL", "ROOF")
+LONG = ("L0", "L1", "WB", "A0", "A1", "C0", "C1", "B", "Q")
+for vid, f in FIT.items():
+    sp = SPECS[vid]
+    for k in VERT:
+        sp[k] = round(sp[k] * f.get("vs", 1.0), 3)
+    sp["WR"] = round(sp["WR"] * f.get("ws", 1.0), 3)
+    for k in LONG:
+        if k in sp:
+            sp[k] = round(sp[k] * f.get("ls", 1.0), 3)
+    if "BED" in sp:
+        sp["BED"] = tuple(round(v * f.get("ls", 1.0), 3) for v in sp["BED"])
+    sp.update(f.get("set", {}))
+SEAT_H = {"sports": 0.4}                    # cushion top above the floor (low-slung cars sit lower)
+SEATED = 3.45                               # cushion to crown of a seated 6.6-stud player
+
+
+def fit_headroom(sp):
+    """raise the roof (and pull a coupe's roof line back over its rear seat) until a seated player clears it"""
+    floor = sp["ZB"] + 0.3
+    need = floor + SEAT_H.get(sp["flavour"], 0.55) + SEATED + 0.2      # + headliner and roof skin
+    if not sp.get("opentop"):
+        sp["ROOF"] = round(max(sp["ROOF"], need), 3)
+    if sp.get("doors") == 2 and not sp.get("BED") and sp["flavour"] == "muscle":   # 2-door with a rear bench
+        sy = (sp["A0"] + sp["B"]) / 2 + 0.9
+        ry = sy + 2.5
+        if sp["C0"] < ry + 0.45:
+            sp["C0"] = round(ry + 0.45, 3)
+            sp["C1"] = round(max(sp["C1"], sp["C0"] + 1.4), 3)
+
+
+for sp in SPECS.values():
+    fit_headroom(sp)
+
 VID = os.environ.get("NC_VEHICLE", "Ironclad")
 S = SPECS[VID]
+SEATH = SEAT_H.get(S["flavour"], 0.55)
 PREFIX = VID
 for k, v in S.items():
     globals()[k] = v
 WY_F, WY_R = -WB / 2, WB / 2
-ARCH = min(WR + 0.22, BELT - 0.12 - WR)                 # the arch stays under the belt line
+ARCH = min(WR + 0.3, BELT - 0.12 - WR)                  # the arch stays under the belt line
 assert ARCH >= WR + 0.1, "wheel too big for the body: raise BELT or shrink WR"
 FLAV = S["flavour"]
 COLORS["Body"] = COLORS["Lid"] = S["paint"]
@@ -334,8 +392,9 @@ def cutters_and_body():
     # linings: wheel wells, cabin floor, trunk tub, bed
     for wy in (WY_F, WY_R):
         for s in (-1, 1):
-            scyl("Under", (s * (tub + 0.01), wy, WR), (s * (tub + 0.05), wy, WR), ARCH, seg=32)
-    sbox("Carpet", -xin, A0 + 0.1, floor - 0.02, xin, cab_end - 0.05, floor + 0.06)
+            liner(s * (tub + 0.01), s * (tub + 0.05), wy)
+    flat_floor("Carpet", xin, A0 + 0.1, cab_end - 0.05, floor - 0.02, floor + 0.06)
+    wheel_houses("Carpet", xin, A0 + 0.05, cab_end, floor)
     if OPEN:                                                                  # rubber edge trim round the step-in + a sill plate
         for s in (-1, 1):
             xa, xb_ = s * (xin - 0.06), s * (W + 0.015)
@@ -344,14 +403,84 @@ def cutters_and_body():
             sbox("Chrome", xa, A0 + 0.3, ZB + 0.53, xb_, cab_end - 0.05, ZB + 0.57)
         sbox("Carpet", -(xin - 0.01), cab_end - 0.03, floor, xin - 0.01, cab_end + 0.005, belt_at(cab_end) - 0.06)   # bulkhead lining
     if REAR in ("trunk", "hatch"):
-        sbox("Under", -(W - 0.6), C1 + 0.15, TAIL - 0.95, W - 0.6, L1 - 0.45, TAIL - 0.9)
+        tz = TAIL - 0.95
+        flat_floor("Under", W - 0.6, C1 + 0.15, L1 - 0.45, tz, tz + 0.05)
+        wheel_houses("Under", W - 0.6, C1 + 0.15, L1 - 0.45, tz)
     if BED:
         bf = ZB + 0.75
-        sbox("Dark", -(W - 0.3), BED[0], bf - 0.05, W - 0.3, L1 - 0.35, bf + 0.02)
-        for i in range(7):                                                     # bed floor ribs
+        flat_floor("Dark", W - 0.3, BED[0], L1 - 0.35, bf - 0.05, bf + 0.02)
+        wheel_houses("Dark", W - 0.3, BED[0], L1 - 0.35, bf)
+        for i in range(7):                                                     # bed floor ribs (between the humps)
             x = -(W - 0.6) + i * (2 * (W - 0.6)) / 6
-            sbox("Dark", x - 0.06, BED[0] + 0.1, bf + 0.02, x + 0.06, L1 - 0.4, bf + 0.06)
+            if abs(x) < house_x() - 0.1:
+                sbox("Dark", x - 0.06, BED[0] + 0.1, bf + 0.02, x + 0.06, L1 - 0.4, bf + 0.06)
     return src
+
+
+# ---- wheel wells inside the body: floors stop at the wheel houses, which are hollow humps over each tyre
+def house_x():
+    return WX - TW / 2 - 0.25                     # inner wall of a wheel house (just inboard of the tyre)
+
+
+def house_top():
+    return WR + ARCH + 0.1                         # over the arch, so the tyre has the arch's room to move
+
+
+def arches_in(y0, y1):
+    """the wheel arches whose y-range [wy - ARCH, wy + ARCH] overlaps y0..y1"""
+    return [wy for wy in (WY_F, WY_R) if wy + ARCH + 0.05 > y0 and wy - ARCH - 0.05 < y1]
+
+
+def flat_floor(kind, xh, y0, y1, z0, z1):
+    """a floor xh wide each side, narrowed to between the wheel houses where it passes over a wheel"""
+    if y1 <= y0:
+        return
+    cuts = sorted((max(y0, wy - ARCH - 0.05), min(y1, wy + ARCH + 0.05)) for wy in arches_in(y0, y1))
+    y = y0
+    for a, b in cuts:
+        if a > y:
+            sbox(kind, -xh, y, z0, xh, a, z1)
+        if z0 < house_top():
+            sbox(kind, -min(xh, house_x()), a, z0, min(xh, house_x()), b, z1)
+        else:
+            sbox(kind, -xh, a, z0, xh, b, z1)
+        y = b
+    if y < y1:
+        sbox(kind, -xh, y, z0, xh, y1, z1)
+
+
+def wheel_houses(kind, xh, y0, y1, z0):
+    """hollow humps (inner wall, top, end walls) over every tyre whose arch passes under this floor"""
+    top = house_top()
+    if z0 >= top - 0.05:
+        return
+    hx = house_x()
+    for wy in arches_in(y0, y1):
+        a, b = max(y0, wy - ARCH - 0.05), min(y1, wy + ARCH + 0.05)
+        for s in (-1, 1):
+            sbox(kind, s * (hx - 0.06), a, z0 - 0.02, s * hx, b, top)               # inner wall
+            sbox(kind, s * (hx - 0.06), a, top - 0.06, s * xh, b, top)               # top
+            for ye in (a, b):
+                if y0 + 0.01 < ye < y1 - 0.01:                                     # end walls inside the floor
+                    sbox(kind, s * (hx - 0.06), ye - 0.03, z0 - 0.02, s * xh, ye + 0.03, top)
+
+
+def liner(x0, x1, wy):
+    """the wheel well's back wall: a disc the size of the arch, cut flat at the rocker so none of it shows under the car"""
+    bm = bmesh.new()
+    pts = []
+    for i in range(32):
+        a = 2 * math.pi * i / 32
+        pts.append((wy + ARCH * math.cos(a), max(WR + ARCH * math.sin(a), ZB - 0.02)))
+    vs0 = [bm.verts.new((x0, y, z)) for y, z in pts]
+    vs1 = [bm.verts.new((x1, y, z)) for y, z in pts]
+    bm.faces.new(vs0)
+    bm.faces.new(list(reversed(vs1)))
+    for k in range(32):
+        bm.faces.new((vs0[k], vs0[(k + 1) % 32], vs1[(k + 1) % 32], vs1[k]))
+    bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-4)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    new_obj(bm, "Under", style=PREFIX)
 
 
 def hinge_panel_shell(bm, kind, t, hinge):
@@ -736,7 +865,7 @@ export(car + wheel, f"{PREFIX}.glb")
 car_ext, wheel_ext = extents(car), extents(wheel)
 cmn, cmx = imp_ext(car_ext)
 wmn, wmx = imp_ext(wheel_ext)
-seat_z = ZB + 0.3 + 0.75
+seat_z = ZB + 0.3 + SEATH - 0.2                  # the Seat part (0.4 thick) is flush with the cushion top
 sy = (A0 + B) / 2 + 0.9
 seats = {"Driver": car_pt((W * 0.42, sy, seat_z)), "Passenger": car_pt((-W * 0.42, sy, seat_z))}
 sy = SY
@@ -759,6 +888,7 @@ data = {
         "OptInfo": {k: v for k, v in OPT_INFO.items() if f"{PREFIX}_{k}" in car_tris},
         "Options": options_of(OPT_INFO, car_tris, PREFIX + "_"),
         "Gauge": {"Centre": car_pt(GAUGE[0]), "Size": [1.4, 0.4], "Tilt": GAUGE[1]},
+        "Steer": {"Centre": car_pt(STEER[0]), "Axis": [round(-STEER[1].x, 4), round(STEER[1].z, 4), round(STEER[1].y, 4)]},
         "Plaque": {"Centre": car_pt((0.0, C1 - 0.3, BELT + 0.5)), "Size": [1.8, 0.5]},
     },
     "Wheel": {"ImportMin": wmn, "ImportMax": wmx, "Centre": imp_pt((WHEEL_X, 0, 0)),

@@ -159,6 +159,11 @@ return {
 				slot = "Fender",
 				variant = "Low",
 			},
+			OptGlowOnDark = {
+				mat = "Dark",
+				slot = "Glow",
+				variant = "On",
+			},
 			OptGlowOnNeon = {
 				mat = "Neon",
 				slot = "Glow",
@@ -261,7 +266,7 @@ return {
 			PanelSideL = "side",
 			PanelSideR = "side",
 		},
-		Pieces = {"Body", "Chrome", "Dark", "Engine", "Frame", "FuelCap", "Light", "OptBarsApeChrome", "OptBarsApeDark", "OptBarsApeRubber", "OptBarsClipDark", "OptBarsClipRubber", "OptBarsMotoBody", "OptBarsMotoDark", "OptBarsMotoRubber", "OptBarsStockChrome", "OptBarsStockDark", "OptBarsStockRubber", "OptExhaustDualChrome", "OptExhaustDualDark", "OptExhaustSideChrome", "OptExhaustSideDark", "OptFairingPlateDark", "OptFairingPlateLight", "OptFairingRaceBody", "OptFairingRaceDark", "OptFairingRaceGlass", "OptFairingStreetBody", "OptFairingStreetGlass", "OptFenderHighBody", "OptFenderLowBody", "OptFenderLowDark", "OptGlowOnNeon", "OptHeadlightsDualChrome", "OptHeadlightsDualLight", "OptHeadlightsSlimDark", "OptHeadlightsSlimLight", "OptHeadlightsSquareDark", "OptHeadlightsSquareLight", "OptSeatsDiamondSeat", "OptSeatsDiamondSeatTrim", "OptSeatsRacingSeat", "OptSeatsRacingSeatTrim", "OptSeatsRollsSeat", "OptSeatsRollsSeatTrim", "OptTaillightsBarDark", "OptTaillightsBarTail", "OptTaillightsSlimTail", "PanelHood", "PanelSideL", "PanelSideR", "SeatPan", "Tail", "Under"},
+		Pieces = {"Body", "Chrome", "Dark", "Engine", "Frame", "FuelCap", "Light", "OptBarsApeChrome", "OptBarsApeDark", "OptBarsApeRubber", "OptBarsClipDark", "OptBarsClipRubber", "OptBarsMotoBody", "OptBarsMotoDark", "OptBarsMotoRubber", "OptBarsStockChrome", "OptBarsStockDark", "OptBarsStockRubber", "OptExhaustDualChrome", "OptExhaustDualDark", "OptExhaustSideChrome", "OptExhaustSideDark", "OptFairingPlateDark", "OptFairingPlateLight", "OptFairingRaceBody", "OptFairingRaceDark", "OptFairingRaceGlass", "OptFairingStreetBody", "OptFairingStreetGlass", "OptFenderHighBody", "OptFenderLowBody", "OptFenderLowDark", "OptGlowOnDark", "OptGlowOnNeon", "OptHeadlightsDualChrome", "OptHeadlightsDualLight", "OptHeadlightsSlimDark", "OptHeadlightsSlimLight", "OptHeadlightsSquareDark", "OptHeadlightsSquareLight", "OptSeatsDiamondSeat", "OptSeatsDiamondSeatTrim", "OptSeatsRacingSeat", "OptSeatsRacingSeatTrim", "OptSeatsRollsSeat", "OptSeatsRollsSeatTrim", "OptTaillightsBarDark", "OptTaillightsBarTail", "OptTaillightsSlimTail", "PanelHood", "PanelSideL", "PanelSideR", "SeatPan", "Tail", "Under"},
 		RearBumper = {0, 1.25, 4.15},
 		Seats = {
 			Driver = {-0.0, 3.6, 0.2},
