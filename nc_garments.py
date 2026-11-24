@@ -52,6 +52,9 @@ REGION_OF_BONE = {"LowerTorso": "Torso", "UpperTorso": "Torso", "NC_SpineMid": "
                   "LeftFoot": "Foot", "RightFoot": "Foot", "NC_ToesL": "Foot", "NC_ToesR": "Foot"}
 
 
+ARM_OUT_DEG = 18.0
+
+
 class RigBody(Body):
     """The rigged R15 body (<Body>_Whole, rest pose, studs). Its surface already includes the base layer, so clothes are
     built straight on top of it. The skin, tank and shorts are fused into one clean watertight shell with a voxel
@@ -91,6 +94,28 @@ class RigBody(Body):
             moved[armv, 2] += 1.5
             tmp.data.vertices.foreach_set("co", moved.ravel())
             tmp.data.update()
+        disp = None
+        if not exclude_arms:
+            # lift the arms out sideways (like posing them) before fusing, so an arm resting on the side never fuses
+            # to the body: sleeves stay their own tubes. The shell is put back to the rest pose afterwards.
+            wsum = {"l": np.zeros(len(cw)), "r": np.zeros(len(cw))}
+            for v in me.vertices:
+                for g in v.groups:
+                    gn = names[g.group]
+                    sd = "l" if gn.startswith("Left") or gn.endswith("L") else "r" if gn.startswith("Right") or gn.endswith("R") else None
+                    if sd and (REGION_OF_BONE.get(gn) in ("UArm", "LArm", "Hand") or any(t in gn for t in ("Thumb", "Index", "Middle", "Ring", "Pinky"))):
+                        wsum[sd][v.index] += g.weight
+            moved = cw.copy()
+            for sd, sg in (("l", 1.0), ("r", -1.0)):
+                S_ = J[sd + "-shoulder"]; th = np.radians(ARM_OUT_DEG) * sg
+                c_, s_ = np.cos(th), np.sin(th)
+                q = cw - S_
+                rot = np.c_[c_ * q[:, 0] - s_ * q[:, 2], q[:, 1], s_ * q[:, 0] + c_ * q[:, 2]] + S_
+                wv = np.clip(wsum[sd], 0, 1)[:, None]
+                moved += (rot - cw) * wv
+            disp = moved - cw
+            tmp.data.vertices.foreach_set("co", moved.ravel())
+            tmp.data.update()
         rm = tmp.modifiers.new("R", "REMESH"); rm.mode = "VOXEL"; rm.voxel_size = voxel; rm.adaptivity = 0.0
         dg = bpy.context.evaluated_depsgraph_get(); ev = tmp.evaluated_get(dg); mm = ev.to_mesh()
         co = np.array([v.co[:] for v in mm.vertices])
@@ -104,8 +129,16 @@ class RigBody(Body):
         idx = -np.ones(len(co), int); idx[keep] = np.arange(keep.sum())
         faces = [[int(idx[v]) for v in f] for f in faces if keep[f[0]]]
         co = co[keep]
+        co_lift = co.copy()
+        if disp is not None:  # back to the rest pose (inverse of the lift, from the nearest lifted body vertices)
+            dd, jj = cKDTree(cw + disp).query(co, k=4)
+            ww = 1 / np.maximum(dd, 1e-6); ww /= ww.sum(1, keepdims=True)
+            co = co - np.einsum("nk,nkd->nd", ww, disp[jj])
         okw = regw != "X"
-        _, j = cKDTree(cw[okw]).query(co)
+        if disp is not None:  # label in the lifted pose, where sleeve and side are apart
+            _, j = cKDTree((cw + disp)[okw]).query(co_lift)
+        else:
+            _, j = cKDTree(cw[okw]).query(co)
         reg = regw[okw][j]
         if exclude_arms:
             okw = okw & ~np.isin(regw, ["Hand", "LArm", "UArm"])
@@ -1753,8 +1786,12 @@ def merge_parts(parts):
 def make_tube(pts, r, nseg=8, closed=False):
     """Round tube along a polyline (parallel-transport frames). r: scalar or per-point radius. Open tubes get
     domed ends. Returns (V, F) for make_object."""
-    pts = np.asarray(pts, float); n = len(pts)
-    r = np.broadcast_to(np.asarray(r, float), (n,))
+    pts = np.asarray(pts, float)
+    r = np.broadcast_to(np.asarray(r, float), (len(pts),))
+    if len(pts) > 2:  # drop repeated points (a zero-length step has no direction)
+        keep_ = np.r_[True, np.linalg.norm(np.diff(pts, axis=0), axis=1) > 1e-7]
+        pts, r = pts[keep_], r[keep_]
+    n = len(pts)
     T = np.gradient(pts, axis=0)
     if closed:
         T = np.roll(pts, -1, 0) - np.roll(pts, 1, 0)
