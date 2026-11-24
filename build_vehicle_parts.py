@@ -120,7 +120,8 @@ def headlights():
             scyl(kind(S, "Dual", "Head"), (x + dx, y - 0.05, zc), (x + dx, y - 0.09, zc), 0.19, seg=20)
         if SMOOTH:  # swept lamps over the nose corners, running back along the fender tops (cast onto the skin)
             pts = [(0.46, L0 + 0.16), (0.88, L0 + 0.85), (0.89, L0 + 1.55), (0.52, L0 + 0.5)]
-            P = lambda k, g: (s * (W * pts[k][0] + g * (1 if k in (1, 2) else -1)), pts[k][1] + g * (1 if k in (2, 3) else -1), 8.0)
+            P = lambda k, g: (s * (station_w(pts[k][1]) * min(0.93, pts[k][0] * W / station_w(pts[k][1]) if pts[k][0] < 0.6 else 0.93)
+                                   + g * (1 if k in (1, 2) else -1)), pts[k][1] + g * (1 if k in (2, 3) else -1), 8.0)
             decal(kind(S, "Slim", "Dark"), P(0, 0.07), P(1, 0.07), P(2, 0.07), P(3, 0.07), (0, 0, -1), nu=12, nv=3, out=0.02, inn=0.06)
             decal(kind(S, "Slim", "Head"), P(0, 0.0), P(1, 0.0), P(2, 0.0), P(3, 0.0), (0, 0, -1), nu=12, nv=3, out=0.04, inn=0.02)
         else:
@@ -153,7 +154,7 @@ def taillights():
         return
     z0, z1 = max(BZ1 + 0.08, REAR_TOP - 0.55), REAR_TOP - 0.05
     zc = (z0 + z1) / 2
-    xo = W - 0.5
+    xo = (min(W, station_w(y - 0.1)) if SMOOTH else W) - 0.5      # a rounded tail is narrower at the rear face
     sbox(kind(S, "Bar", "Tail"), -xo, y - 0.04, z0 + 0.08, xo, y + 0.08, z1 - 0.08)
     for s in (-1, 1):
         for dx in (0.0, 0.62):
@@ -162,7 +163,8 @@ def taillights():
         sbox(kind(S, "Stacked", "Light"), s * (xo - 1.0), y - 0.04, z0 + 0.04, s * xo, y + 0.08, zc - 0.02)
         if SMOOTH:  # slim lamps across the tail corners, wrapping onto the rear fenders
             yb, zt = L1 + 1.0, TAIL - 0.45
-            q = [(s * W * 0.42, yb, zt - 0.12), (s * W * 0.86, yb, zt - 0.2), (s * W * 0.86, yb, zt + 0.06), (s * W * 0.42, yb, zt + 0.0)]
+            xe = station_w(L1 - 0.3) * 0.95
+            q = [(s * xe * 0.45, yb, zt - 0.12), (s * xe, yb, zt - 0.2), (s * xe, yb, zt + 0.06), (s * xe * 0.45, yb, zt + 0.0)]
             decal(kind(S, "Slim", "Tail"), *q, (0, -1, 0), nu=10, nv=2, out=0.035, inn=0.03)
             xs = s * (W + 1.0)
             q = [(xs, L1 - 0.55, zt - 0.12), (xs, L1 - 0.02, zt - 0.2), (xs, L1 - 0.02, zt + 0.06), (xs, L1 - 0.55, zt + 0.02)]
@@ -590,7 +592,7 @@ def build_wheels(ox):
                 if r < 1e-6:
                     continue
                 if slot == "Rim":
-                    r2 = r * f
+                    r2 = min(r * f, WR - (WR - rho_in) * lp - 0.005)   # nothing pokes through the tyre bead
                 elif r < WR:
                     r2 = WR - (WR - r) * lp
                 else:

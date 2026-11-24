@@ -1390,8 +1390,36 @@ local function vinylLook(id)
 	return nil
 end
 
-local function printVinyl(p, role, id)
+-- the clear "Blank" template (made in Studio, see NCLowriderConfig.VinylRoughness): on a car that wears a
+-- livery every painted part renders through a SurfaceAppearance, so printed and plain paint look the same
+local function blankLook()
+	local f = RS:FindFirstChild("LowriderAssets")
+	local v = f and f:FindFirstChild("Vinyls")
+	local t = v and v:FindFirstChild("Blank")
+	return t and t:IsA("SurfaceAppearance") and t or nil
+end
+
+local function wearLook(p, t, id)
+	local cur = p:FindFirstChild("VinylLook")
+	if cur and (not t or cur:GetAttribute("Id") ~= id) then
+		cur:Destroy()
+		cur = nil
+	end
+	if t and not cur then
+		cur = t:Clone()
+		cur.Name = "VinylLook"
+		cur:SetAttribute("Id", id)
+		cur.Parent = p
+	end
+end
+
+local function printVinyl(p, role, id, livery)
 	if p:IsA("MeshPart") then
+		if id == "" and livery then
+			wearLook(p, blankLook(), "blank")
+			p.TextureID = ""
+			return
+		end
 		local cur = p:FindFirstChild("VinylLook")
 		local t = vinylLook(id)
 		if cur and (not t or cur:GetAttribute("Id") ~= id) then
@@ -1559,8 +1587,11 @@ function Kit.ApplyLook(car, look)
 		if m then
 			p.Material, p.Color, p.Reflectance, p.Transparency = m, c, r, tr
 		end
+		local livery = art.id ~= "none"
 		if PANEL_OF[role] then
-			printVinyl(p, role, art.id == "none" and "" or Kit.VinylId(art.id, PANEL_OF[role], vid))
+			printVinyl(p, role, livery and Kit.VinylId(art.id, PANEL_OF[role], vid) or "", livery)
+		elseif p:IsA("MeshPart") and m and (c == ctx.paint or c == ctx.roof) and m == ctx.finish.material then
+			wearLook(p, livery and blankLook() or nil, "blank")
 		end
 		-- convertible: the hardtop roof, rear glass and side glass go away
 		if ROOF_ROLES[baseRole(role)] then

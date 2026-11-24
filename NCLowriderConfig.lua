@@ -73,6 +73,9 @@ C.VinylIds = {}
 -- Uniform roughness image (vehicles/vinyl_gloss_roughness.png, grey 56 = roughness 0.22) for the vinyl
 -- SurfaceAppearance templates, so printed panels stay glossy like the paint. Prepare copies it onto each template.
 C.VinylRoughness = ""
+-- Also make one SurfaceAppearance named "Blank" in ReplicatedStorage.LowriderAssets.Vinyls: ColorMap =
+-- vehicles/vinyl_blank.png (fully clear), RoughnessMap = VinylRoughness, AlphaMode = Overlay. A car wearing a livery
+-- puts it on every other painted part, so printed and plain panels shine the same.
 
 -- finishes for chrome parts (bumpers, grille, trim, rims, knock-offs...). "paint" follows the body colour.
 C.TrimFinishes = {

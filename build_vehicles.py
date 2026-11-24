@@ -119,7 +119,7 @@ SPECS = {
     # long glass roof into a liftback, big multi-spoke wheels, no exhaust; a front trunk where the engine would be and
     # a charge port where the gas door would be
     "VireoE": dict(name="Vireo E", flavour="sports", W=3.7, L0=-9.6, L1=9.15, WB=11.17, WR=1.4, WX=3.15, TW=1.0,
-                   ZB=0.75, BELT=3.45, NOSE=2.5, HOOD=3.47, TAIL=3.6, CROWN=0.02, HCROWN=-0.3,
+                   ZB=0.75, BELT=3.25, NOSE=2.9, HOOD=3.35, TAIL=3.55, CROWN=0.02, HCROWN=-0.3,
                    A0=-3.6, A1=-0.1, C0=3.4, C1=7.3, ROOF=5.35, TUCK=0.75, B=1.0, Q=3.9, doors=4, rear="hatch",
                    electric=True, lowpro=0.24, smooth=True, rim_dark=True,
                    stock={"Exhaust": "", "Spoiler": "", "Rim": "Split", "KO": "Cap", "Top": "", "Seats": "Buckets", "Grille": "", "FrontBumper": "", "RearBumper": "",
@@ -254,11 +254,11 @@ def make_stations():
             u = (i / 18) ** 1.5
             y = L0 + (ye - L0) * u
             d = y - L0
-            e = math.sqrt(max(0.0, 1 - (1 - min(1.0, d / 2.6)) ** 2))
+            e = 1 - (1 - min(1.0, d / 3.0)) ** 2.2            # plan: a broad round nose (half width 0.5W at the tip)
             f = math.sqrt(max(0.0, 1 - (1 - min(1.0, d / 1.2)) ** 2))
             v = (y - L0) / (A0 - L0)
             top = NOSE + (HOOD - NOSE) * (1 - (1 - v) ** 2) - 0.6 * (1 - f)
-            st.append((y, W * (0.82 + 0.18 * e), ZB + 0.3 * (1 - e), top - 0.07 - 0.55 * (1 - f), top, hc * f))
+            st.append((y, W * (0.5 + 0.5 * e), ZB + 0.3 * (1 - e), top - 0.07 - 0.55 * (1 - f), top, hc * f))
         st.append((A0, W, ZB, BELT, HOOD + 0.06, hc * 0.5))
     else:
         st = [(L0, W - 0.5, ZB + 0.35, nb - 0.2, nb - 0.12, 0.0), (L0 + 0.2, W - 0.22, ZB + 0.15, nb, NOSE - 0.05, CROWN * 0.4),
@@ -290,11 +290,15 @@ def make_stations():
         st += [(L1 - 0.8, W - 0.02, ZB, BELT, BELT + 0.06, CROWN)]
     tb = (TAIL if REAR in ("trunk", "hatch") else BELT) - 0.2
     if S.get("smooth"):  # a rounded tail with a small lip
-        y0 = st[-1][0]
+        y0 = max(C1 + 0.25, L1 - 2.4)                     # the plan rounds off over the last 2.4 studs
+        while st[-1][0] > y0 - 0.05:
+            st.pop()
+        st.append((y0, W - 0.03, ZB, BELT - 0.05, TAIL, CROWN))
         for i in range(1, 8):
             u = i / 7
             e = math.sqrt(max(0.0, 1 - u ** 2))
-            st.append((y0 + (L1 - y0) * u, W * (0.86 + 0.14 * e) - 0.03, ZB + 0.25 * (1 - e), tb + 0.15 - 0.5 * (1 - e),
+            ep = 1 - u ** 2.2                                 # plan rounds sooner than the profile
+            st.append((y0 + (L1 - y0) * u, W * (0.64 + 0.36 * ep) - 0.03, ZB + 0.25 * (1 - e), tb + 0.15 - 0.5 * (1 - e),
                        TAIL - 0.4 * (1 - e) ** 1.5, CROWN * e))
         return st
     st += [(L1 - 0.2, W - 0.2, ZB + 0.12, tb, tb + 0.12, CROWN * 0.4), (L1, W - 0.45, ZB + 0.3, tb - 0.15, tb - 0.05, 0.0)]
@@ -432,13 +436,53 @@ def cutters_and_body():
     floor = ZB + 0.3
     xin = W - 0.45
     cab_end = BED[0] - 0.25 if BED else (L1 - 0.5 if REAR == "liftgate" else C1 - 0.1)
-    cut_box(-xin, A0 + 0.05, floor, xin, cab_end, 20)                          # open cabin (+ cargo bay)
+    def cut_plan(ring, z0):
+        """a cutter from a half-width profile [(x, y), ...] (mirrored), from z0 up"""
+        plan = [(x, y) for x, y in ring] + [(-x, y) for x, y in reversed(ring)]
+        bm = bmesh.new()
+        lo = [bm.verts.new((x, y, z0)) for x, y in plan]
+        hi = [bm.verts.new((x, y, 20.0)) for x, y in plan]
+        bm.faces.new(lo)
+        bm.faces.new(list(reversed(hi)))
+        n = len(plan)
+        for k in range(n):
+            bm.faces.new((lo[k], lo[(k + 1) % n], hi[(k + 1) % n], hi[k]))
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+        me = bpy.data.meshes.new("cut")
+        bm.to_mesh(me)
+        bm.free()
+        col.objects.link(bpy.data.objects.new("cut", me))
+
+    if S.get("smooth") and not BED:
+        # the canopy narrows toward the tail: the cabin opening narrows under it, or the deck shows holes
+        ys_ = [A0 + 0.05 + (cab_end - A0 - 0.05) * k / 24 for k in range(25)]
+        cut_plan([(min(xin, gh_xb(y) - 0.12), y) for y in ys_], floor)
+    else:
+        cut_box(-xin, A0 + 0.05, floor, xin, cab_end, 20)                      # open cabin (+ cargo bay)
     if OPEN:                                                                  # open sides, step-in height
         for s in (-1, 1):
             cut_box(s * (xin - 0.05), A0 + 0.3, ZB + 0.55, s * (W + 0.6), cab_end - 0.05, 20)
     for (nm, s, y0, y1) in DOORS:                                             # door openings
         cut_box(s * (xin - 0.05), y0 - 0.03, DOOR_Z0 - 0.03, s * (W + 0.6), y1 + 0.03, 20)
-    if REAR in ("trunk", "hatch"):
+    if REAR in ("trunk", "hatch") and S.get("smooth"):
+        # a rounded tail: the opening follows the plan, or it would cut through the side walls at the corners
+        ysl = [C1 + 0.15 + (L1 - 0.6 - C1) * k / 12 for k in range(13)]
+        ring = [(min(W, station_w(y)) - 0.55, y) for y in ysl]
+        plan = [(x, y) for x, y in ring] + [(-x, y) for x, y in reversed(ring)]
+        bm = bmesh.new()
+        lo = [bm.verts.new((x, y, TAIL - 0.9)) for x, y in plan]
+        hi = [bm.verts.new((x, y, 20.0)) for x, y in plan]
+        bm.faces.new(lo)
+        bm.faces.new(list(reversed(hi)))
+        n = len(plan)
+        for k in range(n):
+            bm.faces.new((lo[k], lo[(k + 1) % n], hi[(k + 1) % n], hi[k]))
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+        me = bpy.data.meshes.new("cut")
+        bm.to_mesh(me)
+        bm.free()
+        col.objects.link(bpy.data.objects.new("cut", me))
+    elif REAR in ("trunk", "hatch"):
         cut_box(-(W - 0.55), C1 + 0.15, TAIL - 0.9, W - 0.55, L1 - 0.45, 20)
     elif REAR == "liftgate":
         cut_box(-(W - 0.55), L1 - 0.6, ZB + 0.75, W - 0.55, L1 + 1.0, 20)
@@ -458,7 +502,7 @@ def cutters_and_body():
         for s in (-1, 1):
             liner(s * (tub + 0.01), s * (tub + 0.05), wy)
     flat_floor("Carpet", xin, A0 + 0.1, cab_end - 0.05, floor - 0.02, floor + 0.06)
-    wheel_houses("Carpet", xin, A0 + 0.05, cab_end, floor)
+    wheel_houses("Under" if S.get("smooth") else "Carpet", xin, A0 + 0.05, cab_end, floor)   # seen through the arches
     if OPEN:                                                                  # rubber edge trim round the step-in + a sill plate
         for s in (-1, 1):
             xa, xb_ = s * (xin - 0.06), s * (W + 0.015)
@@ -468,7 +512,14 @@ def cutters_and_body():
         sbox("Carpet", -(xin - 0.01), cab_end - 0.03, floor, xin - 0.01, cab_end + 0.005, belt_at(cab_end) - 0.06)   # bulkhead lining
     if REAR in ("trunk", "hatch"):
         tz = TAIL - 0.95
-        flat_floor("Under", W - 0.6, C1 + 0.15, L1 - 0.45, tz, tz + 0.05)
+        if S.get("smooth"):                               # a rounded tail: the floor narrows with the plan
+            ya, yb = C1 + 0.15, L1 - 0.45
+            nsl = 10
+            for k in range(nsl):
+                y0s, y1s = ya + (yb - ya) * k / nsl, ya + (yb - ya) * (k + 1) / nsl
+                flat_floor("Under", min(W, station_w(y1s)) - 0.65, y0s, y1s, tz, tz + 0.05)
+        else:
+            flat_floor("Under", W - 0.6, C1 + 0.15, L1 - 0.45, tz, tz + 0.05)
         wheel_houses("Under", W - 0.6, C1 + 0.15, L1 - 0.45, tz)
     if BED:
         bf = ZB + 0.75
@@ -634,7 +685,7 @@ def greenhouse():
 # crown near the B pillar down the liftback to the deck, and every cross-section is a superellipse (rounded top,
 # tumblehome sides). The canopy grid is then cut by angle and position into windshield, roof, hatch glass, pillars,
 # side glass and a chrome window surround.
-GH_P = 2 / 3.6                                   # superellipse exponent (2/n)
+GH_P = 2 / 4.4                                   # superellipse exponent (2/n)
 
 
 def solid_grid(kind, O, I, cells, smooth=30.0):
@@ -693,6 +744,10 @@ def gh_zr(y):
 def gh_xb(y):
     """half width of the canopy at the belt"""
     sm = lambda t: (lambda c: c * c * (3 - 2 * c))(min(1.0, max(0.0, t)))
+    front = 0.45 if S.get("smooth") else 0.2
+    if S.get("smooth"):                                  # the canopy narrows from the roof's rear into the tail (teardrop)
+        t = min(1.0, max(0.0, (y - C0) / (GH_YEND - C0)))
+        return W - 0.3 - front * (1 - sm((y - A0) / 1.4)) - 1.5 * t ** 1.6
     return W - 0.3 - 0.2 * (1 - sm((y - A0) / 1.0)) - 0.35 * sm((y - Q) / (GH_YEND - Q))
 
 
@@ -805,8 +860,9 @@ def build_rear():
         for j in range(ny + 1):
             y = y0 + (y1 - y0) * j / ny
             rt, rb = [], []
+            xr = min(xw, station_w(y) - 0.57) if S.get("smooth") else xw     # follows a rounded tail's plan
             for i in range(nx + 1):
-                x = -xw + 2 * xw * i / nx
+                x = -xr + 2 * xr * i / nx
                 z = deck_z(x, y)
                 rt.append(lid.verts.new((x, y, z + 0.005)))
                 rb.append(lid.verts.new((x, y, z - 0.09)))
@@ -1179,7 +1235,7 @@ def split_panels():
             r = "PanelSideL" if c.x > 0 else "PanelSideR"
         elif S.get("smooth") and n.z > 0.3 and L0 + 0.95 < c.y < A0 - 0.08 and abs(c.x) < 0.75 * station_w(c.y):
             r = "PanelHood"                               # the hood: between the fender peaks, behind the nose cone
-        elif not S.get("smooth") and n.z > 0.5 and L0 + 0.05 < c.y < A0 - 0.08 and abs(c.x) < W - 0.2:
+        elif not S.get("smooth") and n.z > 0.5 and L0 + 0.8 < c.y < A0 - 0.08 and abs(c.x) < W - 0.2:   # not the nose lip
             r = "PanelHood"
         else:
             r = "Body"
@@ -1447,6 +1503,18 @@ if S.get("smooth"):                                      # the reference photo's
             lot_old = tuple(lb.inputs["Base Color"].default_value)
             lb.inputs["Base Color"].default_value = (0.035, 0.035, 0.038, 1)
     shot("photo", (Lr * 1.05, -Lr * 1.6, 5.8), (Lr * 0.1, -Lr * 0.12, 2.4))
+    if os.environ.get("NC_REFSHEET"):                   # the eight studio angles of the reference sheet
+        cam.data.lens = 110                              # long lens: near-orthographic like a studio sheet
+        rx, ry = scene.render.resolution_x, scene.render.resolution_y
+        scene.render.resolution_x, scene.render.resolution_y = 600, 600
+        for k, a in enumerate((0, 35, 90, 145, 180, 215, 270, 325)):
+            ar = math.radians(a)
+            d = Lr * 7.0
+            shot(f"ref{k}", (d * math.sin(ar), -d * math.cos(ar), ROOF * 0.9), (0, 0, ROOF * 0.42))
+        scene.render.resolution_x, scene.render.resolution_y = 1024, 1536
+        cam.data.lens = 110
+        shot("reftop", (0.0, 0.05, Lr * 7.0), (0, 0, 0))
+        scene.render.resolution_x, scene.render.resolution_y = rx, ry
     if lot_old:
         lb.inputs["Base Color"].default_value = lot_old
     for b_, r_ in gloss.values():

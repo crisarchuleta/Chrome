@@ -4,7 +4,7 @@ return {
 	Car = {
 		FrontBumper = {0, 1.25, -9.8},
 		Gauge = {
-			Centre = {-1.554, 3.17, -2.78},
+			Centre = {-1.554, 2.97, -2.78},
 			Size = {1.4, 0.4},
 			Tilt = 16.0,
 		},
@@ -36,37 +36,37 @@ return {
 				Axis = {0, 1, 0},
 				Kind = "door",
 				Open = -66,
-				Pivot = {-3.68, 2.325, -3.48},
+				Pivot = {-3.68, 2.225, -3.48},
 			},
 			DoorR = {
 				Axis = {0, 1, 0},
 				Kind = "door",
 				Open = 66,
-				Pivot = {3.68, 2.325, -3.48},
+				Pivot = {3.68, 2.225, -3.48},
 			},
 			DoorRL = {
 				Axis = {0, 1, 0},
 				Kind = "door",
 				Open = -66,
-				Pivot = {-3.68, 2.325, 1.1},
+				Pivot = {-3.68, 2.225, 1.1},
 			},
 			DoorRR = {
 				Axis = {0, 1, 0},
 				Kind = "door",
 				Open = 66,
-				Pivot = {3.68, 2.325, 1.1},
+				Pivot = {3.68, 2.225, 1.1},
 			},
 			Fuel = {
 				Axis = {0, 1, 0},
 				Kind = "charge",
 				Open = -80,
-				Pivot = {-3.73, 2.659, 7.635},
+				Pivot = {-3.73, 2.535, 7.635},
 			},
 			Hood = {
 				Axis = {-1, 0, 0},
 				Kind = "hood",
 				Open = -50,
-				Pivot = {-0.0, 3.362, -3.65},
+				Pivot = {-0.0, 3.242, -3.65},
 			},
 			Lid = {
 				Axis = {-1, 0, 0},
@@ -76,10 +76,10 @@ return {
 			},
 		},
 		Hull = {
-			{-3.7, 0.75, -9.8, 3.7, 3.55, 9.35},
-			{-3.4, 3.45, -3.3, 3.4, 5.45, 7.3},
+			{-3.7, 0.75, -9.8, 3.7, 3.35, 9.35},
+			{-3.398, 3.25, -3.3, 3.398, 5.45, 7.3},
 		},
-		ImportMax = {4.4, 5.525, 10.04},
+		ImportMax = {4.4, 5.561, 10.04},
 		ImportMin = {-4.4, 0.63, -9.4},
 		LidHinge = {-0.0, 5.25, 3.4},
 		OptInfo = {
@@ -912,7 +912,7 @@ return {
 		},
 		Pieces = {"Body", "Carpet", "Chrome", "Dark", "DoorJambL", "DoorJambR", "DoorJambRL", "DoorJambRR", "Glass", "HoodInner", "Lid", "OptDashBilletChrome", "OptDashBilletDash", "OptDashClassicChrome", "OptDashClassicDash", "OptDashDigitalDash", "OptDashDigitalGauge", "OptDashDigitalNeon", "OptDashWoodDash", "OptDashWoodWood", "OptDoorsChannelSeat", "OptDoorsChannelSeatTrim", "OptDoorsChannelSeatTrim__DoorL", "OptDoorsChannelSeatTrim__DoorR", "OptDoorsChannelSeatTrim__DoorRL", "OptDoorsChannelSeatTrim__DoorRR", "OptDoorsChannelSeat__DoorL", "OptDoorsChannelSeat__DoorR", "OptDoorsChannelSeat__DoorRL", "OptDoorsChannelSeat__DoorRR", "OptDoorsDiamondSeat", "OptDoorsDiamondSeatTrim", "OptDoorsDiamondSeatTrim__DoorL", "OptDoorsDiamondSeatTrim__DoorR", "OptDoorsDiamondSeatTrim__DoorRL", "OptDoorsDiamondSeatTrim__DoorRR", "OptDoorsDiamondSeat__DoorL", "OptDoorsDiamondSeat__DoorR", "OptDoorsDiamondSeat__DoorRL", "OptDoorsDiamondSeat__DoorRR", "OptDoorsRollsSeat", "OptDoorsRollsSeatTrim", "OptDoorsRollsSeatTrim__DoorL", "OptDoorsRollsSeatTrim__DoorR", "OptDoorsRollsSeatTrim__DoorRL", "OptDoorsRollsSeatTrim__DoorRR", "OptDoorsRollsSeat__DoorL", "OptDoorsRollsSeat__DoorR", "OptDoorsRollsSeat__DoorRL", "OptDoorsRollsSeat__DoorRR", "OptDoorsSmoothChrome", "OptDoorsSmoothChrome__DoorL", "OptDoorsSmoothChrome__DoorR", "OptDoorsSmoothChrome__DoorRL", "OptDoorsSmoothChrome__DoorRR", "OptDoorsSmoothSeat", "OptDoorsSmoothSeatTrim", "OptDoorsSmoothSeatTrim__DoorL", "OptDoorsSmoothSeatTrim__DoorR", "OptDoorsSmoothSeatTrim__DoorRL", "OptDoorsSmoothSeatTrim__DoorRR", "OptDoorsSmoothSeat__DoorL", "OptDoorsSmoothSeat__DoorR", "OptDoorsSmoothSeat__DoorRL", "OptDoorsSmoothSeat__DoorRR", "OptExhaustDualChrome", "OptExhaustQuadChrome", "OptExhaustSideChrome", "OptFrontBumperClassicChrome", "OptFrontBumperSportBody", "OptFrontBumperSportDark", "OptFrontBumperStockBody", "OptFrontBumperStockDark", "OptGlowOnNeon", "OptGrilleBarsChrome", "OptGrilleBarsDark", "OptGrilleBilletChrome", "OptGrilleBilletDark", "OptGrilleEggcrateChrome", "OptGrilleEggcrateDark", "OptGrilleMeshChrome", "OptGrilleMeshDark", "OptHeadlightsDualChrome", "OptHeadlightsDualHead", "OptHeadlightsQuadChrome", "OptHeadlightsQuadHead", "OptHeadlightsQuadLight", "OptHeadlightsSlimDark", "OptHeadlightsSlimHead", "OptHeadlightsSquareChrome", "OptHeadlightsSquareHead", "OptHeadlinerPlainSeat", "OptHeadlinerPleatedSeat", "OptHeadlinerPleatedSeatTrim", "OptHeadlinerStarsNeon", "OptHeadlinerStarsSeat", "OptHoodCowlBody", "OptHoodScoopBody", "OptHoodScoopDark", "OptHoodVentsBody", "OptHoodVentsDark", "OptMirrorsRectBody", "OptMirrorsRectBody__DoorL", "OptMirrorsRectBody__DoorR", "OptMirrorsRectDark", "OptMirrorsRectDark__DoorL", "OptMirrorsRectDark__DoorR", "OptMirrorsRectGlass", "OptMirrorsRectGlass__DoorL", "OptMirrorsRectGlass__DoorR", "OptMirrorsSportBody", "OptMirrorsSportBody__DoorL", "OptMirrorsSportBody__DoorR", "OptMirrorsSportGlass", "OptMirrorsSportGlass__DoorL", "OptMirrorsSportGlass__DoorR", "OptRearBumperClassicChrome", "OptRearBumperSportBody", "OptRearBumperSportDark", "OptRearBumperStockBody", "OptSeatsBucketsDash", "OptSeatsBucketsSeat", "OptSeatsBucketsSeatTrim", "OptSeatsDiamondSeat", "OptSeatsDiamondSeatTrim", "OptSeatsRacingDash", "OptSeatsRacingSeat", "OptSeatsRacingSeatTrim", "OptSeatsRollsSeat", "OptSeatsRollsSeatTrim", "OptShifterChainChrome", "OptShifterChainDark", "OptShifterCrystalChrome", "OptShifterCrystalDark", "OptShifterCrystalNeon", "OptShifterTHandleChrome", "OptShifterTHandleDark", "OptShifterWoodKnobChrome", "OptShifterWoodKnobDark", "OptShifterWoodKnobWood", "OptSkirtsRockerBody", "OptSpoilerDucktailBody", "OptSpoilerGTDark", "OptSpoilerWingBody", "OptSteeringChainChrome", "OptSteeringChainDash", "OptSteeringSportDash", "OptSteeringWoodChrome", "OptSteeringWoodDash", "OptSteeringWoodWood", "OptTaillightsBarTail", "OptTaillightsSlimTail", "OptTaillightsStackedLight", "OptTaillightsStackedTail", "OptTaillightsTwinTail", "OptTopLightbarDark", "OptTopLightbarLight", "OptTopSunroofDark", "OptTopSunroofGlass", "PanelDoorL", "PanelDoorR", "PanelDoorRL", "PanelDoorRR", "PanelFuel", "PanelHood", "PanelRoof", "PanelSideL", "PanelSideR", "RoofBody", "RoofChrome", "RoofChrome__DoorL", "RoofChrome__DoorR", "RoofChrome__DoorRL", "RoofChrome__DoorRR", "RoofGlass", "RoofGlass__Lid", "RoofGlass__WinDoorL", "RoofGlass__WinDoorR", "RoofGlass__WinDoorRL", "RoofGlass__WinDoorRR", "Seam", "Under"},
 		Plaque = {
-			Centre = {-0.0, 3.95, 7.0},
+			Centre = {-0.0, 3.75, 7.0},
 			Size = {1.8, 0.5},
 		},
 		RearBumper = {0, 1.25, 9.35},
@@ -924,7 +924,7 @@ return {
 		},
 		Steer = {
 			Axis = {-0.0, 0.41, 0.912},
-			Centre = {-1.554, 3.25, -2.35},
+			Centre = {-1.554, 3.05, -2.35},
 		},
 		Vinyls = {
 			checker = {"hood", "side", "trunk"},
@@ -953,22 +953,22 @@ return {
 		Windows = {
 			DoorL = {
 				Dir = {0, -1, 0},
-				Drop = 1.385,
+				Drop = 1.565,
 				Piece = "RoofGlass__WinDoorL",
 			},
 			DoorR = {
 				Dir = {0, -1, 0},
-				Drop = 1.385,
+				Drop = 1.565,
 				Piece = "RoofGlass__WinDoorR",
 			},
 			DoorRL = {
 				Dir = {0, -1, 0},
-				Drop = 1.191,
+				Drop = 1.268,
 				Piece = "RoofGlass__WinDoorRL",
 			},
 			DoorRR = {
 				Dir = {0, -1, 0},
-				Drop = 1.191,
+				Drop = 1.268,
 				Piece = "RoofGlass__WinDoorRR",
 			},
 		},
