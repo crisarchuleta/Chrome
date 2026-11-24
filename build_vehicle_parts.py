@@ -401,6 +401,8 @@ def dashes():
     y0, y1 = A0 + 0.12, A0 + 0.85
     x = W - 0.5
     z1 = BELT + 0.05
+    if SMOOTH:  # the curved canopy comes in at the cowl: keep the dash corners inside it
+        x, z1 = W - 0.68, BELT - 0.02
     z0 = z1 - 0.6
     for v in ("Classic", "Digital", "Wood", "Billet"):
         sbox(kind(S, v, "Dash"), -x, y0, z0, x, y1, z1, bev=0.08)

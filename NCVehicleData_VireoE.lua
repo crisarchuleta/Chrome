@@ -72,16 +72,16 @@ return {
 				Axis = {-1, 0, 0},
 				Kind = "hatch",
 				Open = 48,
-				Pivot = {-0.0, 5.15, 3.4},
+				Pivot = {-0.0, 5.25, 3.4},
 			},
 		},
 		Hull = {
 			{-3.7, 0.75, -9.8, 3.7, 3.55, 9.35},
-			{-3.401, 3.45, -3.3, 3.401, 5.35, 7.3},
+			{-3.4, 3.45, -3.3, 3.4, 5.45, 7.3},
 		},
-		ImportMax = {4.4, 5.425, 10.04},
+		ImportMax = {4.4, 5.525, 10.04},
 		ImportMin = {-4.4, 0.63, -9.4},
-		LidHinge = {-0.0, 5.15, 3.4},
+		LidHinge = {-0.0, 5.25, 3.4},
 		OptInfo = {
 			OptDashBilletChrome = {
 				mat = "Chrome",
@@ -953,22 +953,22 @@ return {
 		Windows = {
 			DoorL = {
 				Dir = {0, -1, 0},
-				Drop = 1.288,
+				Drop = 1.385,
 				Piece = "RoofGlass__WinDoorL",
 			},
 			DoorR = {
 				Dir = {0, -1, 0},
-				Drop = 1.288,
+				Drop = 1.385,
 				Piece = "RoofGlass__WinDoorR",
 			},
 			DoorRL = {
 				Dir = {0, -1, 0},
-				Drop = 1.138,
+				Drop = 1.19,
 				Piece = "RoofGlass__WinDoorRL",
 			},
 			DoorRR = {
 				Dir = {0, -1, 0},
-				Drop = 1.138,
+				Drop = 1.19,
 				Piece = "RoofGlass__WinDoorRR",
 			},
 		},

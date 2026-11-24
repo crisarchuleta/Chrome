@@ -120,7 +120,7 @@ SPECS = {
     # a charge port where the gas door would be
     "VireoE": dict(name="Vireo E", flavour="sports", W=3.7, L0=-9.6, L1=9.15, WB=11.17, WR=1.4, WX=3.15, TW=1.0,
                    ZB=0.75, BELT=3.45, NOSE=2.5, HOOD=3.47, TAIL=3.6, CROWN=0.02, HCROWN=-0.3,
-                   A0=-3.6, A1=-0.1, C0=3.4, C1=7.3, ROOF=5.25, TUCK=0.75, B=1.0, Q=3.9, doors=4, rear="hatch",
+                   A0=-3.6, A1=-0.1, C0=3.4, C1=7.3, ROOF=5.35, TUCK=0.75, B=1.0, Q=3.9, doors=4, rear="hatch",
                    electric=True, lowpro=0.5, smooth=True, rim_dark=True,
                    stock={"Exhaust": "", "Spoiler": "", "Rim": "Mesh", "Top": "", "Seats": "Buckets", "Grille": "", "FrontBumper": "", "RearBumper": "",
                                          "Dash": "Digital", "Steering": "Sport"}, paint=(0.025, 0.025, 0.03)),
@@ -555,7 +555,7 @@ def build_doors(src):
         new_obj(shell(bm, 0.12), "DoorJamb" + sd, style=PREFIX, smooth=35.0)
         new_obj(bm, "PanelDoor" + sd, style=PREFIX, smooth=35.0)
         HINGE_OF["PanelDoor" + sd] = HINGE_OF["DoorJamb" + sd] = nm
-        for yy in (y0 - 0.015, y1 + 0.015):                                   # shut lines
+        for yy in (y0 - 0.015, y1 + 0.015) if not S.get("smooth") else ():     # shut lines (smooth: smooth_details)
             sbox("Seam", s * (W - 0.25), yy - 0.012, DOOR_Z0 - 0.03, s * (W - 0.01), yy + 0.012, belt_at(yy) + 0.05)
         sbox("Chrome", s * (W + 0.02) - 0.04, y1 - 0.75, BELT - 0.42, s * (W + 0.02) + 0.04, y1 - 0.3, BELT - 0.34, bev=0.02)   # handle
 
@@ -624,7 +624,7 @@ def greenhouse():
 # crown near the B pillar down the liftback to the deck, and every cross-section is a superellipse (rounded top,
 # tumblehome sides). The canopy grid is then cut by angle and position into windshield, roof, hatch glass, pillars,
 # side glass and a chrome window surround.
-GH_P = 2 / 3.2                                   # superellipse exponent (2/n)
+GH_P = 2 / 3.6                                   # superellipse exponent (2/n)
 
 
 def solid_grid(kind, O, I, cells, smooth=30.0):
@@ -1010,6 +1010,19 @@ def smooth_details():
               (-s_, 0, 0), nu=60, nv=1, out=0.025, inn=0.02)
     decal("Dark", (-W * 0.6, yR, ZB + 0.3), (W * 0.6, yR, ZB + 0.3), (W * 0.6, yR, ZB + 0.6), (-W * 0.6, yR, ZB + 0.6),
           (0, -1, 0), nu=14, nv=3, out=0.03, inn=0.05)
+    # door shut lines, following the barrelled side (a straight box poked out above the shoulder)
+    for (nm, s_, y0, y1) in DOORS:
+        xs = s_ * (W + 1.0)
+        for yy in (y0 - 0.015, y1 + 0.015):
+            z0, z1 = DOOR_Z0 - 0.03, belt_at(yy) + 0.02
+            decal("Seam", (xs, yy - 0.012, z0), (xs, yy + 0.012, z0), (xs, yy + 0.012, z1), (xs, yy - 0.012, z1), (-s_, 0, 0),
+                  nu=1, nv=12, out=0.006, inn=0.05)
+    # hatch: a body-colour sill on the lid under the glass's lower edge, so the opened hatch has no gap
+    if REAR == "hatch":
+        yb = GH_YEND
+        xw = W - 0.62
+        decal("Lid", (-xw, yb - 0.22, 9), (xw, yb - 0.22, 9), (xw, yb + 0.12, 9), (-xw, yb + 0.12, 9), (0, 0, -1), nu=16, nv=3,
+              out=0.03, inn=0.04)
 
 
 exec(compile(open(os.path.join(HERE, "build_vehicle_parts.py")).read(), "build_vehicle_parts.py", "exec"), globals())

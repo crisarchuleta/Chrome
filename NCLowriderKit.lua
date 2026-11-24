@@ -691,6 +691,7 @@ function Kit.SetGear(car, letter)
 end
 
 -- turns the steering wheel (call on clients; steer -1..1 = full lock left..right, about 1.4 turns lock to lock)
+Kit.SteerNow = {} -- [car] = the steer value last shown (-1..1), cleared with steerCache
 local steerCache = {} -- strong: a weak Instance-keyed table can drop live cars -- [car] = { welds = { {weld, base} }, look = string }
 function Kit.SetSteer(car, steer)
 	local vd = VD(Vehicles.Of(car))
@@ -711,6 +712,7 @@ function Kit.SetSteer(car, steer)
 		if not steerCache[car] then
 			car.Destroying:Once(function()
 				steerCache[car] = nil
+				Kit.SteerNow[car] = nil
 			end)
 		end
 		steerCache[car] = cache
@@ -718,6 +720,7 @@ function Kit.SetSteer(car, steer)
 	if #cache.welds == 0 then
 		return
 	end
+	Kit.SteerNow[car] = steer -- the seated pose puts the driver's hands on the turned wheel
 	local origin = car.PrimaryPart.Origin.CFrame
 	local centre = v3(spec.Centre)
 	local turn = CFrame.new(centre) * CFrame.fromAxisAngle(v3(spec.Axis), -steer * math.rad(250)) * CFrame.new(-centre)

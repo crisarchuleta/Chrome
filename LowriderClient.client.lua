@@ -1503,7 +1503,7 @@ local SEAT_POSE = {
 }
 do
 	local JOINTS = { "Root", "RightHip", "LeftHip", "RightKnee", "LeftKnee", "RightAnkle", "LeftAnkle", "RightShoulder",
-		"LeftShoulder", "RightElbow", "LeftElbow" }
+		"LeftShoulder", "RightElbow", "LeftElbow", "RightWrist", "LeftWrist" }
 	local WANT = {}
 	for _, n in JOINTS do
 		WANT[n] = true
@@ -1553,6 +1553,69 @@ do
 		j.Transform = off and (CFrame.new(c0:Inverse() * off) * t) or t
 	end
 	local rad, A = math.rad, CFrame.Angles
+	local function pivot(j)
+		if j:IsA("Motor6D") then
+			return j.Part0 and (j.Part0.CFrame * j.C0).Position
+		end
+		return j.Attachment0 and j.Attachment0.WorldPosition
+	end
+	-- two-bone reach: puts the hand (palm about 0.2 past the wrist) on a world point, elbow dropping down and out.
+	-- Rotations are the limb's own axes in its parent's frame (rest: arm hanging along -Y), as setJoint expects.
+	local function reach(shoulder, elbow, wrist, target, side)
+		if not (shoulder and elbow and wrist) then
+			return false
+		end
+		local torso = shoulder:IsA("Motor6D") and shoulder.Part0
+			or (shoulder.Attachment0 and shoulder.Attachment0:FindFirstAncestorWhichIsA("BasePart"))
+		local ps, pe, pw = pivot(shoulder), pivot(elbow), pivot(wrist)
+		if not (torso and ps and pe and pw) then
+			return false
+		end
+		local la, lf = (pe - ps).Magnitude, (pw - pe).Magnitude + 0.2
+		local v = torso.CFrame:VectorToObjectSpace(target - ps)
+		local d = math.clamp(v.Magnitude, math.abs(la - lf) + 0.05, la + lf - 0.02)
+		local dir = v.Unit
+		-- the elbow hangs below the line and a little outward
+		local hang = (Vector3.new(side * 0.35, -1, 0) - dir * dir:Dot(Vector3.new(side * 0.35, -1, 0))).Unit
+		local a = math.acos(math.clamp((la * la + d * d - lf * lf) / (2 * la * d), -1, 1))
+		local u = (dir * math.cos(a) + hang * math.sin(a)).Unit -- upper arm direction
+		local w = dir - u * dir:Dot(u)
+		if w.Magnitude < 1e-3 then
+			w = Vector3.new(0, 0, -1)
+		end
+		local Yl, Zl = -u, -w.Unit
+		local Xl = Yl:Cross(Zl)
+		setJoint(shoulder, CFrame.fromMatrix(Vector3.zero, Xl, Yl, Zl))
+		local bend = math.pi - math.acos(math.clamp((la * la + lf * lf - d * d) / (2 * la * lf), -1, 1))
+		setJoint(elbow, A(bend, 0, 0))
+		return true
+	end
+	local function wheelGrips(car)
+		local vd = Vehicles.Data(car:GetAttribute("Vehicle"))
+		local st = vd and vd.Car.Steer
+		local ch = car.PrimaryPart
+		if not (st and ch and ch:FindFirstChild("Origin")) then
+			return nil
+		end
+		local o = ch.CFrame * ch.Origin.CFrame
+		local c = Vector3.new(st.Centre[1], st.Centre[2], st.Centre[3])
+		local ax = Vector3.new(st.Axis[1], st.Axis[2], st.Axis[3]).Unit
+		local r = ax:Cross(Vector3.yAxis).Unit
+		local up = r:Cross(ax).Unit
+		if up.Y < 0 then
+			up = -up
+		end
+		local turn = CFrame.fromAxisAngle(ax, -(Kit.SteerNow[car] or 0) * rad(250))
+		local function grip(sx)
+			return o * (c + turn * ((r * sx * 0.866 + up * 0.5) * 0.4))
+		end
+		-- which grip is the right hand: the one on the car's right (+X in the car frame)
+		local g1, g2 = grip(1), grip(-1)
+		if (o:PointToObjectSpace(g1)).X < (o:PointToObjectSpace(g2)).X then
+			g1, g2 = g2, g1
+		end
+		return g1, g2
+	end
 	local BIKE = {}
 	for _, v in Vehicles.List do
 		if v.bike then
@@ -1582,7 +1645,13 @@ do
 			setJoint(J.LeftKnee, A(sh - h, 0, 0))
 			setJoint(J.RightAnkle, A(-sh + rad(10), 0, 0))
 			setJoint(J.LeftAnkle, A(-sh + rad(10), 0, 0))
+			local gr, gl
 			if seat.Name == "DriveSeat" then
+				gr, gl = wheelGrips(car)
+			end
+			if gr and reach(J.RightShoulder, J.RightElbow, J.RightWrist, gr, 1) then
+				reach(J.LeftShoulder, J.LeftElbow, J.LeftWrist, gl, -1)
+			elseif seat.Name == "DriveSeat" then -- no wheel data / rig: the fixed pose
 				setJoint(J.RightShoulder, A(rad(P.shoulder), 0, -rad(P.shoulderIn)))
 				setJoint(J.LeftShoulder, A(rad(P.shoulder), 0, rad(P.shoulderIn)))
 				setJoint(J.RightElbow, A(rad(P.elbow), 0, 0))

@@ -198,11 +198,11 @@ C.Mods = {
 	{ id = "body", name = "Body kit", cam = "front34", mods = {
 		{ key = "part_Top", name = "Roof", default = "", options = opts({ { "", "Hardtop" }, { "Landau", "Landau vinyl top + S-bars", 900 }, { "Vinyl", "Full vinyl top", 1100 }, { "Down", "Convertible, top down", 2500 }, { "Sunroof", "Sunroof", 900 }, { "Rack", "Roof rack", 700 }, { "Lightbar", "LED light bar", 1100 } }) },
 		{ key = "col_Top", name = "Vinyl / soft top colour", default = "black", custom = C.CustomColorPrice, options = opts({ { "black", "Black", 0, rgb(14, 14, 16) }, { "white", "White", 150, rgb(236, 234, 226) }, { "burgundy", "Burgundy", 200, rgb(90, 14, 26) }, { "tan", "Tan", 200, rgb(170, 128, 84) }, { "navy", "Navy", 200, rgb(20, 28, 70) } }) },
-		{ key = "part_FrontBumper", name = "Front bumper", default = "Classic", options = opts({ { "Classic", "Classic chrome" }, { "Bullet", "Bullet guards", 900 }, { "Split", "Split with plate frame", 1000 }, { "Tube", "Tube push bar", 700 }, { "Shaved", "Shaved roll pan", 1200 }, { "Stock", "Stock painted" }, { "Sport", "Sport + splitter", 900 }, { "Bull", "Bull bar + lamps", 1300 } }) },
-		{ key = "part_RearBumper", name = "Rear bumper", default = "Classic", options = opts({ { "Classic", "Classic chrome" }, { "Bullet", "Bullet guards", 900 }, { "Tube", "Tube bar + hitch", 700 }, { "Shaved", "Shaved roll pan", 1200 }, { "Stock", "Stock painted" }, { "Sport", "Sport + diffuser", 900 } }) },
+		{ key = "part_FrontBumper", name = "Front bumper", default = "Classic", options = opts({ { "", "Moulded into the body" }, { "Classic", "Classic chrome" }, { "Bullet", "Bullet guards", 900 }, { "Split", "Split with plate frame", 1000 }, { "Tube", "Tube push bar", 700 }, { "Shaved", "Shaved roll pan", 1200 }, { "Stock", "Stock painted" }, { "Sport", "Sport + splitter", 900 }, { "Bull", "Bull bar + lamps", 1300 } }) },
+		{ key = "part_RearBumper", name = "Rear bumper", default = "Classic", options = opts({ { "", "Moulded into the body" }, { "Classic", "Classic chrome" }, { "Bullet", "Bullet guards", 900 }, { "Tube", "Tube bar + hitch", 700 }, { "Shaved", "Shaved roll pan", 1200 }, { "Stock", "Stock painted" }, { "Sport", "Sport + diffuser", 900 } }) },
 		{ key = "fin_Bumpers", name = "Bumper finish", options = FIN, default = "chrome" },
 		{ key = "part_SideTrim", name = "Side trim", default = "Classic", options = opts({ { "Classic", "Classic spear + rocker" }, { "Double", "Double spear", 600 }, { "Sweep", "Sweep spear", 700 }, { "Belt", "Full-length belt strip", 500 }, { "Wide", "Wide rocker panel", 900 }, { "", "Shaved (no trim)", 300 } }) },
-		{ key = "part_Grille", name = "Grille", default = "Bars", options = opts({ { "Bars", "Classic bars" }, { "Eggcrate", "Eggcrate", 600 }, { "Waterfall", "Waterfall", 900 }, { "Mesh", "Diamond mesh", 700 }, { "Billet", "Billet bars", 800 } }) },
+		{ key = "part_Grille", name = "Grille", default = "Bars", options = opts({ { "", "Grille-less nose" }, { "Bars", "Classic bars" }, { "Eggcrate", "Eggcrate", 600 }, { "Waterfall", "Waterfall", 900 }, { "Mesh", "Diamond mesh", 700 }, { "Billet", "Billet bars", 800 } }) },
 		{ key = "fin_Grille", name = "Grille finish", options = FIN, default = "chrome" },
 		{ key = "part_Hood", name = "Hood", default = "Spear", options = opts({ { "Spear", "Chrome spear" }, { "", "Smooth (shaved)", 0 }, { "Louvers", "Louvers", 900 }, { "Cowl", "Cowl bulge", 1100 }, { "Scoop", "Scoop", 1300 }, { "Vents", "Heat vents", 1000 } }) },
 		{ key = "part_Ornament", name = "Hood ornament", default = "", options = opts({ { "", "None" }, { "Sun", "Sunburst", 400 }, { "Wings", "Wings", 500 }, { "Comet", "Comet", 450 } }) },
@@ -403,7 +403,11 @@ function C.ModsFor(vid)
 				for _, o in list do
 					ok = ok or o.id == default
 				end
-				table.insert(mods, { key = m.key, name = m.name, options = list, custom = m.custom, default = ok and default or list[1].id })
+				local first = list[1].id
+				if not ok and first == "" and list[2] and m.default ~= "" then
+					first = list[2].id -- a slot that normally has a part: fall back to a real one, not "none"
+				end
+				table.insert(mods, { key = m.key, name = m.name, options = list, custom = m.custom, default = ok and default or first })
 			end
 		end
 		if #mods > 0 then
