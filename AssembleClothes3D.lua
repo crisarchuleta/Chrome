@@ -88,6 +88,9 @@ for _, m in ipairs(models) do
 			parts += 1
 		end
 	end
+	if item:find("leather") then
+		f:SetAttribute("NC_Material", "Leather") -- NCClothes3D wears it in this material instead of Plastic
+	end
 	f.Parent = bf
 	m:Destroy()
 	done += 1

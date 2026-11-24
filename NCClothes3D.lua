@@ -17,7 +17,9 @@ local RS = game:GetService("ReplicatedStorage")
 local M = {}
 M.FOLDER = "NC_Clothes3D"
 M.Enabled = true
-M.Material = Enum.Material.SmoothPlastic -- (Fabric draws a chunky knit on everything, jeans included)
+-- Plastic: matte with a fine grain. (Fabric draws a chunky knit on everything, jeans included; SmoothPlastic looked
+-- wet with strong highlights.) A template can name another one in its NC_Material attribute, e.g. "Leather".
+M.Material = Enum.Material.Plastic
 
 local function root()
 	return RS:FindFirstChild(M.FOLDER)
@@ -126,7 +128,12 @@ function M.Wear(char, tpl, ctx, parent, opts)
 					mp.Color = col
 				end
 			end
-			mp.Material = M.Material
+			local matName = tpl:GetAttribute("NC_Material")
+			local okMat, mat = pcall(function()
+				return matName and Enum.Material[matName] or M.Material
+			end)
+			mp.Material = okMat and mat or M.Material
+			mp.Reflectance = 0
 			mp.Anchored = false
 			mp.CanCollide = false
 			mp.CanQuery = false

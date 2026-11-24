@@ -2448,10 +2448,32 @@ def skin_to_rig(o):
             zt = P[:, 2].max()
             t = np.clip((zt - P[:, 2]) / max(zt - b.crotch_z, 1e-6), 0, 1); t = t * t * (3 - 2 * t)
             sl = np.clip(0.5 + (P[:, 0] - b.cx) / (0.1 * b.k), 0, 1); sl = sl * sl * (3 - 2 * sl)
-            Wg[:] = 0
-            Wg[:, lt] = 1 - t
-            Wg[:, names.index("LeftUpperLeg")] = t * sl
-            Wg[:, names.index("RightUpperLeg")] = t * (1 - sl)
+            Wr = np.zeros_like(Wg)
+            Wr[:, lt] = 1 - t
+            Wr[:, names.index("LeftUpperLeg")] = t * sl
+            Wr[:, names.index("RightUpperLeg")] = t * (1 - sl)
+            # (SKIRT_BACK_BODY > 0: the back follows the seat skin instead. Tried at 1: sitting, the back hung down
+            # through the seat like a curtain, worse than the lap ring the thigh weights give)
+            db, jb = tree.query(P, k=6)
+            wb = 1 / np.maximum(db, 1e-4) ** 2; wb /= wb.sum(1, keepdims=True)
+            Wb = np.einsum("nk,nkg->ng", wb, W[jb])
+            acols = [names.index(g) for g in names if any(x in g for x in ("Arm", "Hand", "Twist", "Thumb", "Index",
+                     "Middle", "Ring", "Pinky"))]
+            Wb[:, acols] = 0; Wb[Wb.sum(1) < 1e-6, lt] = 1.0
+            Wb /= np.maximum(Wb.sum(1, keepdims=True), 1e-9)
+            fr = np.clip((b.yc + 0.03 * b.k - P[:, 1]) / (0.1 * b.k), 0, 1); fr = fr * fr * (3 - 2 * fr)
+            fr = 1 - SKIRT_BACK_BODY * (1 - fr)
+            Wg[:] = fr[:, None] * Wr + (1 - fr)[:, None] * Wb
+        if "Gloves" not in ob.name and "nc_arm" in ob.data.attributes and flag.any():
+            # a sleeve never follows the hand or fingers: a turning wrist tore the cuff off the forearm
+            hcols = [names.index(g) for g in names if g in ("LeftHand", "RightHand") or g.startswith(
+                     ("NC_Thumb", "NC_Index", "NC_Middle", "NC_Ring", "NC_Pinky"))]
+            for sd, la in (("l", "LeftLowerArm"), ("r", "RightLowerArm")):
+                if la in names and hcols:
+                    mm = flag & (np.where(P[:, 0] > b.cx, "l", "r") == sd)
+                    hw = Wg[np.ix_(mm, hcols)].sum(1)
+                    Wg[np.ix_(mm, hcols)] = 0
+                    Wg[mm, names.index(la)] += hw
         if any(t in ob.name for t in RIGID_HEAD):  # caps, beanies, shades, masks move as one piece with the head
             Wg[:] = 0; Wg[:, names.index("Head")] = 1.0
         else:
@@ -2588,6 +2610,7 @@ HEM_Z0 = 0.0   # the blend starts at the hip joint height ...
 HEM_RAMP = 0.08  # ... and is full this far below it (k)
 ARMCUT_W = 0.14  # ... fading out over this height
 SKIRT_LEG = 0.85
+SKIRT_BACK_BODY = 0.0
 CROTCH_BAND = 0.0  # pants crotch L/R weight blend half-width (k). 0: the cloth follows the body exactly there; any
 # blend (it hung the seam from the pelvis) let the base shorts show through the inner thigh when running
 GAME_TRIS = {"Chain": 6000, "Gloves": 3000, "default": 7000, "small": 1500}
@@ -2597,6 +2620,9 @@ def limit_influences(ob, n=4):
     """Roblox skins with at most 4 bones a vertex: keep the 4 strongest and renormalise here, so the game bends
     exactly like the preview instead of the importer dropping weights its own way."""
     vgs = ob.vertex_groups
+    for g in list(vgs):  # helper groups (decimation guards) are not bones: they must not take a share of the weight
+        if g.name.startswith("NC_MatBorder"):
+            vgs.remove(g)
     if not len(vgs):
         return
     drop = {}
