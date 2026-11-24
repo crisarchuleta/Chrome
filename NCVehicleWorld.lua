@@ -23,7 +23,7 @@ local World = {}
 local SETTLE_IDLE = 25 -- an empty, stopped car rests (anchored) after this many seconds
 local SETTLE_FAR = 300 -- ...or at once when the player simulating it is this far away / gone
 
-local managed = setmetatable({}, { __mode = "k" }) -- [car] = { ai = bool, idleSince = number }
+local managed = {} -- [car] = { ai = bool, idleSince = number }
 
 ---------------------------------------------------------------------------------------------------- lookups
 -- true when `name` is a Kit vehicle that can be built right now (data module installed and meshes imported)
@@ -226,6 +226,9 @@ function World.Build(name, cf, opts)
 		car.PrimaryPart.Anchored = true
 	end
 	managed[car] = { ai = false, idleSince = os.clock() }
+	car.Destroying:Once(function()
+		managed[car] = nil
+	end)
 
 	seatPrompts(car)
 	Kit.AddPanelPrompts(car, function(who)

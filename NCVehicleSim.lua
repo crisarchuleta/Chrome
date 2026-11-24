@@ -32,7 +32,7 @@ function Sim.Folders()
 	return list
 end
 
-local state = setmetatable({}, { __mode = "k" }) -- [car] = { e = {}, target = {}, spin = {}, ... }
+local state = {} -- strong; cleared on Destroying. [car] = { e = {}, target = {}, spin = {}, ... }
 
 function Sim.State(car)
 	local s = state[car]
@@ -57,6 +57,9 @@ function Sim.State(car)
 		s.bumper = Vector3.new(fb[1], fb[2], fb[3])
 		s.D = Vehicles.Drive(vid, Config.Drive)
 		state[car] = s
+		car.Destroying:Once(function()
+			state[car] = nil
+		end)
 	end
 	return s
 end

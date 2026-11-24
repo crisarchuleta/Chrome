@@ -14,7 +14,7 @@ local CORNERS = { "FL", "FR", "RL", "RR" }
 local SMOKE_TEX = "rbxasset://textures/particles/smoke_main.dds"
 local HALF_TREAD = 0.42 -- half the tyre's tread width (studs), for the skid mark ribbon
 
-local rigs = setmetatable({}, { __mode = "k" }) -- [car] = { [corner] = { at, a, b, smoke, trail }, sound = Sound }
+local rigs = {} -- strong; cleared on Destroying -- [car] = { [corner] = { at, a, b, smoke, trail }, sound = Sound }
 
 local function rig(car, s)
 	local r = rigs[car]
@@ -83,6 +83,9 @@ local function rig(car, s)
 		r.sound = snd
 	end
 	rigs[car] = r
+	car.Destroying:Once(function()
+		rigs[car] = nil
+	end)
 	return r
 end
 
@@ -105,8 +108,16 @@ function FX.Update(car, s, slip, dt)
 			-- the contact patch moves with the suspension
 			local foot = Vector3.new(rest.X, rest.Y - d - s.R + 0.06, rest.Z)
 			t.at.CFrame = o * CFrame.new(foot)
-			t.a.CFrame = o * CFrame.new(foot + Vector3.new(-HALF_TREAD, -0.03, 0))
-			t.b.CFrame = o * CFrame.new(foot + Vector3.new(HALF_TREAD, -0.03, 0))
+			-- the mark's ribbon lies across the way the tyre is actually moving over the road, not across the car:
+			-- in a donut or a drift the tyre slides sideways, and a ribbon across the car would go edge-on and
+			-- leave broken, zero-width quads
+			local wf = ch.CFrame * (o * foot)
+			local v = ch.AssemblyLinearVelocity + ch.AssemblyAngularVelocity:Cross(wf - ch.AssemblyCenterOfMass)
+			local vh = Vector3.new(v.X, 0, v.Z)
+			local side = vh.Magnitude > 1 and Vector3.yAxis:Cross(vh.Unit) or ch.CFrame:VectorToWorldSpace(o.RightVector)
+			local down = Vector3.new(0, -0.03, 0)
+			t.a.WorldPosition = wf - side * HALF_TREAD + down
+			t.b.WorldPosition = wf + side * HALF_TREAD + down
 			t.smoke.Rate = k > 0.15 and 12 + 70 * k or 0
 			t.trail.Enabled = k > 0.35
 			loud = math.max(loud, k)

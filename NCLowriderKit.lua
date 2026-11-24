@@ -691,7 +691,7 @@ function Kit.SetGear(car, letter)
 end
 
 -- turns the steering wheel (call on clients; steer -1..1 = full lock left..right, about 1.4 turns lock to lock)
-local steerCache = setmetatable({}, { __mode = "k" }) -- [car] = { welds = { {weld, base} }, look = string }
+local steerCache = {} -- strong: a weak Instance-keyed table can drop live cars -- [car] = { welds = { {weld, base} }, look = string }
 function Kit.SetSteer(car, steer)
 	local vd = VD(Vehicles.Of(car))
 	local spec = vd.Car.Steer
@@ -707,6 +707,11 @@ function Kit.SetSteer(car, steer)
 			if w then
 				table.insert(cache.welds, { w, w.C0 })
 			end
+		end
+		if not steerCache[car] then
+			car.Destroying:Once(function()
+				steerCache[car] = nil
+			end)
 		end
 		steerCache[car] = cache
 	end
@@ -886,7 +891,7 @@ function Kit.BuildCar(cf, vid)
 			s.HeadsUpDisplay = false
 		end
 		s.Parent = car
-		weldTo(s, chassis, "SeatWeld")
+		weldTo(s, chassis, "SeatMount") -- not "SeatWeld": the engine treats a seat holding a SeatWeld as occupied
 		return s
 	end
 	seat("DriveSeat", vd.Car.Seats.Driver, true)
@@ -920,7 +925,7 @@ end
 ---------------------------------------------------------------------------------------------------- opening panels
 -- Kit.SetOpen(car, "DoorL", true) swings a panel open (false closes it) over `time` seconds (0 = snap). Works on the
 -- server (everyone sees it) or the client. Kit.Panels(car) lists { name = root } for the car's opening panels.
-local swing = setmetatable({}, { __mode = "k" }) -- [root] = token, so a newer call wins
+local swing = {} -- [root] = token, so a newer call wins
 -- panel sounds (ids in Config.Sounds; played where SetOpen runs, so the server's play reaches everyone)
 local function panelSound(parent, name, vol)
 	local id = Config.Sounds and Config.Sounds[name] or ""
@@ -1078,7 +1083,7 @@ end
 -- Each door's glass is its own piece riding on the door (Car.Windows). Kit.SetWindow(car, "DoorL", 0.5) rolls it
 -- half way down (0 = up, 1 = all the way down) over `time` seconds. Server or client, like Kit.SetOpen.
 Kit.WINDOW_STEPS = { 0, 0.5, 1 } -- up, half way, down: what one press of the window key steps through
-local roll = setmetatable({}, { __mode = "k" })
+local roll = {}
 function Kit.Windows(car)
 	local out = {}
 	for _, m in car:GetChildren() do

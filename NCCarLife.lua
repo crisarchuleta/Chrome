@@ -91,7 +91,7 @@ local function loopTo(s, want, playing, dt, rate)
 end
 
 ---------------------------------------------------------------------------------------------------- per-car rig
-local rigs = setmetatable({}, { __mode = "k" })
+local rigs = {} -- strong (weak Instance keys got collected and rigs were rebuilt); cleared on Destroying
 
 -- the car-frame half width of a part along the car's X axis
 local function halfX(ch, p)
@@ -261,6 +261,9 @@ local function rig(car, s)
 		end)
 	end
 	rigs[car] = r
+	car.Destroying:Once(function()
+		rigs[car] = nil
+	end)
 	return r
 end
 
