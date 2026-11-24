@@ -760,6 +760,11 @@ def build_styles(H):
 
     def add_short(key, label, p, extras=None):
         T, hl = style_short(H, V, F, S, N, d, p)
+        if p.get("edge_up") is not None:                     # a razor-straight edge-up across the forehead with
+            relv_ = V - H.centre                             # square corners above the outer brow ends
+            tail_x = abs(H.eyeL[0] - H.anchor[0]) + 0.085
+            front = (relv_[:, 1] < -0.3 * H.R) & (np.abs(V[:, 0] - H.anchor[0]) < tail_x)
+            hl = np.where(front, V[:, 2] - p["edge_up"], hl)
         # coverage across the hairline (0 at the very edge -> 1 where the hair is full) and, for skin fades,
         # down the faded sides: the texture turns it into single hairs thinning out onto the skin
         feather = p.get("feather", 0.06)
@@ -780,6 +785,8 @@ def build_styles(H):
             dpart = np.min(np.abs(phv[:, None] - np.radians(p["parts_phi"])[None, :]), axis=1) * rxz
             # (clean parts only where the rows sit close; lower on the sides the base is left dark)
             on_top = smoothstep(H.anchor[2] + 0.2, H.anchor[2] + 0.3, V[:, 2]) * smoothstep(math.radians(30), math.radians(22), np.abs(phv))
+            if p.get("parts_band"):                          # (the parts stop at the short band behind the edge-up)
+                on_top = on_top * smoothstep(0.6 * p["parts_band"], p["parts_band"], d)
             cov = np.minimum(cov, 1 - on_top * (1 - smoothstep(0.002, 0.007, dpart)))
         if p.get("hard_part") is not None:                  # a shaved line just under where the rows end
             below = p["hard_part"](V) - V[:, 2]
@@ -930,7 +937,9 @@ def build_styles(H):
         P = np.atleast_2d(P)
         return H.ear_z + FT_CUT + FT_FRONT * smoothstep(0.1 * H.R, 0.6 * H.R, -(P[:, 1] - H.centre[1]))
 
-    FT_LOW = 0.12
+    FT_LOW = 0.19
+    FT_BAND = 0.045                      # the strip of short hair between the edge-up line and the twists' ends
+    ft_corner = H.anchor[2] + 0.1 + 0.55 * (H.top - H.anchor[2] - 0.1)    # (front_hairline's temple corner height)
     FT_ROWS, FT_PARTS, FT_PITCH = ft_rows(12)
 
     def flat_twists():
@@ -955,12 +964,15 @@ def build_styles(H):
                 if dref is None and th >= math.pi / 2:
                     dref = ft_angle(q)[1][0]
                 _, idx, _ = kv.find(q)
-                if d[idx] < 0.005:
-                    segs.append([])                             # (only inside the hairline)
+                if d[idx] < FT_BAND:
+                    segs.append([])                             # (only behind the edge-up's short band)
                     continue
                 segs[-1].append((q, np.array(hit[1])))
             path = max(segs, key=len)                           # the longest unbroken run
-            above = [q[2] > ft_cut(q)[0] + 0.01 for q, _ in path]   # both ends trimmed back to the hard part
+            # both ends trimmed back to the hard part; at the front the twists start at the edge-up's square temple
+            # corners, never down the temples
+            above = [q[2] > ft_cut(q)[0] + 0.01 and (q[1] - H.centre[1] > -0.35 * H.R or q[2] > ft_corner - 0.01)
+                     for q, _ in path]
             if not any(above):
                 continue
             k0, k1 = above.index(True), len(above) - above[::-1].index(True)
@@ -1021,7 +1033,8 @@ def build_styles(H):
         add_short("Twists", "Hanging Twists", dict(base, top=0.02, fade_z=0.2, feather=0.025, parts_y=True),
                   locs_extras(0.45, 14, 220, 0.022, 0.3, end_z=H.ear_z + 0.12, part=True, two_strand=True, gap=0.042, clear_k=0.8))
         ft_ex, ft_line = flat_twists()
-        add_short("FlatTwists", "Flat Twists", dict(top=0.012, side=0.012, fade_z=-0.03, fade_len=0.24, fade_line=ft_line, hard_part=ft_line, feather=0.025, groove=0.05, freq=40,
+        add_short("FlatTwists", "Flat Twists", dict(top=0.012, side=0.012, fade_z=-0.03, fade_len=0.24, fade_line=ft_line, hard_part=ft_line, feather=0.01,
+                                                    edge_up=ft_corner, parts_band=FT_BAND, groove=0.05, freq=40,
                                                     parts_phi=np.degrees(FT_PARTS), parts_angle=ft_angle),
                   ft_ex)
     else:

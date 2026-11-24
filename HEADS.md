@@ -26,7 +26,8 @@ Renders are in the project files under `character-studio/heads/`.
     with a mid skin fade (top brushed up with a small front lift, the length grows gradually from the fade to the
     top); FlatTwists are 12 fat two-strand twists packed side by side (thin parts between them), spaced evenly over the
     scalp, four down each side; they run front to back, draw together slightly at the back, and end on a hard part
-    that follows their lower edge, with the skin fade starting right under it; Twists hang from a centre part (the forehead shows in a V), ending at the brows,
+    that follows their lower edge, with the skin fade starting right under it. The front is a razor-straight edge-up
+    with square corners above the outer brow ends, then a short band of hair before the twists' ends; Twists hang from a centre part (the forehead shows in a V), ending at the brows,
     the ear tops and the fade line, with a squared edge-up and a high skin fade. The women's LowBun is slicked
     straight back with no part, ears showing, into a wrapped bun about 8 cm across just below ear level.
   - Skin fades (TaperFade, HighFade, CurlyTop, Twists, FlatTwists) use their own texture, NC_HairFade (material
