@@ -118,10 +118,10 @@ SPECS = {
     # 9.7 ft wheelbase. Low rounded nose with a closed face and a low intake, raked windshield, strong tumblehome,
     # long glass roof into a liftback, big multi-spoke wheels, no exhaust; a front trunk where the engine would be and
     # a charge port where the gas door would be
-    "VireoE": dict(name="Vireo E", flavour="sports", W=3.7, L0=-9.6, L1=9.15, WB=11.17, WR=1.4, WX=3.15, TW=1.0,
-                   ZB=0.75, BELT=3.25, NOSE=2.9, HOOD=3.35, TAIL=3.55, CROWN=0.02, HCROWN=-0.3,
-                   A0=-3.6, A1=-0.1, C0=3.4, C1=7.3, ROOF=5.35, TUCK=0.75, B=1.0, Q=3.9, doors=4, rear="hatch",
-                   electric=True, lowpro=0.24, smooth=True, rim_dark=True,
+    "VireoE": dict(name="Vireo E", flavour="sports", W=3.8, L0=-9.6, L1=9.15, WB=11.17, WR=1.33, WX=3.18, TW=1.0,
+                   ZB=0.62, BELT=3.4, NOSE=2.95, HOOD=3.8, TAIL=4.0, CROWN=0.02, HCROWN=-0.3,
+                   A0=-3.6, A1=-0.1, C0=3.8, C1=7.9, ROOF=5.35, TUCK=0.75, B=1.0, Q=3.9, doors=4, rear="hatch",
+                   electric=True, LEAN=0.1, LONGGLASS=True, PLAN=True, NOSEDROP=1.25, lowpro=0.24, smooth=True, rim_dark=True,
                    stock={"Exhaust": "", "Spoiler": "", "Rim": "Split", "KO": "Cap", "Top": "", "Seats": "Buckets", "Grille": "", "FrontBumper": "", "RearBumper": "",
                                          "Dash": "Digital", "Steering": "Sport"}, paint=(0.025, 0.025, 0.03)),
 }
@@ -224,13 +224,21 @@ def ztop(x, top, crown, w):
     return top + crown * (1 - t * t)
 
 
-def section(w, zb, belt, top, crown):
+def section(w, zb, belt, top, crown, lean=0.0):
     top = max(top, belt + 0.06)
     sh = min(0.3, (belt - zb) * 0.2)
     if S.get("smooth"):  # modern body: a gently barrelled side and a rounder shoulder
         mid = zb + 0.45 + (belt - sh - zb - 0.45) * 0.45
-        half = [(0.0, zb), (w * 0.84, zb), (w * 0.94, zb + 0.1), (w * 0.98, zb + 0.32), (w, mid), (w * 0.99, belt - sh),
-                (w * 0.97, belt - sh * 0.3), (w * 0.94, belt + 0.03)]
+        # lean > 0 (the rear quarters) tucks the upper side in more: the reference's haunches narrow toward the deck
+        half = [(0.0, zb), (w * 0.84, zb), (w * 0.94, zb + 0.1), (w * 0.98, zb + 0.32), (w, mid), (w * (0.985 - 0.6 * lean), belt - sh),
+                (w * (0.95 - 0.85 * lean), belt - sh * 0.3), (w * (0.9 - lean), belt + 0.03)]
+        # a tall deck (the tail) leans in above the belt, like the reference's rear three-quarter
+        shrink = 1 - 0.12 * min(1.0, max(0.0, (top - belt) / 0.6))
+        for k in range(5):
+            x = w * (0.89 - lean) * shrink * (1 - k / 5)
+            half.append((x, ztop(x, top, crown, w) - (0.03 if k == 0 else 0.0)))
+        half.append((0.0, top + crown))
+        return half + [(-x, z) for (x, z) in reversed(half[1:-1])]
     else:
         half = [(0.0, zb), (w * 0.86, zb), (w * 0.965, zb + 0.15), (w, zb + 0.45), (w, belt - sh), (w * 0.99, belt - sh * 0.35),
                 (w * 0.965, belt + 0.02)]
@@ -239,6 +247,24 @@ def section(w, zb, belt, top, crown):
         half.append((x, ztop(x, top, crown, w) - (0.03 if k == 0 else 0.0)))
     half.append((0.0, top + crown))
     return half + [(-x, z) for (x, z) in reversed(half[1:-1])]
+
+
+# plan half width as a fraction of W, against the distance from the nose / the tail (measured off the reference's
+# top-view photo, 2026-11-24): the real car's nose and tail corners are much rounder than a formula's
+PLAN_FRONT = [(0.0, 0.2), (0.075, 0.26), (0.375, 0.51), (0.67, 0.64), (0.97, 0.74), (1.27, 0.81), (1.8, 0.9), (2.47, 0.96),
+              (2.77, 0.98), (3.07, 1.0)]
+PLAN_REAR = [(0.0, 0.3), (0.1, 0.36), (0.4, 0.55), (0.7, 0.67), (1.0, 0.75), (1.3, 0.84), (1.6, 0.875), (1.9, 0.9), (2.2, 0.92),
+             (2.5, 0.947), (2.8, 0.967), (3.2, 0.99)]
+
+
+def plan_frac(tab, d):
+    if d <= tab[0][0]:
+        return tab[0][1]
+    for (d0, f0), (d1, f1) in zip(tab, tab[1:]):
+        if d <= d1:
+            t = (d - d0) / (d1 - d0)
+            return f0 + (f1 - f0) * (t * t * (3 - 2 * t) * 0.5 + t * 0.5)
+    return 1.0
 
 
 def make_stations():
@@ -255,10 +281,11 @@ def make_stations():
             y = L0 + (ye - L0) * u
             d = y - L0
             e = 1 - (1 - min(1.0, d / 3.0)) ** 2.2            # plan: a broad round nose (half width 0.5W at the tip)
+            pf = plan_frac(PLAN_FRONT, d) if S.get("PLAN") else 0.5 + 0.5 * e
             f = math.sqrt(max(0.0, 1 - (1 - min(1.0, d / 1.2)) ** 2))
             v = (y - L0) / (A0 - L0)
-            top = NOSE + (HOOD - NOSE) * (1 - (1 - v) ** 2) - 0.6 * (1 - f)
-            st.append((y, W * (0.5 + 0.5 * e), ZB + 0.3 * (1 - e), top - 0.07 - 0.55 * (1 - f), top, hc * f))
+            top = NOSE + (HOOD - NOSE) * (1 - (1 - v) ** 2) - S.get("NOSEDROP", 0.6) * (1 - f)
+            st.append((y, W * pf, ZB + 0.1 * (1 - e), top - 0.07 - (0.4 if S.get("NOSEDROP") else 0.55) * (1 - f), top, hc * f))
         st.append((A0, W, ZB, BELT, HOOD + 0.06, hc * 0.5))
     else:
         st = [(L0, W - 0.5, ZB + 0.35, nb - 0.2, nb - 0.12, 0.0), (L0 + 0.2, W - 0.22, ZB + 0.15, nb, NOSE - 0.05, CROWN * 0.4),
@@ -290,15 +317,18 @@ def make_stations():
         st += [(L1 - 0.8, W - 0.02, ZB, BELT, BELT + 0.06, CROWN)]
     tb = (TAIL if REAR in ("trunk", "hatch") else BELT) - 0.2
     if S.get("smooth"):  # a rounded tail with a small lip
-        y0 = max(C1 + 0.25, L1 - 2.4)                     # the plan rounds off over the last 2.4 studs
+        y0 = L1 - (3.2 if S.get("PLAN") else 2.4) if S.get("LONGGLASS") else max(C1 + 0.25, L1 - 2.4)   # the plan rounds off over the last 2.4 studs
         while st[-1][0] > y0 - 0.05:
             st.pop()
         st.append((y0, W - 0.03, ZB, BELT - 0.05, TAIL, CROWN))
-        for i in range(1, 8):
-            u = i / 7
+        nt = 12 if S.get("PLAN") else 7
+        for i in range(1, nt + 1):
+            u = i / nt
             e = math.sqrt(max(0.0, 1 - u ** 2))
             ep = 1 - u ** 2.2                                 # plan rounds sooner than the profile
-            st.append((y0 + (L1 - y0) * u, W * (0.64 + 0.36 * ep) - 0.03, ZB + 0.25 * (1 - e), tb + 0.15 - 0.5 * (1 - e),
+            yy = y0 + (L1 - y0) * u
+            pw = W * plan_frac(PLAN_REAR, L1 - yy) if S.get("PLAN") else W * (0.64 + 0.36 * ep)
+            st.append((yy, pw - 0.03, ZB + 0.25 * (1 - e), tb + 0.15 - 0.5 * (1 - e),
                        TAIL - 0.4 * (1 - e) ** 1.5, CROWN * e))
         return st
     st += [(L1 - 0.2, W - 0.2, ZB + 0.12, tb, tb + 0.12, CROWN * 0.4), (L1, W - 0.45, ZB + 0.3, tb - 0.15, tb - 0.05, 0.0)]
@@ -333,6 +363,46 @@ def belt_at(y):
     return BELT
 
 
+def lean_at(y):
+    """how much the upper side tucks in (rear quarters of a smooth body)"""
+    if not (S.get("smooth") and Q):
+        return 0.0
+    c_ = min(1.0, max(0.0, (y - Q) / 2.5))
+    return S.get("LEAN", 0.1) * c_ * c_ * (3 - 2 * c_)
+
+
+def top_w(y):
+    """half width where the deck's top surface ends (section(): the shoulder rolls down from there)"""
+    for a, b in zip(STATIONS, STATIONS[1:]):
+        if a[0] <= y <= b[0]:
+            t = (y - a[0]) / (b[0] - a[0])
+            w, belt, top = (a[k] + (b[k] - a[k]) * t for k in (1, 3, 4))
+            break
+    else:
+        w, belt, top = STATIONS[-1][1], STATIONS[-1][3], STATIONS[-1][4]
+    shrink = 1 - 0.12 * min(1.0, max(0.0, (top - belt) / 0.6)) if S.get("smooth") else 1.0
+    return w * ((0.89 if S.get("smooth") else 0.93) - lean_at(y)) * shrink
+
+
+def body_x(y, z):
+    """half width of the body's outer skin at (y, z): the section's side, below the deck top"""
+    for a, b in zip(STATIONS, STATIONS[1:]):
+        if a[0] <= y <= b[0]:
+            t = (y - a[0]) / (b[0] - a[0])
+            v = [a[k] + (b[k] - a[k]) * t for k in range(6)]
+            break
+    else:
+        v = list(STATIONS[0] if y < STATIONS[0][0] else STATIONS[-1])
+    sec = section(v[1], v[2], v[3], v[4], v[5], lean_at(y))
+    half = sec[:len(sec) // 2 + 1]                     # nose of the ring: (0, zb) .. side .. (0, top)
+    best = None
+    for (x0, z0), (x1, z1) in zip(half, half[1:]):
+        if min(z0, z1) <= z <= max(z0, z1) and z1 != z0:
+            x = x0 + (x1 - x0) * (z - z0) / (z1 - z0)
+            best = x if best is None else max(best, x)
+    return best if best is not None else v[1]
+
+
 SMOOTH_ANGLE = 60.0 if S.get("smooth") else 35.0   # modern bodies are all curves: shade them smooth
 
 
@@ -347,7 +417,8 @@ def loft_body():
             dense.append(tuple(a[i] + (b[i] - a[i]) * t for i in range(6)))
     dense.append(STATIONS[-1])
     for (y, w, zb, belt, top, crown) in dense:
-        rings.append([bm.verts.new((x, y, z)) for (x, z) in section(w, zb, belt, top, crown)])
+        lean = lean_at(y)
+        rings.append([bm.verts.new((x, y, z)) for (x, z) in section(w, zb, belt, top, crown, lean)])
     n = len(rings[0])
     for A, B in zip(rings, rings[1:]):
         for i in range(n):
@@ -467,7 +538,7 @@ def cutters_and_body():
     if REAR in ("trunk", "hatch") and S.get("smooth"):
         # a rounded tail: the opening follows the plan, or it would cut through the side walls at the corners
         ysl = [C1 + 0.15 + (L1 - 0.6 - C1) * k / 12 for k in range(13)]
-        ring = [(min(W, station_w(y)) - 0.55, y) for y in ysl]
+        ring = [(min(min(W, station_w(y)) - 0.55, top_w(y) - 0.04 if S.get("smooth") else W), y) for y in ysl]
         plan = [(x, y) for x, y in ring] + [(-x, y) for x, y in reversed(ring)]
         bm = bmesh.new()
         lo = [bm.verts.new((x, y, TAIL - 0.9)) for x, y in plan]
@@ -503,7 +574,15 @@ def cutters_and_body():
             liner(s * (tub + 0.01), s * (tub + 0.05), wy)
             if S.get("smooth"):
                 arch_tunnel(s, tub, wy)
-    flat_floor("Carpet", xin, A0 + 0.1, cab_end - 0.05, floor - 0.02, floor + 0.06)
+    if S.get("smooth"):                                   # slices: the floor narrows with a rounded tail
+        ya_, yb_ = A0 + 0.1, cab_end - 0.05
+        n_ = max(1, int((yb_ - ya_) / 0.4))
+        for i_ in range(n_):
+            y0_, y1_ = ya_ + (yb_ - ya_) * i_ / n_, ya_ + (yb_ - ya_) * (i_ + 1) / n_
+            xh_ = min(xin, body_x(y0_, floor) - 0.1, body_x(y1_, floor) - 0.1)
+            flat_floor("Carpet", xh_, y0_, y1_, floor - 0.02, floor + 0.06)
+    else:
+        flat_floor("Carpet", xin, A0 + 0.1, cab_end - 0.05, floor - 0.02, floor + 0.06)
     wheel_houses("Under" if S.get("smooth") else "Carpet", xin, A0 + 0.05, cab_end, floor)   # seen through the arches
     if OPEN:                                                                  # rubber edge trim round the step-in + a sill plate
         for s in (-1, 1):
@@ -611,7 +690,8 @@ def arch_tunnel(s, x_in, wy):
         c = math.sin(a)
         if WR + ARCH * c < ZB:
             continue
-        xo = min(W, station_w(wy + ARCH * math.cos(a))) - 0.03      # stays inside a rounded tail's skin
+        yy_ = wy + ARCH * math.cos(a)
+        xo = min(W, station_w(yy_), body_x(yy_, WR + ARCH * c) if S.get("smooth") else W) - 0.03   # inside the skin
         rows.append([bm.verts.new((s * x, wy + r * math.cos(a), max(ZB - 0.02, WR + r * c)))
                      for x in (x_in, xo) for r in (r0, r1)])
     for A, B in zip(rows, rows[1:]):
@@ -710,7 +790,7 @@ def greenhouse():
 # crown near the B pillar down the liftback to the deck, and every cross-section is a superellipse (rounded top,
 # tumblehome sides). The canopy grid is then cut by angle and position into windshield, roof, hatch glass, pillars,
 # side glass and a chrome window surround.
-GH_P = 2 / 4.4                                   # superellipse exponent (2/n)
+GH_P = 2 / 3.4                                   # superellipse exponent (2/n)
 
 
 def solid_grid(kind, O, I, cells, smooth=30.0):
@@ -745,7 +825,8 @@ def gh_frame():
     pk = A1 + (C0 - A1) * 0.45
     mws = (ROOF + 0.02 - zb) / (A1 - A0)
     mrear = (zend - (ROOF - 0.1)) / (yend - C0)
-    knots = [(A0, zb, 1.2 * mws), (A1, ROOF + 0.02, 0.35 * mws), (pk, ROOF + 0.14, 0.0), (C0, ROOF - 0.1, 0.8 * mrear),
+    z0_ = max(zb, HOOD - 0.05) if S.get("smooth") else zb       # the windshield rises from the cowl (hood height)
+    knots = [(A0, z0_, 1.2 * mws), (A1, ROOF + 0.02, 0.35 * mws), (pk, ROOF + 0.14, 0.0), (C0, ROOF - 0.1, 0.8 * mrear),
              (yend, zend, 1.15 * mrear)]
     return zb, yend, knots
 
@@ -772,7 +853,8 @@ def gh_xb(y):
     front = 0.45 if S.get("smooth") else 0.2
     if S.get("smooth"):                                  # the canopy narrows from the roof's rear into the tail (teardrop)
         t = min(1.0, max(0.0, (y - C0) / (GH_YEND - C0)))
-        return W - 0.3 - front * (1 - sm((y - A0) / 1.4)) - 1.5 * t ** 1.6
+        xb = W * 0.9 - 0.3 - front * (1 - sm((y - A0) / 1.4)) - 1.3 * t ** 1.6
+        return min(xb, (0.9 - lean_at(y)) * station_w(y) - 0.06)       # never past the (tucked) shoulder
     return W - 0.3 - 0.2 * (1 - sm((y - A0) / 1.0)) - 0.35 * sm((y - Q) / (GH_YEND - Q))
 
 
@@ -885,7 +967,7 @@ def build_rear():
         for j in range(ny + 1):
             y = y0 + (y1 - y0) * j / ny
             rt, rb = [], []
-            xr = min(xw, station_w(y) - 0.57) if S.get("smooth") else xw     # follows a rounded tail's plan
+            xr = min(xw, station_w(y) - 0.57, top_w(y) - 0.06) if S.get("smooth") else xw     # stays on the deck's top
             for i in range(nx + 1):
                 x = -xr + 2 * xr * i / nx
                 z = deck_z(x, y)
@@ -944,7 +1026,7 @@ def build_rear():
 def build_fuel_door():
     y0, y1 = FUEL_Y
     z0, z1 = FUEL_Z
-    W = min(globals()["W"], station_w((y0 + y1) / 2) - 0.07) if S.get("smooth") else globals()["W"]   # under the cast flap
+    W = min(globals()["W"], body_x((y0 + y1) / 2, (z0 + z1) / 2) - 0.05) if S.get("smooth") else globals()["W"]   # under the cast flap
     sbox("Under", W - 0.04, y0 + 0.06, z0 + 0.06, W - 0.005, y1 - 0.06, z1 - 0.06)
     c = (W - 0.005, (y0 + y1) / 2, (z0 + z1) / 2)
     if S.get("electric"):                                  # charge port: a socket with two pins
@@ -1157,10 +1239,17 @@ def decal(kind, c00, c10, c11, c01, d, nu=10, nv=3, out=0.03, inn=0.03, smooth=3
 def smooth_details():
     """the fixed details of a smooth modern body: lower intake, fog-lamp slats, rear diffuser, door trim"""
     yF, yR = L0 - 1.0, L1 + 1.0
-    decal("Dark", (-W * 0.42, yF, ZB + 0.42), (W * 0.42, yF, ZB + 0.42), (W * 0.42, yF, ZB + 0.8), (-W * 0.42, yF, ZB + 0.8),
-          (0, 1, 0), nu=14, nv=3, out=0.02, inn=0.05)
+    decal("Dark", (-W * 0.5, yF, ZB + 0.38), (W * 0.5, yF, ZB + 0.38), (W * 0.5, yF, ZB + 0.82), (-W * 0.5, yF, ZB + 0.82),
+          (0, 1, 0), nu=16, nv=3, out=0.02, inn=0.05)
+    if S.get("PLAN"):          # the reference's nose: a thin chrome V from each lamp's inner tip down to the middle (no badge)
+        for s_ in (-1, 1):
+            xa, za, zb_ = s_ * W * 0.44, 2.42, 2.12
+            decal("Chrome", (xa, yF, za - 0.035), (0.0, yF, zb_ - 0.035), (0.0, yF, zb_ + 0.01), (xa, yF, za + 0.01), (0, 1, 0),
+                  nu=12, nv=1, out=0.035, inn=0.02)
     for s_ in (-1, 1):
         x0, x1 = s_ * W * 0.56, s_ * W * 0.8
+        if S.get("PLAN"):
+            x0, x1 = s_ * W * 0.58, s_ * W * 0.84
         decal("Dark", (x0, yF, ZB + 0.4), (x1, yF, ZB + 0.4), (x1, yF, ZB + 0.78), (x0, yF, ZB + 0.78), (0, 1, 0), nu=6, nv=3,
               out=0.015, inn=0.05)
         for k in range(3):
@@ -1505,7 +1594,68 @@ def shot(name, loc, tgt):
 
 
 Lr = max(-L0, L1)
+REF_VIEWS = [[0, 4.5], [30, 5.5], [90, 4.5], [205, 4.5], [180, 5.5], [200, 4.5], [270, 4.5], [25, 5.5]]   # the reference sheet's angles
 fz = (ROOF * 0.4)
+if os.environ.get("NC_REFMASK"):                        # silhouettes for fitting the body to the reference sheet
+    show()
+    if os.environ.get("NC_PROBE"):                       # which visible pieces have vertices near a point
+        px_, py_, pz_, pr_ = map(float, os.environ["NC_PROBE"].split(","))
+        for ob_ in scene.objects:
+            if ob_.type == "MESH" and not ob_.hide_render:
+                mw_ = ob_.matrix_world
+                n_ = sum(1 for v_ in ob_.data.vertices if ((mw_ @ v_.co) - Vector((px_, py_, pz_))).length < pr_)
+                if n_:
+                    cs_ = [mw_ @ v_.co for v_ in ob_.data.vertices if ((mw_ @ v_.co) - Vector((px_, py_, pz_))).length < pr_]
+                    print("PROBE", ob_.name, n_, [round(min(c[i] for c in cs_), 2) for i in range(3)], [round(max(c[i] for c in cs_), 2) for i in range(3)])
+    g_ = bpy.data.objects.get("Ground")
+    if g_:
+        g_.hide_render = True
+    scene.render.film_transparent = True
+    if os.environ.get("NC_REFSHADE"):                    # look like the reference: glossy black paint, black wheels
+        bg_ = scene.world.node_tree.nodes.get("Background") if scene.world and scene.world.node_tree else None
+        if bg_:
+            bg_.inputs["Strength"].default_value *= 0.45
+        for ob_ in scene.objects:
+            if ob_.type != "MESH" or not ob_.data.materials:
+                continue
+            pk_ = ob_.get("pkind", "")
+            info_ = WHEEL_INFO.get(pk_)
+            for m_ in ob_.data.materials:
+                b_ = m_.node_tree.nodes.get("Principled BSDF") if m_ and m_.node_tree else None
+                if not b_:
+                    continue
+                if info_ and info_["mat"] in ("Rim", "Spokes", "Dish", "Hub", "Chrome"):
+                    b_.inputs["Base Color"].default_value = (0.02, 0.02, 0.022, 1)
+                    b_.inputs["Roughness"].default_value = 0.3
+                elif pk_ in ("Body", "RoofBody", "Lid") + tuple(PANEL_OF) or pk_.startswith("PanelDoor"):
+                    b_.inputs["Roughness"].default_value = 0.12
+                    if "Coat Weight" in b_.inputs:
+                        b_.inputs["Coat Weight"].default_value = 1.0
+                elif pk_.startswith("RoofGlass") or pk_ == "Glass":
+                    b_.inputs["Base Color"].default_value = (0.01, 0.012, 0.015, 1)
+    if scene.render.engine == "CYCLES":
+        scene.cycles.samples = int(os.environ.get("NC_MASKSAMPLES", "2"))
+    cam.data.lens = float(os.environ.get("NC_REFLENS", "55"))
+    D_ = float(os.environ.get("NC_REFD", "33"))
+    H_ = float(os.environ.get("NC_REFH", "4.4"))
+    scene.render.resolution_x = scene.render.resolution_y = 600
+    VIEWS_ = json.loads(os.environ.get("NC_REFVIEWS", "null")) or REF_VIEWS
+    for k, (a, h) in enumerate(VIEWS_):
+        ar = math.radians(a)
+        shot(f"mask{k}", (D_ * math.sin(ar), -D_ * math.cos(ar), h), (0, 0, ROOF * 0.42))
+    if os.environ.get("NC_REFGRID"):
+        scene.render.resolution_x = scene.render.resolution_y = 300
+        for a in range(0, 360, 5):
+            for h in (2.5, 4.5, 6.5, 8.5):
+                ar = math.radians(a)
+                shot(f"grid_{a}_{h}", (D_ * math.sin(ar), -D_ * math.cos(ar), h), (0, 0, ROOF * 0.42))
+    cam.data.lens = 50
+    scene.render.resolution_x, scene.render.resolution_y = 1536, 1024
+    cam.location = (0.0, 0.0, 60.0)
+    cam.rotation_euler = (0.0, 0.0, math.pi / 2)         # nose (-y) to the left of the frame
+    scene.render.filepath = os.path.join(PREV, f"{VID}_masktop.png")
+    bpy.ops.render.render(write_still=True)
+    raise SystemExit(0)
 if S.get("rim_dark"):                                     # previews: the car's stock wheels are black
     for ob in wheel:
         info = WHEEL_INFO.get(ob.get("pkind", ""))
@@ -1543,13 +1693,13 @@ if S.get("smooth"):                                      # the reference photo's
             lb.inputs["Base Color"].default_value = (0.035, 0.035, 0.038, 1)
     shot("photo", (Lr * 1.05, -Lr * 1.6, 5.8), (Lr * 0.1, -Lr * 0.12, 2.4))
     if os.environ.get("NC_REFSHEET"):                   # the eight studio angles of the reference sheet
-        cam.data.lens = 110                              # long lens: near-orthographic like a studio sheet
+        cam.data.lens = 55                               # the sheet's cameras, fitted to its silhouettes (2026-11-24)
         rx, ry = scene.render.resolution_x, scene.render.resolution_y
         scene.render.resolution_x, scene.render.resolution_y = 600, 600
-        for k, a in enumerate((0, 35, 90, 145, 180, 215, 270, 325)):
+        for k, (a, h) in enumerate(REF_VIEWS):
             ar = math.radians(a)
-            d = Lr * 7.0
-            shot(f"ref{k}", (d * math.sin(ar), -d * math.cos(ar), ROOF * 0.9), (0, 0, ROOF * 0.42))
+            d = 33.0
+            shot(f"ref{k}", (d * math.sin(ar), -d * math.cos(ar), h), (0, 0, ROOF * 0.42))
         scene.render.resolution_x, scene.render.resolution_y = 1024, 1536
         cam.data.lens = 110
         shot("reftop", (0.0, 0.05, Lr * 7.0), (0, 0, 0))

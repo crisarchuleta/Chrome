@@ -118,12 +118,14 @@ def headlights():
         for dx in (-0.25, 0.25):
             scyl(kind(S, "Dual", "Chrome"), (x + dx, y + 0.08, zc), (x + dx, y - 0.05, zc), 0.24, seg=20)
             scyl(kind(S, "Dual", "Head"), (x + dx, y - 0.05, zc), (x + dx, y - 0.09, zc), 0.19, seg=20)
-        if SMOOTH:  # swept lamps over the nose corners, running back along the fender tops (cast onto the skin)
-            pts = [(0.46, L0 + 0.16), (0.88, L0 + 0.85), (0.89, L0 + 1.55), (0.52, L0 + 0.5)]
-            P = lambda k, g: (s * (station_w(pts[k][1]) * min(0.86, pts[k][0] * W / station_w(pts[k][1]) if pts[k][0] < 0.6 else 0.86)
-                                   + g * (1 if k in (1, 2) else -1)), pts[k][1] + g * (1 if k in (2, 3) else -1), 8.0)
-            decal(kind(S, "Slim", "Dark"), P(0, 0.07), P(1, 0.07), P(2, 0.07), P(3, 0.07), (0, 0, -1), nu=12, nv=3, out=0.02, inn=0.06)
-            decal(kind(S, "Slim", "Head"), P(0, 0.0), P(1, 0.0), P(2, 0.0), P(3, 0.0), (0, 0, -1), nu=12, nv=3, out=0.04, inn=0.02)
+        if SMOOTH:  # the reference's lamps: big swept units on the nose corners, cast from the front so they wrap
+            yc = L0 - 2.0
+            q = lambda pts, g=0.0: [(s * (a * W + g * (1 if a > 0.6 else -1)), yc, b + g * (1 if k in (0, 1) else -1)) for k, (a, b) in enumerate(pts)]
+            HL = [(0.43, 2.66), (0.88, 2.76), (0.92, 2.36), (0.5, 2.45)]
+            DRL = [(0.45, 2.66), (0.88, 2.76), (0.88, 2.69), (0.47, 2.6)]
+            decal(kind(S, "Slim", "Dark"), *q(HL, 0.06), (0, 1, 0), nu=12, nv=4, out=0.02, inn=0.06)
+            decal(kind(S, "Slim", "Chrome"), *q(HL), (0, 1, 0), nu=12, nv=4, out=0.04, inn=0.02)     # the lamp's reflector
+            decal(kind(S, "Slim", "Head"), *q(DRL), (0, 1, 0), nu=12, nv=2, out=0.055, inn=0.0)     # LED strip (lights up)
         else:
             sbox(kind(S, "Slim", "Dark"), x - 0.55, y - 0.05, z1 - 0.3, x + 0.55, y + 0.08, z1 - 0.06, bev=0.03)
             sbox(kind(S, "Slim", "Head"), x - 0.5, y - 0.08, z1 - 0.2, x + 0.5, y, z1 - 0.12)
@@ -161,14 +163,22 @@ def taillights():
             scyl(kind(S, "Twin", "Tail"), (s * (xo - 0.3 - dx), y - 0.04, zc), (s * (xo - 0.3 - dx), y + 0.08, zc), 0.22, seg=18)
         sbox(kind(S, "Stacked", "Tail"), s * (xo - 1.0), y - 0.04, zc + 0.02, s * xo, y + 0.08, z1 - 0.04)
         sbox(kind(S, "Stacked", "Light"), s * (xo - 1.0), y - 0.04, z0 + 0.04, s * xo, y + 0.08, zc - 0.02)
-        if SMOOTH:  # slim lamps across the tail corners, wrapping onto the rear fenders
-            yb, zt = L1 + 1.0, TAIL - 0.45
-            xe = station_w(L1 - 0.3) * 0.95
-            q = [(s * xe * 0.45, yb, zt - 0.12), (s * xe, yb, zt - 0.2), (s * xe, yb, zt + 0.06), (s * xe * 0.45, yb, zt + 0.0)]
-            decal(kind(S, "Slim", "Tail"), *q, (0, -1, 0), nu=10, nv=2, out=0.035, inn=0.03)
-            xs = s * (W + 1.0)
-            q = [(xs, L1 - 0.55, zt - 0.12), (xs, L1 - 0.02, zt - 0.2), (xs, L1 - 0.02, zt + 0.06), (xs, L1 - 0.55, zt + 0.02)]
-            decal(kind(S, "Slim", "Tail"), *q, (-s, 0, 0), nu=6, nv=2, out=0.035, inn=0.03)
+        if SMOOTH:  # the reference's lamps: wide units under the deck lip, cast from behind so they wrap the corners
+            yb, zt = L1 + 1.5, TAIL - 0.45
+            TL = [(0.36, zt - 0.25), (0.93, zt - 0.4), (0.93, zt + 0.12), (0.36, zt + 0.04)]
+            q = lambda g: [(s * (a * W + g * (1 if a > 0.6 else -1)), yb, b + g * (1 if k in (2, 3) else -1)) for k, (a, b) in enumerate(TL)]
+            decal(kind(S, "Slim", "Dark"), *q(0.05), (0, -1, 0), nu=12, nv=3, out=0.02, inn=0.06)
+            decal(kind(S, "Slim", "Tail"), *q(0.0), (0, -1, 0), nu=12, nv=3, out=0.04, inn=0.03)
+            # bumper reflectors low on the corners
+            R = [(0.62, ZB + 0.72), (0.86, ZB + 0.72), (0.86, ZB + 0.82), (0.62, ZB + 0.82)]
+            decal(kind(S, "Slim", "Tail"), *[(s * a * W, yb, b) for a, b in R], (0, -1, 0), nu=6, nv=1, out=0.03, inn=0.02)
+            if s == 1:                                 # plate recess on the hatch and a dark diffuser under the bumper
+                decal("Dark", (-0.78, yb, zt - 1.05), (0.78, yb, zt - 1.05), (0.78, yb, zt - 0.42), (-0.78, yb, zt - 0.42), (0, -1, 0),
+                      nu=8, nv=3, out=0.012, inn=0.05)
+                pass
+            if s == 1:                                 # a chrome strip across the hatch between the lamps
+                decal(kind(S, "Slim", "Chrome"), (-0.37 * W, yb, zt - 0.05), (0.37 * W, yb, zt - 0.05), (0.37 * W, yb, zt + 0.01),
+                      (-0.37 * W, yb, zt + 0.01), (0, -1, 0), nu=16, nv=1, out=0.03, inn=0.02)
         else:
             sbox(kind(S, "Slim", "Dark"), s * (xo - 1.3), y - 0.03, zc - 0.12, s * xo, y + 0.08, zc + 0.12)
             sbox(kind(S, "Slim", "Tail"), s * (xo - 1.25), y + 0.08, zc - 0.05, s * (xo - 0.05), y + 0.11, zc + 0.05)
@@ -242,11 +252,15 @@ def spoilers():
     ye = L1 - 0.6
     ze = deck_z(0, ye)
     xw = W - 0.7
+    zs = ze                                          # upright foot
+    if SMOOTH:                                       # a tucked tail: stay on the deck's top, feet sunk into its curve
+        xw = min(xw, top_w(ye) + 0.15)
+        zs = ze - 0.25
     sprism(kind(S, "Ducktail", "Body"), [(-xw, ye - 0.6, ze + 0.02), (xw, ye - 0.6, ze + 0.02), (xw, ye + 0.08, ze + 0.28), (-xw, ye + 0.08, ze + 0.28)],
            [(-xw, ye - 0.6, ze - 0.04), (xw, ye - 0.6, ze - 0.04), (xw, ye + 0.08, ze - 0.04), (-xw, ye + 0.08, ze - 0.04)])
     for v, h, depth, mat in (("Wing", 0.55, 0.7, "Body"), ("GT", 1.1, 1.0, "Dark")):
         for s in (-1, 1):
-            sbox(kind(S, v, mat), s * (xw - 0.6) - 0.06, ye - 0.3, ze, s * (xw - 0.6) + 0.06, ye, ze + h)
+            sbox(kind(S, v, mat), s * (xw - 0.6) - 0.06, ye - 0.3, zs, s * (xw - 0.6) + 0.06, ye, ze + h)
         sbox(kind(S, v, mat), -xw - 0.1, ye - depth + 0.2, ze + h, xw + 0.1, ye + 0.2, ze + h + 0.1, bev=0.03)
         if v == "GT":
             for s in (-1, 1):
@@ -269,8 +283,18 @@ def mirrors():
     S = "Mirrors"
     y = A0 + 0.55 if not OPEN else A0 + 0.12                    # open cart: on the cowl, ahead of the step-in
     z = BELT + 0.3
+    if SMOOTH:                                   # a modern mirror: on the door glass's front corner, inside the body's width
+        y, z = A0 + 0.75, BELT + 0.42
     for s in (-1, 1):
         x = s * (W + 0.05)
+        if SMOOTH:
+            x = s * (gh_xb(y) + 0.02)
+            sbeam(kind(S, "Sport", "Body"), (s * (gh_xb(y) - 0.08), y + 0.12, BELT + 0.06), (x + s * 0.35, y + 0.08, z - 0.05), 0.1, 0.16)
+            scyl(kind(S, "Sport", "Body"), (x + s * 0.6, y - 0.15, z), (x + s * 0.6, y + 0.14, z), 0.25, seg=16, r2=0.19)
+            scyl(kind(S, "Sport", "Glass"), (x + s * 0.6, y + 0.14, z), (x + s * 0.6, y + 0.16, z), 0.2, seg=16)
+            sbox(kind(S, "Rect", "Body"), x, y - 0.1, z - 0.2, x + s * 0.62, y + 0.14, z + 0.2, bev=0.06)
+            sbox(kind(S, "Rect", "Glass"), x + s * 0.05, y + 0.14, z - 0.15, x + s * 0.57, y + 0.16, z + 0.15)
+            continue
         sbeam(kind(S, "Rect", "Dark"), (s * (W - 0.1), y, BELT + 0.08), (x + s * 0.15, y, z), 0.12, 0.08)
         sbox(kind(S, "Rect", "Body"), x + s * 0.05, y - 0.08, z - 0.22, x + s * 0.65, y + 0.16, z + 0.22, bev=0.05)
         sbox(kind(S, "Rect", "Glass"), x + s * 0.1, y + 0.16, z - 0.17, x + s * 0.6, y + 0.18, z + 0.17)
