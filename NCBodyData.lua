@@ -242,7 +242,7 @@ D.bodies = {
 			{ "Head", "FaceFrontAttachment", Vector3.new(-0.000, 5.512, -0.484) },
 			{ "UpperTorso", "NeckAttachment", Vector3.new(-0.000, 4.981, 0.088) },
 			{ "UpperTorso", "BodyFrontAttachment", Vector3.new(-0.000, 4.099, -0.513) },
-			{ "UpperTorso", "BodyBackAttachment", Vector3.new(-0.000, 4.099, 0.277) },
+			{ "UpperTorso", "BodyBackAttachment", Vector3.new(-0.000, 4.099, 0.282) },
 			{ "LowerTorso", "WaistCenterAttachment", Vector3.new(-0.000, 3.113, 0.000) },
 			{ "LowerTorso", "WaistFrontAttachment", Vector3.new(-0.000, 3.113, -0.522) },
 			{ "LowerTorso", "WaistBackAttachment", Vector3.new(-0.000, 3.113, 0.508) },

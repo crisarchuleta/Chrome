@@ -501,17 +501,34 @@ def tube(points, radii, sides=8, twist=0.0, bumps=0.0, bump_freq=6.0):
         for k in range(sides):
             a = 2 * math.pi * k / sides + twist * i
             verts.append(p + (nrm * math.cos(a) + bi * math.sin(a)) * r)
-    for i in range(len(P) - 1):
+    # rounded ends (a flat cap read as a cut-off square end on locs, twists and the ponytail): one more ring a
+    # little past each end, narrower, then the centre point further out
+    n_ring = len(P)
+    ends = []
+    for i_end, sgn in ((0, -1.0), (len(P) - 1, 1.0)):
+        p = P[i_end]
+        t = (P[min(i_end + 1, len(P) - 1)] - P[max(i_end - 1, 0)]).normalized() * sgn
+        r = radii[i_end]
+        base = i_end * sides
+        ring0 = len(verts)
+        for k in range(sides):
+            q = verts[base + k]
+            verts.append(p + (q - p) * 0.72 + t * r * 0.55)
+        ends.append((base, ring0, len(verts)))
+        verts.append(p + t * r * 0.95)
+    for i in range(n_ring - 1):
         for k in range(sides):
             a, b = i * sides + k, i * sides + (k + 1) % sides
             faces.append([a, b, b + sides, a + sides])
-    c0 = len(verts)
-    verts.append(P[0])
-    verts.append(P[-1])
-    for k in range(sides):
-        faces.append([c0, (k + 1) % sides, k])
-        last = (len(P) - 1) * sides
-        faces.append([c0 + 1, last + k, last + (k + 1) % sides])
+    for j, (base, ring0, tip) in enumerate(ends):
+        for k in range(sides):
+            k2 = (k + 1) % sides
+            if j == 0:                                  # (start: faces wound the other way)
+                faces.append([base + k2, base + k, ring0 + k, ring0 + k2])
+                faces.append([tip, ring0 + k2, ring0 + k])
+            else:
+                faces.append([base + k, base + k2, ring0 + k2, ring0 + k])
+                faces.append([tip, ring0 + k, ring0 + k2])
     return verts, faces
 
 
@@ -906,6 +923,10 @@ def build_styles(H):
             return (1 - behind) * (np.array([side * 1.0, 0.45, 0.0]) + flow_back(loc, nrm) * 0.3) + behind * flow_back(loc, nrm)
         return f
 
+    def _unit3(v):
+        v = np.asarray(v, float)
+        return v / max(float(np.linalg.norm(v)), 1e-9)
+
     def flow_tie(pt):
         """slicked tight towards a tie point (a ponytail or bun): every hair heads for it over the scalp"""
         pt = np.asarray(pt, float)
@@ -918,6 +939,11 @@ def build_styles(H):
         rng = np.random.default_rng(zlib.crc32(key.encode()))     # (stable: str hash() changes every run)
         flow = (flow_part(cp["part"] * H.R) if cp.get("flow") == "part" else
                 flow_tie(cp["tie"]) if cp.get("flow") == "tie" else FLOWS[cp.get("flow", "crown")])
+        if cp.get("sides_down"):                         # long hair: on the sides it falls down over the hanging sheet's
+            _f0 = flow                                   # top edge (combed back there, the sheet's top showed as a block)
+            def flow(loc, nrm, _f0=_f0):
+                k_ = smoothstep(0.38 * H.R, 0.72 * H.R, abs(loc[0] - H.centre[0])) * smoothstep(H.top - 0.02, H.top - 0.3, loc[2])
+                return (1 - k_) * _unit3(_f0(loc, nrm)) + k_ * np.array([0.0, 0.3, -1.0])
         tmin, tmax = p["side"], max(p["top"], p["side"] + 1e-4)
         tw = np.clip((T - tmin) / (tmax - tmin), 0, 1)
         builders = {"full": Builder(), "cap": Builder()}
@@ -926,6 +952,11 @@ def build_styles(H):
             kdv.insert(vv_, ii)
         kdv.balance()
         vol = np.maximum(T, 0.004)
+        ears_ = H.co[H.mask["ears"]]
+        kde_ = KDTree(len(ears_))
+        for ii, pe in enumerate(ears_):
+            kde_.insert(pe, ii)
+        kde_.balance()
 
         # the solid base shell's surface over the scalp (same formula add_short uses after the cards)
         if cp.get("base"):
@@ -955,7 +986,8 @@ def build_styles(H):
             if os.environ.get("NC_DBG"):
                 print("NC_DBG", key, layer[6] if len(layer) > 6 else "-", len(_roots), float(weight.max()))
             for root, i in _roots:
-                if cov[i] < 0.3 or (V[i][2] < H.ear_z + 0.06 + rng.uniform(0, 0.05) and relc[i, 1] < -0.15 * H.R):
+                if cov[i] < 0.3 or (V[i][2] < H.ear_z + 0.06 + rng.uniform(0, 0.05) and relc[i, 1] < -0.15 * H.R) \
+                        or kde_.find(V[i])[2] < 0.04:              # (nor right by the ear: short ones there are dark flecks)
                     continue      # (none right on the bare edge, where one floats as a speck, or on the sideburns in front
                     #  of the ear, which the shell does; a ragged line, so the cards above don't end in a step)
                 # (the back of a crop is short: the long top hair is the front and crown, so no bowl-shaped fringe)
@@ -1270,7 +1302,9 @@ def build_styles(H):
                 root = V[i] + N[i] * (T[i] * 0.6)
                 if capped and V[i][2] > cap_line(H, V[i])[0] - 0.01:
                     continue
-                is_front = rel[i][1] < -0.25 * H.R and rel[i][2] > 0.1
+                # (and the ones rooted on the front of the top: full length they fall straight down over the face)
+                is_front = (rel[i][1] < -0.25 * H.R and rel[i][2] > 0.1) or (rel[i][1] < 0.1 * H.R and abs(rel[i][0]) < 0.55 * H.R
+                                                                             and rel[i][2] > 0.1 and end_z is None)
                 L = front_len if is_front else length
                 L *= 0.85 + 0.3 * r2.random()
                 if end_z is not None:                  # tips end on one line: brows at the front, ear tops and fade behind
@@ -1289,6 +1323,11 @@ def build_styles(H):
                 pts = drape(H, root, L, radius * clear_k, SHOULDERS[H.gender], seed=k, sway=0.25)
                 # each loc grows out of the scalp: start it inside the base, so no cut end shows at the root
                 pts = [V[i] - N[i] * 0.015, V[i] + N[i] * (T[i] * 0.5) + dir0 * 0.02] + list(pts[1:])
+                # (no sharp kinks where the drape meets the shoulder or chest: relax the path, root held)
+                Pp = np.array(pts, float)
+                for _ in range(6):
+                    Pp[3:-1] = 0.25 * Pp[2:-2] + 0.5 * Pp[3:-1] + 0.25 * Pp[4:]
+                pts = list(Pp)
                 rad = [radius * (1.0 - 0.35 * (j / len(pts)) ** 2) for j in range(len(pts))]
                 rad[0] *= 0.8
                 if two_strand:
@@ -1446,7 +1485,7 @@ def build_styles(H):
 
     base = dict(top=0.03, side=0.02, feather=0.05, groove=0.2, freq=34)
     if male:
-        add_short("Locs", "Shoulder Locs", base, locs_extras(1.1, 12, 70, 0.027, 0.5))
+        add_short("Locs", "Shoulder Locs", base, locs_extras(1.1, 12, 70, 0.027, 0.27))   # (front locs end at the brows, eyes clear)
         # hanging two-strand twists from a centre part, ending at the brows, the ear tops and the fade line, with a
         # squared edge-up and a high skin fade (references hair_ref_3)
         add_short("Twists", "Hanging Twists", dict(base, top=0.02, fade_z=0.2, feather=0.025, parts_y=True),
@@ -1457,7 +1496,7 @@ def build_styles(H):
                                                     parts_phi=np.degrees(FT_PARTS), parts_angle=ft_angle),
                   ft_ex)
     else:
-        add_short("Locs", "Long Locs", base, locs_extras(1.8, 10, 80, 0.026, 0.38))
+        add_short("Locs", "Long Locs", base, locs_extras(1.8, 10, 80, 0.026, 0.27))
 
     # --- women: slick centre part with a low bun (the reference), ponytail, long straight, bob
     if not male:
@@ -1554,6 +1593,9 @@ def build_styles(H):
                 # Each column falls straight down from the widest point above it (like real hair over a head and
                 # shoulders): radius from the head's vertical axis = running max of the head/body outline + a gap.
                 cols, rows = 72, max(10, int(length / 0.03))
+                # (the sheet ends just behind the ears; in front of them the hair is the scalp cards and the front
+                #  strands falling down beside the face. Reaching further forward its end showed as a flat panel)
+                SPAN = 97.0
                 axis = np.array([0.0, H.centre[1]])
                 z0 = H.top - 0.01
                 body = SHOULDERS[H.gender]
@@ -1578,7 +1620,7 @@ def build_styles(H):
                     return 3.0 - hit[3] if hit[0] is not None else 0.0
 
                 R = np.zeros((cols, rows + 1))
-                angs = [math.radians(-110 + 220 * k / (cols - 1)) for k in range(cols)]
+                angs = [math.radians(-SPAN + 2 * SPAN * k / (cols - 1)) for k in range(cols)]
                 def col_len(a):
                     side = smoothstep(math.radians(28), math.radians(55), abs(a))
                     return length * (1 - side) + min(length, z0 - shoulder_z) * side
@@ -1652,7 +1694,7 @@ def build_styles(H):
                 # so tips taper and nothing is stretched or square-cut); ends are uneven. Under a hat, only the parts
                 # below the cap line.
                 surfR = R + ((groove + 0.03) * taper)                 # the sheet's outer radius (cols x rows+1)
-                a_lo, a_hi = math.radians(-110), math.radians(110)
+                a_lo, a_hi = math.radians(-SPAN), math.radians(SPAN)
 
                 def sheet_r(a, z):
                     if not (a_lo <= a <= a_hi):
@@ -1758,10 +1800,10 @@ def build_styles(H):
                             s0 += seg_len * rng_.uniform(0.5, 0.65)
             return ex
         add_short("LongStraight", "Long Straight", dict(slick, top=0.05, side=0.04, groove=0.3,
-                                                        cards=dict(straight_cards("back", 0.35, 0.25), defer=True)),
+                                                        cards=dict(straight_cards("back", 0.35, 0.4), defer=True, sides_down=True)),
                   curtain(1.9, 0.25, False))
         add_short("Bob", "Chin Bob", dict(slick, top=0.06, side=0.045, part=0.2, groove=0.3,
-                                          cards=dict(straight_cards("part", 0.3, 0.22), part=0.2, defer=True)),
+                                          cards=dict(straight_cards("part", 0.3, 0.36), part=0.2, defer=True, sides_down=True)),
                   curtain(1.0, 0.45, True, part_x=0.2))
     return out, (V, F, S, N, d)
 

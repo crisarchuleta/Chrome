@@ -594,6 +594,35 @@ def split(body, rig, prefix):
     bm_full.from_mesh(body.data)
     loose = [v for v in bm_full.verts if not v.link_faces]      # (stray points would bloat every part's bounds)
     bmesh.ops.delete(bm_full, geom=loose, context="VERTS")
+    # cut the mesh exactly along each shoulder seam first (the same plane the part split uses below), so the line
+    # between UpperTorso and the arm is a smooth loop instead of a staircase of whole triangles (a tee coloured by
+    # part showed jagged armholes). Only the faces round the shoulder are cut; new vertices take blended weights.
+    for _side, _s, _m, bx in SIDES:
+        a = rig.data.bones[_side + "UpperArm"].head_local
+        seam = Vector((bx * 0.7071, 0, -0.7071))
+        near = [f for f in bm_full.faces if (f.calc_center_median().x * bx > 0 and f.calc_center_median().z > a.z - 0.6
+                                              and abs((f.calc_center_median() - a).dot(seam)) < 0.25)]
+        if near:
+            gv = {v for f in near for v in f.verts}
+            ge = {e for f in near for e in f.edges}
+            bmesh.ops.bisect_plane(bm_full, geom=list(gv) + list(ge) + near, plane_co=a, plane_no=seam)
+    # (and the same at the elbow, wrist, knee and ankle cuts, and the neck line: sleeves, trouser legs and collars)
+    def _cut(co, no, keep):
+        near = [f for f in bm_full.faces if keep(f.calc_center_median()) and abs((f.calc_center_median() - co).dot(no)) < 0.2]
+        if near:
+            bmesh.ops.bisect_plane(bm_full, geom=list({v for f in near for v in f.verts}) + list({e for f in near for e in f.edges}) + near,
+                                   plane_co=co, plane_no=no)
+    _J = {b.name: b.head_local.copy() for b in rig.data.bones}
+    for _side, _s, _m, bx in SIDES:
+        for chain in (("UpperArm", "LowerArm", "Hand"), ("UpperLeg", "LowerLeg", "Foot")):
+            a_, b_, c_ = (_J[_side + c] for c in chain)
+            for co, no in ((b_, (b_ - a_).normalized()), (c_, (c_ - b_).normalized())):
+                _cut(co, no, lambda c, co=co: (c - co).length < 0.5 and c.x * bx > 0)
+    _nz = rig.data.bones["Head"].head_local.z - 0.15
+    _cut(Vector((0, 0, _nz)), Vector((0, 0, 1)), lambda c: abs(c.x) < 0.22)
+    for _sx in (-1, 1):                                    # (the neck box's sides)
+        _cut(Vector((_sx * 0.22, 0, 0)), Vector((1, 0, 0)), lambda c: c.z > _nz - 0.05 and c.z < _nz + 0.6)
+    bmesh.ops.triangulate(bm_full, faces=[f for f in bm_full.faces if len(f.verts) > 4])
     bm_full.normal_update()
     full_normals = [v.normal.copy() for v in bm_full.verts]
     kd = KDTree(len(bm_full.verts))

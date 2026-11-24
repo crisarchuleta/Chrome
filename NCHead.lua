@@ -29,6 +29,9 @@ H.SOFT_T = 0.02 -- the smallest Transparency that turns on the soft alpha of a S
 -- glossy front, and strands only past its silhouette like a crest). An opaque shell is always drawn first. If skin
 -- fades go hard-edged with it, set this back to H.SOFT_T.
 H.CARD_SHELL_T = 0
+-- styles whose cards are only loose hairs round locs or twists keep the soft shell: the shell's soft edge is their
+-- fade/band edge (opaque, it went hard and dark under Flat Twists), and loose wisps don't suffer from the sort
+H.SOFT_SHELL = { Locs = true, Twists = true, FlatTwists = true }
 H.LIP_TINT = Color3.fromRGB(150, 62, 70)
 H.LASH = Color3.fromRGB(22, 16, 14)
 
@@ -229,11 +232,14 @@ function H.WearHair(fr, pp, parent, hair, skin, hatOn)
 	-- Hair_<Style>_CapCards under a hat). They are thin, so they don't cast shadows.
 	local cards = "Hair_" .. style .. (hatOn and "_CapCards" or "_Cards")
 	local hasCards = H.has(fr, cards)
-	local opaque = hasCards and H.CARD_SHELL_T < H.SOFT_T
+	if H.SOFT_SHELL[style] then
+		hasCards = hasCards and "wisps"
+	end
+	local opaque = hasCards == true and H.CARD_SHELL_T < H.SOFT_T
 	-- (the shell casts no shadow: Roblox's shadow ignores its soft edge, so the geometric edge of the shell, which
 	--  reaches past the visible hairline, printed a dark sliver on the forehead and an outline at the fade)
 	if not H.put(fr, name, parent, { Color = hair, Material = Enum.Material.SmoothPlastic, CastShadow = false,
-		Transparency = hasCards and H.CARD_SHELL_T or nil, Opaque = opaque }) then
+		Transparency = opaque and H.CARD_SHELL_T or nil, Opaque = opaque }) then
 		return false
 	end
 	if hasCards then
