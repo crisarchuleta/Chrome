@@ -524,3 +524,36 @@ Renders:
 - `previews/Close_*.png`: the fixed details.
 - `previews/Street_pools_drone.png`, `Street_pool_twostory.png`, `Street_pool_mediterranean.png`.
 - `previews/Pool_*.png`.
+
+## Lowrider with hydraulics + Low & Slow Kustoms (pass 10; written, not yet tested in Studio)
+
+Full notes and install steps in `LOWRIDER.md`.
+- `build_lowrider.py` -> `Lowrider.glb` (an original two-door hardtop lowrider, Classic Wire 100-Spoke wheel),
+  `LowSlowShop.glb` (two-bay custom shop with a neon sign, paint turntable and hop pit), `NCLowriderData.lua`.
+- Drivable with raycast suspension; air bags (smooth lifts, lay frame) or hydraulics (corner lifts, front hop,
+  body hop, three-wheel, dance). Hop pit measures hops in inches; top five show on the board.
+- Customize at the shop with live preview: candy paints and finishes, vinyl decals printed flush on the paint
+  (flames, pinstripes, patterns + lace, sunset mural; images from make_lowrider_vinyls.py, LowriderVinyls.glb),
+  wheel finishes, whitewalls, suspension kits, continental kit, trunk pump setup. Saved in `NeonCoast_Garage_v1`.
+- Works right away with a part-made car and shop; `NCLowriderKit.Prepare(import)` switches to the Blender meshes.
+- Full customization (pass 11): GTA-style tuning menu (categories -> mods -> options, camera on each part, hover
+  preview, cart total, custom colour picker). Swappable bumpers, grilles, hoods, ornaments, spoilers, skirts,
+  mirrors, visors, exhausts, underglow, trunk setups, 4 seat styles, 5 steering wheels, 4 dashes with a live
+  speedometer, 5 shifters, dice and a club plaque; 8 rims, 3 knock-offs, 3 tyre profiles, 4 whitewall styles;
+  finishes per chrome group, seat material + colours, tint, light colours, engine tunes; 15 liveries.
+  Parts are in `build_lowrider_parts.py`; options and prices are in `NCLowriderConfig.Mods`.
+  Roofs: hardtop, landau, full vinyl, convertible top down. 3 saved build slots, random build, back to stock.
+  Headlight, taillight and side trim styles; 6 seat styles, door panels, headliners, rear deck speakers, pedals.
+
+## Every vehicle on the lowrider's customization system (pass 11; written, not yet tested in Studio)
+
+Full notes in `VEHICLES.md`.
+- `NCVehicles.lua` lists every vehicle (the lowrider, 4 new builds, and the city's existing lineup by name). The shop,
+  saves (per vehicle), driving and the Garage list at Low & Slow Kustoms work for any of them.
+- `build_vehicles.py` + `build_vehicle_parts.py` build a vehicle from a spec: Ironclad SS (muscle), Ironhorn TRX
+  (pickup), Kestrel GT (sports), Dunewalker (SUV) so far, each with every swappable part, all wheel designs and vinyls.
+- Every vehicle (the lowrider too) has hinged doors, hood, rear (trunk / hatch / liftgate / tailgate) and a gas door;
+  doors swing open on enter / exit and every panel has a prompt (`Kit.SetOpen`). Cabins are open and there is an
+  engine bay under each hood.
+- Still to do: rebuild the rest of the existing lineup under the same names, then hook CarSpawner / HomeService /
+  PoliceAI / PhoneService up to the new system (needs the PC).
