@@ -501,6 +501,8 @@ def cutters_and_body():
     for wy in (WY_F, WY_R):
         for s in (-1, 1):
             liner(s * (tub + 0.01), s * (tub + 0.05), wy)
+            if S.get("smooth"):
+                arch_tunnel(s, tub, wy)
     flat_floor("Carpet", xin, A0 + 0.1, cab_end - 0.05, floor - 0.02, floor + 0.06)
     wheel_houses("Under" if S.get("smooth") else "Carpet", xin, A0 + 0.05, cab_end, floor)   # seen through the arches
     if OPEN:                                                                  # rubber edge trim round the step-in + a sill plate
@@ -594,6 +596,29 @@ def liner(x0, x1, wy):
     for k in range(32):
         bm.faces.new((vs0[k], vs0[(k + 1) % 32], vs1[(k + 1) % 32], vs1[k]))
     bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-4)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    new_obj(bm, "Under", style=PREFIX)
+
+
+def arch_tunnel(s, x_in, wy):
+    """the wheel arch's ceiling, lined dark from the well's back wall out to the skin (the cut body shows otherwise)"""
+    bm = bmesh.new()
+    n = 24
+    r0, r1 = ARCH + 0.045, ARCH + 0.005                    # just outside the cut, so a bumped tyre clears it
+    rows = []
+    for k in range(n + 1):
+        a = math.pi * k / n
+        c = math.sin(a)
+        if WR + ARCH * c < ZB:
+            continue
+        xo = min(W, station_w(wy + ARCH * math.cos(a))) - 0.03      # stays inside a rounded tail's skin
+        rows.append([bm.verts.new((s * x, wy + r * math.cos(a), max(ZB - 0.02, WR + r * c)))
+                     for x in (x_in, xo) for r in (r0, r1)])
+    for A, B in zip(rows, rows[1:]):
+        bm.faces.new((A[0], A[2], B[2], B[0]))          # outer face (toward the tyre)
+        bm.faces.new((A[1], B[1], B[3], A[3]))          # inner face
+        bm.faces.new((A[0], B[0], B[1], A[1]))          # inboard edge
+        bm.faces.new((A[2], A[3], B[3], B[2]))          # outboard edge
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     new_obj(bm, "Under", style=PREFIX)
 
@@ -919,6 +944,7 @@ def build_rear():
 def build_fuel_door():
     y0, y1 = FUEL_Y
     z0, z1 = FUEL_Z
+    W = min(globals()["W"], station_w((y0 + y1) / 2) - 0.07) if S.get("smooth") else globals()["W"]   # under the cast flap
     sbox("Under", W - 0.04, y0 + 0.06, z0 + 0.06, W - 0.005, y1 - 0.06, z1 - 0.06)
     c = (W - 0.005, (y0 + y1) / 2, (z0 + z1) / 2)
     if S.get("electric"):                                  # charge port: a socket with two pins
@@ -927,7 +953,19 @@ def build_fuel_door():
             scyl("Chrome", (W, c[1], c[2] + dz), (W + 0.02, c[1], c[2] + dz), 0.03, seg=8)
     else:
         scyl("Chrome", c, (W + 0.01, c[1], c[2]), 0.15, seg=16)
+    if S.get("smooth"):
+        # a rounded tail: the flap is cast onto the curving quarter panel, and the port sits in the skin there
+        HINGES["Fuel"]["pivot"] = (W + 0.03, y0, (z0 + z1) / 2)
+        return
     sbox("PanelFuel", W + 0.015, y0, z0, W + 0.035, y1, z1, bev=0.03)
+
+
+def build_fuel_door_smooth():
+    """after the body exists (decals cast onto it): the charge flap and its port on the curved quarter"""
+    y0, y1 = FUEL_Y
+    z0, z1 = FUEL_Z
+    decal("PanelFuel", (W + 1, y0, z0), (W + 1, y1, z0), (W + 1, y1, z1), (W + 1, y0, z1), (-1, 0, 0), nu=4, nv=4,
+          out=0.025, inn=0.0)
 
 
 def build_frunk():
@@ -1281,6 +1319,7 @@ else:
 build_parts()
 if S.get("smooth"):
     smooth_details()
+    build_fuel_door_smooth()
 if S.get("fins"):                                         # 60s tail fins along the rear fenders
     for s_ in (-1, 1):
         y0, y1 = C1 + 0.4, L1 - 0.15
@@ -1534,6 +1573,8 @@ if os.environ.get("NC_DEBUG_SHOTS"):
     shot("dbg_hood", (-Lr * 0.55, -Lr * 1.15, ROOF * 1.5), (0, L0 + 2.5, BELT - 0.6))
     shot("dbg_cornerA", (W + 3.5, L0 - 3.5, 2.6), (W - 1.0, L0 + 1.0, 1.9))
     shot("dbg_quarter", (W + 6.0, (Q or B) + 1.0, 4.8), (W - 0.6, (Q or B) + 1.0, 4.2))
+    shot("dbg_quarter_back", (W + 2.6, L1 + 3.5, 6.0), (W - 0.9, (Q or B) + 1.6, 4.4))
+    shot("dbg_door_gap", (10.3, 4.6, 1.72), (3.44, 6.9, 0.57))
     shot("dbg_rwheel", (W + 6.0, WY_R, 1.6), (W, WY_R, 1.4))
     shot("dbg_cornerB", (-W - 3.5, L0 - 3.5, 2.6), (-W + 1.0, L0 + 1.0, 1.9))
     shot("dbg_hood_side", (-Lr * 1.1, -Lr * 0.55, BELT + 0.8), (0, (L0 + A0) / 2, BELT - 0.5))

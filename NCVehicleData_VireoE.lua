@@ -60,7 +60,7 @@ return {
 				Axis = {0, 1, 0},
 				Kind = "charge",
 				Open = -80,
-				Pivot = {-3.73, 2.535, 7.635},
+				Pivot = {-3.566, 2.535, 7.635},
 			},
 			Hood = {
 				Axis = {-1, 0, 0},

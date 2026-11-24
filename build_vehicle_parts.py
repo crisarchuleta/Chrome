@@ -120,7 +120,7 @@ def headlights():
             scyl(kind(S, "Dual", "Head"), (x + dx, y - 0.05, zc), (x + dx, y - 0.09, zc), 0.19, seg=20)
         if SMOOTH:  # swept lamps over the nose corners, running back along the fender tops (cast onto the skin)
             pts = [(0.46, L0 + 0.16), (0.88, L0 + 0.85), (0.89, L0 + 1.55), (0.52, L0 + 0.5)]
-            P = lambda k, g: (s * (station_w(pts[k][1]) * min(0.93, pts[k][0] * W / station_w(pts[k][1]) if pts[k][0] < 0.6 else 0.93)
+            P = lambda k, g: (s * (station_w(pts[k][1]) * min(0.86, pts[k][0] * W / station_w(pts[k][1]) if pts[k][0] < 0.6 else 0.86)
                                    + g * (1 if k in (1, 2) else -1)), pts[k][1] + g * (1 if k in (2, 3) else -1), 8.0)
             decal(kind(S, "Slim", "Dark"), P(0, 0.07), P(1, 0.07), P(2, 0.07), P(3, 0.07), (0, 0, -1), nu=12, nv=3, out=0.02, inn=0.06)
             decal(kind(S, "Slim", "Head"), P(0, 0.0), P(1, 0.0), P(2, 0.0), P(3, 0.0), (0, 0, -1), nu=12, nv=3, out=0.04, inn=0.02)
@@ -584,6 +584,7 @@ def build_wheels(ox):
             if ob.get("style") != st:
                 continue
             slot = WHEEL_INFO.get(ob["kind"], {}).get("slot")
+            spokes = WHEEL_INFO.get(ob["kind"], {}).get("mat") == "Spokes"
             if slot not in ("Rim", "Tire", "Band"):
                 continue
             for v in ob.data.vertices:
@@ -592,7 +593,8 @@ def build_wheels(ox):
                 if r < 1e-6:
                     continue
                 if slot == "Rim":
-                    r2 = min(r * f, WR - (WR - rho_in) * lp - 0.005)   # nothing pokes through the tyre bead
+                    rb = WR - (WR - rho_in) * lp                         # the tyre bead: nothing pokes through it
+                    r2 = min(r * f, rb * (0.93 if spokes else 1.0) - 0.005)  # spokes end inside the barrel
                 elif r < WR:
                     r2 = WR - (WR - r) * lp
                 else:
