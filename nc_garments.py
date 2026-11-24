@@ -2139,7 +2139,7 @@ def build_shades(o, name, lens=(0.03, 0.035, 0.035), frame=(0.018, 0.018, 0.02))
 
 
 # ----------------------------------------------------------------------------------------------- skinning
-RIGID_HEAD = ("_Cap", "Beanie", "Shades", "Mask", "Durag", "_Hat", "Glasses")
+RIGID_HEAD = ("_Cap", "Beanie", "Shades", "Mask", "Durag", "_Hat", "Glasses", "_hat_", "_eye_")  # hats/eyewear ride the head
 
 
 def skin_to_rig(o):

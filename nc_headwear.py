@@ -762,6 +762,267 @@ def build_item(o, it, hexc):
         build_knight_helm(o, nm, color=c1)
     elif f == "goggles":
         build_goggles(o, nm, frame=c1, lens=c2, up=bool(p.get("up")), yaw=75.0 if p.get("up") else 0.0)
+    elif f == "cap":
+        build_cap3(o, nm, color=c1, accent=c2, flat=bool(p.get("flat")), back=bool(p.get("back")),
+                   snap=not (p.get("flat") and not p.get("txt")), trucker=bool(p.get("trucker")), text=p.get("txt"))
+    elif f == "beanie":
+        build_beanie3(o, nm, color=c1, accent=c2, short=bool(p.get("short")), pom=bool(p.get("pom")))
     else:
         return False
     return True
+
+
+# ---------------------------------------------------------------------------------------------- caps and beanies
+def _hem(h, P, front, side, back, dz_back_side=None):
+    fr = h.front(P)
+    return h.eye_z + h.k * np.interp(fr, [-1, -0.5, 0.0, 0.5, 1], [back, (back + side) / 2 if dz_back_side is None else dz_back_side, side, (side + front) / 2, front])
+
+
+def _letters_nc(h, col, z0, r_h, gap):
+    """Raised embroidered "NC" on the front panel: polylines in (across, up) cm-ish units, snapped onto the crown."""
+    k = h.k
+    W, Hh = 0.017 * k, 0.026 * k
+    strokes = [np.array([[-1.25, 0], [-1.25, 1], [-0.25, 0], [-0.25, 1]])]
+    th = np.linspace(np.radians(50), np.radians(310), 14)
+    strokes.append(np.stack([0.75 + 0.5 * np.cos(th), 0.5 + 0.5 * np.sin(th)], 1))
+    out = []
+    for s_ in strokes:
+        d = np.r_[0, np.cumsum(np.linalg.norm(np.diff(s_, axis=0), axis=1))]
+        t = np.linspace(0, d[-1], 30)
+        s2 = np.stack([np.interp(t, d, s_[:, 0]), np.interp(t, d, s_[:, 1])], 1)
+        phi = s2[:, 0] * W / r_h
+        Q = h.at(phi, z0 + s2[:, 1] * Hh, r_h + 0.05 * k)
+        _, j = col.tree.query(Q)
+        Q = col.P[j] + col.N[j] * gap
+        for _ in range(3):
+            Q[1:-1] = 0.6 * Q[1:-1] + 0.2 * (Q[:-2] + Q[2:])
+        out.append(Q)
+    return out
+
+
+def build_cap3(o, name, color=(0.04, 0.04, 0.045), accent=None, flat=False, back=False, snap=True, trucker=False,
+               text=None):
+    """Six-panel cap matched to references/cap-views.jpg: deep crown sitting just above the brows and the tops of
+    the ears, six stitched seams meeting at a top button, an eyelet in each panel, a curved (or flat) brim with
+    rows of stitching, and on snapbacks an arched opening at the back with the strap. back=True turns it round."""
+    b = o.b; k = b.k; h = Head(b)
+    ez, c = h.eye_z, h.c
+    accent = accent if accent is not None else color
+    rot = np.pi if back else 0.0
+    P, F = h.faces(sub=1)
+    if back:
+        zl = _hem(h, P, 0.046, 0.016, -0.004)
+    else:
+        zl = _hem(h, P, 0.036, 0.012, -0.02)
+    f = zl - P[:, 2]
+    if snap:  # arched opening above the strap at the back of the cap
+        a_rel = np.angle(np.exp(1j * (h.ang(P) - rot - np.pi)))
+        op = 1 - (a_rel / 0.42) ** 2 - ((P[:, 2] - zl) / (0.045 * k)) ** 2
+        f = np.maximum(f, op * 0.05 * k)
+    P, F, _ = clip(P, F, f, {})
+    X, F, E = _shell(o, P, F, 0.006 * k, 4, 0.006 * k, smooth=4)
+    # crown volume: caps stand off the skull, most at the top front (structured front panels)
+    up = np.clip((X[:, 2] - ez) / (h.top - ez), 0, 1)
+    frr = np.cos(h.ang(X) - rot) * 0.5 + 0.5
+    N = vnormals(X, F)
+    X = X + N * (k * (0.004 + (0.010 + (0.008 if trucker else 0.0)) * frr ** 1.5 * np.sin(np.pi * np.clip(up * 0.95, 0, 1))
+                      + 0.006 * up ** 2))[:, None]
+    for _ in range(3):
+        X = laplace(X, E, 3, taubin=True)
+        X = o.col.push(X, 0.006 * k)
+    loops = boundary_loops(F)
+    ll = max(loops, key=len)
+    X = _smooth_loop(X, ll, 30, o.col, 0.006 * k)
+    centre = np.array([c[0], c[1], ez])
+    col = _col_of(X, F, centre)
+    m_main = _mat(name + "_Main", color, rough=0.85)
+    m_seam = _mat(name + "_Seam", np.array(color[:3]) * 0.55, rough=0.9)
+    m_acc = _mat(name + "_Accent", accent, rough=0.8)
+    mats = [m_main, m_acc]
+    mi = None
+    if trucker:  # mesh back panels in the accent colour
+        rear = np.cos(h.ang(X) - rot) < -0.15
+        mi = [1 if all(rear[v] for v in f_) else 0 for f_ in F]
+    out = [make_object(b, f"{b.obj.name}_{name}_Cap", X, F, mats, mi, None, thick=0.0025 * k, subsurf=1)]
+    parts = []
+    # top button and the six seams down from it
+    topi = np.argmax(X[:, 2] - 0.3 * np.abs(X[:, 1] - c[1]))
+    tp = X[topi]
+    Vb, Fb = _blob(tp + np.array([0, 0, 0.002 * k]), np.array([0.009, 0.009, 0.0045]) * k)
+    parts.append((Vb, Fb, 0))
+    hem = X[ll]
+    ha = h.ang(hem)
+    hem_closed = hem[np.abs(np.angle(np.exp(1j * (ha - rot - np.pi)))) > 0.5] if snap else hem
+    hca = h.ang(hem_closed)
+    for i in range(6):
+        a = rot + np.radians(60 * i)
+        if snap and abs(np.angle(np.exp(1j * (a - rot - np.pi)))) < 0.5:
+            hp = h.at(a, float(np.mean(_hem(h, h.at(np.array([a]), ez, h.Rh), 0.036, 0.012, -0.02))) + 0.047 * k, h.Rh)
+            _, j = col.tree.query(hp); hp = col.P[j]
+        else:
+            hp = hem_closed[np.argmin(np.abs(np.angle(np.exp(1j * (hca - a)))))]
+        mid = h.at(a, (tp[2] + hp[2]) / 2 + 0.03 * k, h.Rh * 1.4)
+        Q = _taut(col, [tp, mid, hp], 0.001 * k, iters=80, n=40)
+        Vt, Ft = make_tube(Q[2:-1], 0.0009 * k, nseg=5)
+        parts.append((Vt, Ft, 1))
+        # eyelet in the middle of each panel, high up
+        ae = a + np.radians(30)
+        ep = h.at(ae, ez + 0.085 * k, h.Rh * 1.5)
+        _, j = col.tree.query(ep); ep0 = col.P[j]; n0 = col.N[j]
+        u0 = np.cross(n0, [0, 0, 1.0]); u0 /= np.linalg.norm(u0) + 1e-9; v0 = np.cross(n0, u0)
+        ring = np.array([ep0 + n0 * 0.0008 * k + (u0 * np.cos(t) + v0 * np.sin(t)) * 0.0028 * k for t in np.linspace(0, 2 * np.pi, 13)[:-1]])
+        Vt, Ft = make_tube(ring, 0.0008 * k, nseg=5, closed=True)
+        parts.append((Vt, Ft, 1))
+    # hem binding all round the crown edge
+    Vt, Ft = make_tube(hem, 0.0016 * k, nseg=6, closed=True)
+    parts.append((Vt, Ft, 1))
+    # brim
+    AB = np.radians(56)
+    sel = np.where(np.abs(np.angle(np.exp(1j * (ha - rot)))) < AB)[0]
+    sel = sel[np.argsort(np.angle(np.exp(1j * (ha[sel] - rot))))]
+    inner = hem[sel].copy()
+    for _ in range(8):
+        inner[1:-1] = 0.5 * inner[1:-1] + 0.25 * (inner[:-2] + inner[2:])
+    inner[:, 2] -= 0.001 * k
+    u = np.angle(np.exp(1j * (ha[sel] - rot))) / AB
+    fwd = np.array([np.sin(rot), -np.cos(rot)])
+    d2 = inner[:, :2] - c[:2]; d2 /= np.linalg.norm(d2, axis=1, keepdims=True)
+    dirs = 0.15 * d2 + 0.85 * fwd; dirs /= np.linalg.norm(dirs, axis=1, keepdims=True)
+    Lb = (0.088 if flat else 0.08) * k
+    reach = Lb * np.clip(1 - np.abs(u) ** (3.0 if flat else 2.2), 0, 1) ** (0.45 if flat else 0.6)
+    rows = []
+    nr = 9
+    for t in np.linspace(0, 1, nr):
+        row = inner.copy()
+        row[:, :2] += dirs * (reach * t)[:, None]
+        if flat:
+            row[:, 2] -= reach * t * 0.12
+        else:
+            row[:, 2] -= reach * t * (0.16 + 0.55 * u ** 2) + 0.012 * k * t ** 2 * (1 - u ** 2) * 0.5
+        rows.append(row)
+    nb_ = len(sel)
+    Vb = np.vstack(rows)
+    Fb = [[r * nb_ + i, r * nb_ + i + 1, (r + 1) * nb_ + i + 1, (r + 1) * nb_ + i] for r in range(nr - 1) for i in range(nb_ - 1)]
+    fnb = np.cross(Vb[[q[1] for q in Fb]] - Vb[[q[0] for q in Fb]], Vb[[q[2] for q in Fb]] - Vb[[q[0] for q in Fb]])
+    if fnb[:, 2].mean() < 0:
+        Fb = [q[::-1] for q in Fb]
+    TB = 0.0055 * k
+    out.append(make_object(b, f"{b.obj.name}_{name}_CapBrim", Vb, Fb, [m_acc if text else m_main], None, None, thick=TB, subsurf=1))
+    # rows of stitching on the brim (on the top face)
+    for t in (0.35, 0.55, 0.75, 0.93):
+        idx = int(round(t * (nr - 1)))
+        row = rows[idx][2:-2] + np.array([0, 0, TB * 0.5 + 0.0006 * k])
+        Vt, Ft = make_tube(row, 0.0006 * k, nseg=4)
+        parts.append((Vt, Ft, 1))
+    if snap:  # strap across the bottom of the opening, with its holes / snap studs
+        ab = rot + np.pi
+        phis = np.linspace(ab - 0.5, ab + 0.5, 24)
+        zb = float(np.mean(_hem(h, h.at(np.array([ab]), ez, h.Rh), 0.036 if not back else 0.046, 0.012 if not back else 0.016, -0.02 if not back else -0.004))) + 0.006 * k
+        Q = h.at(phis, zb, h.Rh * 1.3)
+        _, j = o.col.tree.query(Q); Q = o.col.P[j] + o.col.N[j] * 0.0075 * k
+        for _ in range(30):
+            Q[1:-1] = 0.5 * Q[1:-1] + 0.25 * (Q[:-2] + Q[2:]); Q = o.col.push(Q, 0.0075 * k)
+        Nq = _surf_normals(o.col, Q)
+        Vr, Fr = _ribbon(Q, Nq, 0.012 * k)
+        parts.append((Vr, _orient_out(Vr, Fr, centre), 1))
+        for i in range(5, 19, 2):
+            Vh, Fh = _blob(Q[i] + Nq[i] * 0.0012 * k, np.array([0.002, 0.002, 0.002]) * k, n=4, m=8)
+            parts.append((Vh, Fh, 1))
+    if text:
+        z0 = ez + (0.075 if not back else 0.08) * k
+        if back:
+            pass
+        else:
+            for Q in _letters_nc(h, col, z0, h.Rh, 0.0016 * k):
+                Vt, Ft = make_tube(Q, 0.0019 * k, nseg=6)
+                parts.append((Vt, Ft, 2))
+    Vd, Fd, md = merge_parts(parts)
+    out.append(make_object(b, f"{b.obj.name}_{name}_CapTrim", Vd, Fd, [m_main, m_seam, m_acc], md, None, thick=0, subsurf=1))
+    o.objs.extend(out)
+    _add_collider(o, X, F, centre, 0.003 * k)
+    return out[0]
+
+
+def build_beanie3(o, name, color=(0.04, 0.04, 0.045), accent=None, short=False, pom=False):
+    """Knit beanie: ribbed crown snug over the head (a little slouch on the regular one), a folded ribbed cuff that
+    sits on the forehead and just above the ears; short=True is the shallow fisherman / watch cap; pom adds a
+    yarn pom-pom in the accent colour."""
+    b = o.b; k = b.k; h = Head(b)
+    ez, c = h.eye_z, h.c
+    accent = accent if accent is not None else color
+    P, F = h.faces(sub=2)
+    if short:
+        zl = _hem(h, P, 0.062, 0.046, 0.022)
+    else:
+        zl = _hem(h, P, 0.044, 0.024, -0.008)
+    P, F, _ = clip(P, F, zl - P[:, 2], {})
+    X, F, E = _shell(o, P, F, 0.0055 * k, 4, 0.0055 * k, smooth=4)
+    up = np.clip((X[:, 2] - ez) / (h.top - ez), 0, 1)
+    N = vnormals(X, F)
+    if not short:
+        X = X + N * (0.01 * k * up ** 2)[:, None]
+        X[:, 2] += 0.026 * k * up ** 3
+        X[:, 1] += 0.01 * k * up ** 3  # slouches back a touch
+    for _ in range(2):
+        X = laplace(X, E, 3, taubin=True)
+        X = o.col.push(X, 0.0055 * k)
+    # knit ribs running up the crown
+    N = vnormals(X, F)
+    ph = h.ang(X)
+    X = X + N * (0.0011 * k * np.cos(ph * 64) * np.clip((X[:, 2] - zl.min()) / (0.02 * k), 0, 1) * (1 - up ** 4))[:, None]
+    loops = boundary_loops(F)
+    ll = max(loops, key=len)
+    X = _smooth_loop(X, ll, 8, o.col, 0.0055 * k)
+    centre = np.array([c[0], c[1], ez])
+    col = _col_of(X, F, centre)
+    m_main = _mat(name + "_Main", color, rough=0.95)
+    m_acc = _mat(name + "_Accent", accent, rough=0.97)
+    out = [make_object(b, f"{b.obj.name}_{name}_Beanie", X, F, [m_main], None, None, thick=0.0025 * k, subsurf=1)]
+    # folded cuff: a ribbed band laid over the crown edge
+    hem = X[ll]
+    nb = 220
+    a0 = h.ang(hem); o_ = np.argsort(a0)
+    a_s = np.linspace(-np.pi, np.pi, nb, endpoint=False)
+    hz = np.interp(a_s, a0[o_], hem[o_, 2], period=2 * np.pi)
+    hz = np.convolve(np.r_[hz[-6:], hz, hz[:6]], np.ones(13) / 13, mode="valid")
+    Hc = (0.03 if short else 0.036) * k
+    rows = []
+    ts = np.linspace(0, 1, 10)
+    for t in ts:
+        r = h.at(a_s, hz + 0.003 * k + (Hc - 0.005 * k) * t, h.Rh * 1.4)
+        _, j = col.tree.query(r)
+        r = col.P[j] + col.N[j] * (0.0045 * k)
+        for _ in range(30):
+            r = 0.5 * r + 0.25 * (np.roll(r, 1, 0) + np.roll(r, -1, 0))
+            r = col.push(r, 0.0045 * k)
+        rows.append(r)
+    rows = np.array(rows)
+    zt = hz[None, :] + 0.003 * k + (Hc - 0.005 * k) * ts[:, None]
+    for _ in range(10):  # even the rows out up the cuff too, and keep each row at its own height
+        rows[1:-1] = 0.5 * rows[1:-1] + 0.25 * (rows[:-2] + rows[2:])
+        rows[:, :, 2] = zt
+        rows = col.push(rows.reshape(-1, 3), 0.0045 * k).reshape(rows.shape)
+    # ribs: radial in/out round the cuff
+    for i, t in enumerate(ts):
+        rad = rows[i] - np.array([c[0], c[1], 0]) * np.array([1, 1, 0])
+        rad[:, 2] = 0; rad /= np.linalg.norm(rad, axis=1, keepdims=True)
+        rows[i] = rows[i] + rad * (0.0012 * k * np.cos(a_s * 110))[:, None]
+    Vc = rows.reshape(-1, 3)
+    Fc = [[r * nb + i, r * nb + (i + 1) % nb, (r + 1) * nb + (i + 1) % nb, (r + 1) * nb + i] for r in range(len(ts) - 1) for i in range(nb)]
+    parts = [(Vc, _orient_out(Vc, Fc, centre), 0)]
+    # rolled fold along the top of the cuff and a soft rolled bottom edge
+    topr = rows[-1] - (rows[-1] - rows[-2]) * 0.0
+    nrm = _surf_normals(col, topr)
+    Vt, Ft = make_tube(topr - nrm * 0.0015 * k, 0.003 * k, nseg=8, closed=True)
+    parts.append((Vt, Ft, 0))
+    Vt, Ft = make_tube(rows[0] - np.array([0, 0, 0.001 * k]), 0.0026 * k, nseg=8, closed=True)
+    parts.append((Vt, Ft, 0))
+    if pom:
+        tp = X[np.argmax(X[:, 2])]
+        Vp, Fp = _blob(tp + np.array([0, 0, 0.022 * k]), np.array([0.03, 0.03, 0.027]) * k, n=16, m=24, noise=0.35, seed=7)
+        parts.append((Vp, Fp, 1))
+    Vd, Fd, md = merge_parts(parts)
+    out.append(make_object(b, f"{b.obj.name}_{name}_BeanieCuff", Vd, Fd, [m_main, m_acc], md, None, thick=0.002 * k, subsurf=1))
+    o.objs.extend(out)
+    _add_collider(o, X, F, centre, 0.003 * k)
+    return out[0]
