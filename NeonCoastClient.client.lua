@@ -23,7 +23,7 @@ local layout = Instance.new("UIListLayout"); layout.FillDirection = Enum.FillDir
 local stars = {}
 for k = 1, 5 do stars[k] = label({Parent = starsFrame, Size = UDim2.fromOffset(40, 40), Text = "★", TextColor3 = Color3.fromRGB(80,80,90), LayoutOrder = k}) end
 
-local hint = label({Size = UDim2.new(0, 820, 0, 22), Position = UDim2.new(0.5, -410, 1, -34), Text = "V: get a car   E: get in   C: character   Driving: Shift handbrake   R window   H horn   L lights   Z/C/Q signals", TextColor3 = Color3.fromRGB(230,220,255), TextTransparency = 0.15})
+local hint = label({Size = UDim2.new(0, 820, 0, 22), Position = UDim2.new(0.5, -410, 1, -34), Text = "V: get a car   F: get in   C: character   Driving: Shift handbrake   R window   H horn   L lights   Z/C/Q signals", TextColor3 = Color3.fromRGB(230,220,255), TextTransparency = 0.15})
 local jobL = label({Size = UDim2.fromOffset(340, 30), Position = UDim2.new(0, 16, 0, 100), Text = "", TextColor3 = Color3.fromRGB(60,230,255), TextXAlignment = Enum.TextXAlignment.Left})
 local speedL = label({Size = UDim2.fromOffset(200, 60), Position = UDim2.new(1, -216, 1, -110), Text = "", TextColor3 = Color3.fromRGB(255,230,80), TextXAlignment = Enum.TextXAlignment.Right})
 local nitroBar = Instance.new("Frame"); nitroBar.Size = UDim2.fromOffset(180, 8); nitroBar.Position = UDim2.new(1, -196, 1, -46); nitroBar.BackgroundColor3 = Color3.fromRGB(40,30,60); nitroBar.Visible = false; nitroBar.Parent = gui

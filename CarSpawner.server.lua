@@ -175,12 +175,31 @@ Remotes.SpawnCar.OnServerEvent:Connect(function(player)
 	if look.Magnitude < 0.1 then look = Vector3.new(0, 0, -1) end
 	look = look.Unit
 	local right = look:Cross(Vector3.yAxis)
-	local pos = hrp.Position + right * 12
-	-- find ground
+	-- try spots round the player until one is clear: ground under it, nothing solid where the car would stand
 	local params = RaycastParams.new(); params.FilterDescendantsInstances = {player.Character, carsFolder}
-	local hit = workspace:Raycast(pos + Vector3.new(0, 30, 0), Vector3.new(0, -80, 0), params)
-	local y = hit and hit.Position.Y or hrp.Position.Y - 3
-	local car = Spawner.MakeCar(CFrame.lookAt(Vector3.new(pos.X, y, pos.Z), Vector3.new(pos.X, y, pos.Z) + look))
+	local overlap = OverlapParams.new(); overlap.FilterDescendantsInstances = {player.Character}
+	local function clearAt(pos)
+		local hit = workspace:Raycast(pos + Vector3.new(0, 30, 0), Vector3.new(0, -80, 0), params)
+		if not hit or math.abs(hit.Position.Y - (hrp.Position.Y - 3)) > 12 then return nil end
+		local at = CFrame.lookAt(hit.Position, hit.Position + look)
+		-- the car's footprint (about 9 x 21 studs), from just above the ground to roof height
+		for _, part in workspace:GetPartBoundsInBox(at * CFrame.new(0, 3.6, 0), Vector3.new(9.5, 6, 21.5), overlap) do
+			if part.CanCollide and part ~= hit.Instance then return nil end
+		end
+		return at
+	end
+	local spot
+	for _, off in ipairs({ right * 12, -right * 12, right * 18, -right * 18, look * 16, -look * 16, right * 26, -right * 26,
+		look * 26 + right * 12, look * 26 - right * 12, -look * 26 + right * 12, -look * 26 - right * 12 }) do
+		spot = clearAt(hrp.Position + off)
+		if spot then break end
+	end
+	if not spot then
+		lastSpawn[player] = nil
+		NC.Notify(player, "No room for a car here. Try somewhere more open.", Color3.fromRGB(255,200,80))
+		return
+	end
+	local car = Spawner.MakeCar(spot)
 	car.Name = player.Name .. "'s Car"
 	car:SetAttribute("Owner", player.UserId)
 	personal[player] = car
