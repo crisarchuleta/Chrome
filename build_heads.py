@@ -1117,7 +1117,7 @@ def build_styles(H):
                 break
             s0 += seg * rng_.uniform(*overlap)
 
-    def frizz_cards(pts, radius, rng_, capped, k=1.35, kind="STRAIGHT_WISPY"):
+    def frizz_cards(pts, radius, rng_, capped, k=1.35, kind="STRAIGHT_WISPY", cross=2):
         """two crossed wispy cards along a rope (loc, twist, ponytail clump): loose hairs round its outline"""
         P_ = np.asarray(pts, float)
         if len(P_) < 3:
@@ -1133,7 +1133,7 @@ def build_styles(H):
         e2 = np.cross(t_, e1)
         rad = np.broadcast_to(np.asarray(radius, float), (len(P_),))
         rot = rng_.uniform(0, math.pi)
-        for ang in (rot, rot + math.pi / 2):
+        for ang in (rot, rot + math.pi / 2)[:cross]:
             A_ = e1 * math.cos(ang) + e2 * math.sin(ang)
             ribbon_cards(P2, A_, rad * k, rng_, capped, kind=kind, seg_len=0.5)
 
@@ -1279,7 +1279,7 @@ def build_styles(H):
 
     # --- locs / twists: a short base, then real strands that hang (the front ones fall over the eyes)
     def locs_extras(length, n_front, n_all, radius, front_len, end_z=None, part=False, two_strand=False, gap=0.075, clear_k=1.3,
-                    frame_face=False, hat_tail=False, curl_tips=False, turns=30.0, hem=None):
+                    frame_face=False, hat_tail=False, curl_tips=False, turns=30.0, hem=None, ringlet=None):
         """frame_face: the front locs fall beside the face (not over it); hat_tail: under a hat each loc keeps the part
         below the cap band, so the locs hang out from under the hat all round (person's photos 2026-11-24);
         curl_tips: the last few cm twist into a loose hook like real rope-twist locs"""
@@ -1459,6 +1459,39 @@ def build_styles(H):
                             Pp[j, 0] = H.centre[0] + math.copysign(fhw, dx if abs(dx) > 1e-4 else 1.0)
                 if os.environ.get("NC_DBG_TIPS") and hat_tail:
                     print("NC_TIP", H.gender, int(capped), round(float(Pp[-1][2]), 3), round(float(Pp[-1][1] - H.centre[1]), 3))
+                if ringlet is not None and len(Pp) >= 4:
+                    # natural curls: each clump is one springy coil of hair round the drape path (radius = the coil's
+                    # outside, so the clearance and the under-hat tuck work as for locs), with coily wisps round it
+                    cr, sr, pitch = ringlet
+                    seg_ = np.linalg.norm(np.diff(Pp, axis=0), axis=1)
+                    s_ = np.r_[0.0, np.cumsum(seg_)]
+                    tot = s_[-1]
+                    if tot < 0.05:
+                        continue
+                    ss = np.arange(0.0, tot, pitch / 8.0)        # (8 points a turn, 5 sides: round coils, not zigzags)
+                    C_ = np.stack([np.interp(ss, s_, Pp[:, a]) for a in range(3)], axis=1)
+                    for _ in range(3):
+                        C_[1:-1] = 0.25 * C_[:-2] + 0.5 * C_[1:-1] + 0.25 * C_[2:]
+                    t_ = np.gradient(C_, axis=0)
+                    t_ /= np.maximum(np.linalg.norm(t_, axis=1), 1e-9)[:, None]
+                    e1 = np.cross(t_, np.array([0.0, 0.0, 1.0]))
+                    bad = np.linalg.norm(e1, axis=1) < 0.2
+                    e1[bad] = np.cross(t_[bad], np.array([1.0, 0.0, 0.0]))
+                    e1 /= np.maximum(np.linalg.norm(e1, axis=1), 1e-9)[:, None]
+                    e2 = np.cross(t_, e1)
+                    ph = r2.uniform(0, 2 * math.pi)
+                    pit = pitch * r2.uniform(0.85, 1.15)
+                    tt = ss / tot
+                    # (tight at the root, the coil opens over the first few cm; each turn a little different)
+                    rr_ = cr * (0.25 + 0.75 * np.clip(tt / 0.12, 0, 1)) * (1 + 0.12 * np.sin(ss * 23.0 + ph))
+                    th = 2 * math.pi * ss / pit + ph
+                    coil = C_ + (e1 * np.cos(th)[:, None] + e2 * np.sin(th)[:, None]) * rr_[:, None]
+                    coil[0] = C_[0]
+                    srad = sr * (1.0 - 0.55 * tt ** 2)
+                    vv, ff = tube(list(coil), list(srad), sides=5, twist=0.3, bumps=0.08, bump_freq=7.0)
+                    b.add(vv, ff)
+                    frizz_cards(list(C_[1:]), list((rr_ + sr)[1:]), rng_f, capped, k=1.2, kind="COILY", cross=1)
+                    continue
                 pts = list(Pp)
                 tap = 0.5 if hem is not None else 0.35    # (an even hem: the ends taper more, so they don't read cut)
                 rad = [radius * (1.0 - tap * (j / len(pts)) ** 2.5) for j in range(len(pts))]
@@ -1617,6 +1650,17 @@ def build_styles(H):
 
 
     base = dict(top=0.03, side=0.02, feather=0.05, groove=0.2, freq=34)
+
+    def add_curls():
+        # natural curls (person 2026-11-24: "shoulder length curly hair natural, long curly hair"): springy coils
+        # from all over the scalp, no part, face open, volume off the head; under a hat they hang out under the band
+        add_short("Curls", "Shoulder Length Curls", dict(base, groove=0.25),
+                  locs_extras(1.05, 12, 110, 0.058, 1.05, gap=0.066, clear_k=1.25, frame_face=True, hat_tail=True,
+                              hem=0.66, ringlet=(0.032, 0.025, 0.11)))
+        add_short("LongCurls", "Long Curls", dict(base, groove=0.25),
+                  locs_extras(1.7, 12, 100, 0.062, 1.7, gap=0.07, clear_k=1.25, frame_face=True, hat_tail=True,
+                              ringlet=(0.036, 0.026, 0.13)))
+
     if male:
         # thick two-strand rope-twist locs to the collarbone from a centre part, framing the face, tips curling;
         # under a hat they hang out from under the band all round (the person's photos, 2026-11-24)
@@ -1627,6 +1671,7 @@ def build_styles(H):
         # squared edge-up and a high skin fade (references hair_ref_3)
         add_short("Twists", "Hanging Twists", dict(base, top=0.02, fade_z=0.2, feather=0.025, parts_y=True),
                   locs_extras(0.45, 14, 220, 0.022, 0.3, end_z=H.ear_z + 0.12, part=True, two_strand=True, gap=0.042, clear_k=0.8))
+        add_curls()
         ft_ex, ft_line = flat_twists()
         add_short("FlatTwists", "Flat Twists", dict(top=0.012, side=0.012, fade_z=-0.03, fade_len=0.27, fade_line=ft_line, hard_part=ft_line, feather=0.01,
                                                     edge_up=ft_corner, parts_band=FT_BAND, groove=0.05, freq=40,
@@ -1634,6 +1679,7 @@ def build_styles(H):
                   ft_ex)
     else:
         add_short("Locs", "Long Locs", base, locs_extras(1.8, 10, 125, 0.026, 1.8, gap=0.058, frame_face=True, hat_tail=True))   # (face open, like the rope locs)
+        add_curls()
 
     # --- women: slick centre part with a low bun (the reference), ponytail, long straight, bob
     if not male:
@@ -2203,7 +2249,7 @@ for gender in ("Male", "Female"):
     hair_col = tex_material("NC_Hair", TEX["NC_HairEdge"])
     fade_col = tex_material("NC_HairFaded", TEX["NC_HairFade"])
     card_col = card_material("NC_HairCard")
-    SPLIT_HAIR = {"Rope Twist Locs", "Long Locs"}            # (by label: locs split into parts, never decimated: it squared their ends)
+    SPLIT_HAIR = {"Rope Twist Locs", "Long Locs", "Shoulder Length Curls", "Long Curls"}            # (by label: locs split into parts, never decimated: it squared their ends)
     for key, st in styles.items():
         for kind in ("hair", "cap"):
             ob = st[kind]
@@ -2285,20 +2331,32 @@ for gender in ("Male", "Female"):
     is_card = lambda n: bool(re.search(r"Cards(_\d+)?$", n))
     base = [n for n in pieces if not is_card(n)]
     cards = [n for n in pieces if is_card(n)]
-    groups = [("", base)]
+    tris_of = {i["mesh"]: i["tris"] for i in info}
+    # (the base file too: once it passes ~420k triangles the rest of the hair goes in NC_Head_<Gender>_Hair<n>.fbx)
+    BASE_TRIS_PER_FILE, HAIR_TRIS_PER_FILE = 420000, 300000
+    groups, cur, tri_sum = [], [], 0
+    for n in base:
+        lim = BASE_TRIS_PER_FILE if not groups else HAIR_TRIS_PER_FILE
+        if cur and tri_sum + tris_of.get(n, 0) > lim:
+            groups.append(("" if not groups else f"_Hair{len(groups)}", cur))
+            cur, tri_sum = [], 0
+        cur.append(n)
+        tri_sum += tris_of.get(n, 0)
+    if cur:
+        groups.append(("" if not groups else f"_Hair{len(groups)}", cur))
+    n_hair_files = len(groups)
     CARD_TRIS_PER_FILE = 60000
     cur, tri_sum = [], 0
-    tris_of = {i["mesh"]: i["tris"] for i in info}
     for n in cards:
         if cur and tri_sum + tris_of[n] > CARD_TRIS_PER_FILE:
-            groups.append((f"_Cards{len(groups)}", cur))
+            groups.append((f"_Cards{len(groups) - n_hair_files + 1}", cur))
             cur, tri_sum = [], 0
         cur.append(n)
         tri_sum += tris_of[n]
     if cur:
-        groups.append((f"_Cards{len(groups)}", cur))
+        groups.append((f"_Cards{len(groups) - n_hair_files + 1}", cur))
     for f_ in os.listdir(OUT):                               # (no stale card files from an earlier build)
-        if f_.startswith(f"NC_Head_{gender}_Cards") and f_.endswith(".fbx"):
+        if f_.startswith((f"NC_Head_{gender}_Cards", f"NC_Head_{gender}_Hair")) and f_.endswith(".fbx"):
             os.remove(os.path.join(OUT, f_))
     for suffix, names in groups:
         bpy.ops.object.select_all(action="DESELECT")
@@ -2343,7 +2401,7 @@ with open(os.path.join(OUT, "NCHeadData.lua"), "w", encoding="utf-8") as f:
 with open(os.path.join(OUT, "heads.json"), "w") as f:
     json.dump(DATA, f, indent=1)
 ASSEMBLE = """-- AssembleHeads (generated by build_heads.py): run once in Studio's command bar, after importing
--- NC_Head_Male.fbx, NC_Head_Female.fbx and every NC_Head_<Gender>_Cards<n>.fbx with the 3D Importer. Select all the
+-- NC_Head_Male.fbx, NC_Head_Female.fbx and every NC_Head_<Gender>_Hair<n>.fbx and _Cards<n>.fbx with the 3D Importer. Select all the
 -- imported models (or just the ones you re-imported), paste this, press Enter.
 -- The pieces go to ReplicatedStorage.NC_HeadAssets.<Gender>, where NCHead (the Character Studio) finds them.
 local Selection = game:GetService("Selection")

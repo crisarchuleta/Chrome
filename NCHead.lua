@@ -4,7 +4,7 @@
 -- The pieces are made by build_heads.py from each head's own scalp and face, so the hair grows out of a soft
 -- hairline instead of sitting on top like a helmet, and every piece fits that head exactly:
 --   Hair_<Style>        the hair (Male: Buzz, Crop, TaperFade, HighFade, SidePart, CurlyTop, Locs, Twists, FlatTwists;
---                       Female: Pixie, Locs, LowBun, Ponytail, LongStraight, Bob)
+--                       Female: Pixie, Locs, LowBun, Ponytail, LongStraight, Bob; both: Curls, LongCurls)
 --   Hair_<Style>_Cap    the same style pressed flat and trimmed, worn under a hat
 --   Hair_<Style>_Cards / _CapCards   hair-card styles: strand cards over the painted scalp (and their under-hat cut);
 --                                    big sets add _Cards_2, _Cards_3 ...

@@ -447,10 +447,12 @@ def bake_base_layer(body, garments):
     bm.verts.ensure_lookup_table()
 
     # (and never the hands: a hand resting against the hip can dip inside the shorts at rest)
-    hand_g = {g.index for g in body.vertex_groups if g.name.endswith("Hand") or any(g.name.startswith("NC_" + f) for f in FINGERS)}
+    # (nor the arms: they hang within 7 cm of the tank at the armpit, and the women's inner upper arms were cut open)
+    hand_g = {g.index for g in body.vertex_groups if g.name.endswith(("Hand", "LowerArm", "UpperArm")) or g.name.startswith("NC_Twist")
+              or any(g.name.startswith("NC_" + f) for f in FINGERS)}
     hand_v = np.zeros(len(bm.verts), bool)
     for v in me.vertices:
-        if sum(ge.weight for ge in v.groups if ge.group in hand_g) > 0.3:
+        if sum(ge.weight for ge in v.groups if ge.group in hand_g) > 0.5:
             hand_v[v.index] = True
 
     def covered(v):

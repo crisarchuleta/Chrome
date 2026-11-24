@@ -682,6 +682,533 @@
     "tris": 7884
    },
    {
+    "mesh": "Hair_Curls",
+    "kind": "Hair",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     0.0217,
+     -0.1252,
+     0.4255
+    ],
+    "size": [
+     0.9344,
+     1.164,
+     0.9098
+    ],
+    "tris": 17418
+   },
+   {
+    "mesh": "Hair_Curls_2",
+    "kind": "Hair",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     -0.015,
+     -0.1093,
+     0.2951
+    ],
+    "size": [
+     0.8908,
+     1.2468,
+     1.1628
+    ],
+    "tris": 17740
+   },
+   {
+    "mesh": "Hair_Curls_3",
+    "kind": "Hair",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     -0.0056,
+     -0.1135,
+     0.4527
+    ],
+    "size": [
+     0.8784,
+     1.2248,
+     0.8953
+    ],
+    "tris": 17440
+   },
+   {
+    "mesh": "Hair_Curls_4",
+    "kind": "Hair",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     0.0186,
+     -0.1024,
+     0.3022
+    ],
+    "size": [
+     0.9134,
+     1.2401,
+     1.1594
+    ],
+    "tris": 17730
+   },
+   {
+    "mesh": "Hair_Curls_5",
+    "kind": "Hair",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     0.0166,
+     -0.1248,
+     0.3254
+    ],
+    "size": [
+     0.9317,
+     1.1829,
+     1.083
+    ],
+    "tris": 17430
+   },
+   {
+    "mesh": "Hair_Curls_6",
+    "kind": "Hair",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     -0.0079,
+     -0.1055,
+     0.3292
+    ],
+    "size": [
+     0.964,
+     1.228,
+     1.1251
+    ],
+    "tris": 10030
+   },
+   {
+    "mesh": "Hair_Curls_Cap",
+    "kind": "HairCap",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     0.0276,
+     -0.2356,
+     0.4411
+    ],
+    "size": [
+     0.8705,
+     0.9518,
+     0.8019
+    ],
+    "tris": 17530
+   },
+   {
+    "mesh": "Hair_Curls_Cap_2",
+    "kind": "HairCap",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     -0.0219,
+     -0.2781,
+     0.4282
+    ],
+    "size": [
+     0.8889,
+     0.8905,
+     0.8967
+    ],
+    "tris": 17550
+   },
+   {
+    "mesh": "Hair_Curls_Cap_3",
+    "kind": "HairCap",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     0.0202,
+     -0.2752,
+     0.4458
+    ],
+    "size": [
+     0.8997,
+     0.8836,
+     0.895
+    ],
+    "tris": 17320
+   },
+   {
+    "mesh": "Hair_Curls_Cap_4",
+    "kind": "HairCap",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     0.0062,
+     -0.2671,
+     0.4362
+    ],
+    "size": [
+     0.9402,
+     0.8926,
+     0.9367
+    ],
+    "tris": 17580
+   },
+   {
+    "mesh": "Hair_Curls_Cap_5",
+    "kind": "HairCap",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     -0.0175,
+     -0.2769,
+     0.4371
+    ],
+    "size": [
+     0.8928,
+     0.8851,
+     0.8345
+    ],
+    "tris": 9200
+   },
+   {
+    "mesh": "Hair_Curls_Cards",
+    "kind": "HairCards",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     0.0057,
+     -0.1069,
+     0.3042
+    ],
+    "size": [
+     0.9986,
+     1.275,
+     1.2209
+    ],
+    "tris": 17958
+   },
+   {
+    "mesh": "Hair_Curls_Cards_2",
+    "kind": "HairCards",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     -0.0071,
+     -0.129,
+     0.3224
+    ],
+    "size": [
+     0.9991,
+     1.2274,
+     1.1429
+    ],
+    "tris": 8532
+   },
+   {
+    "mesh": "Hair_Curls_CapCards",
+    "kind": "HairCapCards",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     0.0092,
+     -0.3662,
+     0.4395
+    ],
+    "size": [
+     1.0191,
+     0.7625,
+     0.9618
+    ],
+    "tris": 15010
+   },
+   {
+    "mesh": "Hair_LongCurls",
+    "kind": "Hair",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     -0.0495,
+     -0.6102,
+     0.4752
+    ],
+    "size": [
+     1.0781,
+     2.1423,
+     1.0091
+    ],
+    "tris": 16858
+   },
+   {
+    "mesh": "Hair_LongCurls_2",
+    "kind": "Hair",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0216,
+     -0.723,
+     0.3423
+    ],
+    "size": [
+     1.0427,
+     2.4722,
+     1.3025
+    ],
+    "tris": 17670
+   },
+   {
+    "mesh": "Hair_LongCurls_3",
+    "kind": "Hair",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     -0.0036,
+     -0.5717,
+     0.3875
+    ],
+    "size": [
+     1.145,
+     2.0734,
+     1.224
+    ],
+    "tris": 17090
+   },
+   {
+    "mesh": "Hair_LongCurls_4",
+    "kind": "Hair",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0046,
+     -0.6743,
+     0.3915
+    ],
+    "size": [
+     1.1671,
+     2.1717,
+     1.2078
+    ],
+    "tris": 17300
+   },
+   {
+    "mesh": "Hair_LongCurls_5",
+    "kind": "Hair",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0145,
+     -0.7998,
+     0.3457
+    ],
+    "size": [
+     1.0925,
+     2.5729,
+     1.3175
+    ],
+    "tris": 16970
+   },
+   {
+    "mesh": "Hair_LongCurls_6",
+    "kind": "Hair",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0076,
+     -0.4493,
+     0.3868
+    ],
+    "size": [
+     1.1713,
+     2.0214,
+     1.2335
+    ],
+    "tris": 17430
+   },
+   {
+    "mesh": "Hair_LongCurls_7",
+    "kind": "Hair",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0366,
+     -0.4475,
+     0.3822
+    ],
+    "size": [
+     1.1199,
+     1.9185,
+     1.2254
+    ],
+    "tris": 16380
+   },
+   {
+    "mesh": "Hair_LongCurls_Cap",
+    "kind": "HairCap",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     -0.0176,
+     -0.7305,
+     0.5142
+    ],
+    "size": [
+     1.1322,
+     1.9416,
+     0.9481
+    ],
+    "tris": 17250
+   },
+   {
+    "mesh": "Hair_LongCurls_Cap_2",
+    "kind": "HairCap",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     -0.0475,
+     -0.8182,
+     0.3745
+    ],
+    "size": [
+     1.063,
+     1.9756,
+     1.244
+    ],
+    "tris": 17810
+   },
+   {
+    "mesh": "Hair_LongCurls_Cap_3",
+    "kind": "HairCap",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0053,
+     -0.8188,
+     0.6562
+    ],
+    "size": [
+     1.1589,
+     1.8721,
+     0.6738
+    ],
+    "tris": 17290
+   },
+   {
+    "mesh": "Hair_LongCurls_Cap_4",
+    "kind": "HairCap",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0052,
+     -0.8646,
+     0.3944
+    ],
+    "size": [
+     1.1484,
+     2.0887,
+     1.2048
+    ],
+    "tris": 17270
+   },
+   {
+    "mesh": "Hair_LongCurls_Cap_5",
+    "kind": "HairCap",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0124,
+     -0.7884,
+     0.4
+    ],
+    "size": [
+     1.1692,
+     1.8777,
+     1.1855
+    ],
+    "tris": 17090
+   },
+   {
+    "mesh": "Hair_LongCurls_Cap_6",
+    "kind": "HairCap",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0159,
+     -0.6984,
+     0.3842
+    ],
+    "size": [
+     1.1548,
+     1.7385,
+     1.2441
+    ],
+    "tris": 16800
+   },
+   {
+    "mesh": "Hair_LongCurls_Cards",
+    "kind": "HairCards",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     -0.0173,
+     -0.7102,
+     0.3787
+    ],
+    "size": [
+     1.173,
+     2.4896,
+     1.2838
+    ],
+    "tris": 17998
+   },
+   {
+    "mesh": "Hair_LongCurls_Cards_2",
+    "kind": "HairCards",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0141,
+     -0.7587,
+     0.3733
+    ],
+    "size": [
+     1.2073,
+     2.6298,
+     1.3114
+    ],
+    "tris": 16034
+   },
+   {
+    "mesh": "Hair_LongCurls_CapCards",
+    "kind": "HairCapCards",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0051,
+     -0.9791,
+     0.4029
+    ],
+    "size": [
+     1.2134,
+     1.8584,
+     1.266
+    ],
+    "tris": 17968
+   },
+   {
+    "mesh": "Hair_LongCurls_CapCards_2",
+    "kind": "HairCapCards",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0258,
+     -0.8183,
+     0.3793
+    ],
+    "size": [
+     1.1712,
+     1.5979,
+     1.2782
+    ],
+    "tris": 6644
+   },
+   {
     "mesh": "Hair_FlatTwists",
     "kind": "Hair",
     "key": "FlatTwists",
@@ -1473,6 +2000,516 @@
      0.9327
     ],
     "tris": 2406
+   },
+   {
+    "mesh": "Hair_Curls",
+    "kind": "Hair",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     -0.057,
+     -0.149,
+     0.3275
+    ],
+    "size": [
+     0.6901,
+     1.1434,
+     0.809
+    ],
+    "tris": 17420
+   },
+   {
+    "mesh": "Hair_Curls_2",
+    "kind": "Hair",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     -0.0103,
+     -0.1422,
+     0.2457
+    ],
+    "size": [
+     0.8336,
+     1.1455,
+     1.0592
+    ],
+    "tris": 17340
+   },
+   {
+    "mesh": "Hair_Curls_3",
+    "kind": "Hair",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     0.0312,
+     -0.1286,
+     0.2859
+    ],
+    "size": [
+     0.8523,
+     1.1971,
+     0.9541
+    ],
+    "tris": 17290
+   },
+   {
+    "mesh": "Hair_Curls_4",
+    "kind": "Hair",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     -0.0122,
+     -0.1301,
+     0.2479
+    ],
+    "size": [
+     0.8754,
+     1.1909,
+     1.0495
+    ],
+    "tris": 17520
+   },
+   {
+    "mesh": "Hair_Curls_5",
+    "kind": "Hair",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     -0.0119,
+     -0.1222,
+     0.2976
+    ],
+    "size": [
+     0.7882,
+     1.2092,
+     0.9259
+    ],
+    "tris": 17000
+   },
+   {
+    "mesh": "Hair_Curls_6",
+    "kind": "Hair",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     0.0375,
+     -0.1066,
+     0.2314
+    ],
+    "size": [
+     0.7225,
+     1.1592,
+     0.9813
+    ],
+    "tris": 4210
+   },
+   {
+    "mesh": "Hair_Curls_Cap",
+    "kind": "HairCap",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     0.002,
+     -0.2406,
+     0.3531
+    ],
+    "size": [
+     0.8045,
+     0.9502,
+     0.8211
+    ],
+    "tris": 17622
+   },
+   {
+    "mesh": "Hair_Curls_Cap_2",
+    "kind": "HairCap",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     -0.0168,
+     -0.2432,
+     0.3625
+    ],
+    "size": [
+     0.8026,
+     0.9529,
+     0.8099
+    ],
+    "tris": 17190
+   },
+   {
+    "mesh": "Hair_Curls_Cap_3",
+    "kind": "HairCap",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     0.0043,
+     -0.2413,
+     0.3613
+    ],
+    "size": [
+     0.8737,
+     0.949,
+     0.8076
+    ],
+    "tris": 17680
+   },
+   {
+    "mesh": "Hair_Curls_Cap_4",
+    "kind": "HairCap",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     0.006,
+     -0.2415,
+     0.3623
+    ],
+    "size": [
+     0.8576,
+     0.9495,
+     0.8095
+    ],
+    "tris": 17010
+   },
+   {
+    "mesh": "Hair_Curls_Cards",
+    "kind": "HairCards",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     0.0172,
+     -0.112,
+     0.2532
+    ],
+    "size": [
+     0.9121,
+     1.2415,
+     1.0901
+    ],
+    "tris": 17942
+   },
+   {
+    "mesh": "Hair_Curls_Cards_2",
+    "kind": "HairCards",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     -0.0,
+     -0.125,
+     0.2484
+    ],
+    "size": [
+     0.8233,
+     1.2154,
+     1.0564
+    ],
+    "tris": 5784
+   },
+   {
+    "mesh": "Hair_Curls_CapCards",
+    "kind": "HairCapCards",
+    "key": "Curls",
+    "label": "Shoulder Length Curls",
+    "offset": [
+     0.0049,
+     -0.3755,
+     0.3698
+    ],
+    "size": [
+     0.905,
+     0.7054,
+     0.8552
+    ],
+    "tris": 12588
+   },
+   {
+    "mesh": "Hair_LongCurls",
+    "kind": "Hair",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     -0.0642,
+     -0.5509,
+     0.2949
+    ],
+    "size": [
+     0.7045,
+     1.9472,
+     1.0513
+    ],
+    "tris": 17950
+   },
+   {
+    "mesh": "Hair_LongCurls_2",
+    "kind": "Hair",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     -0.0045,
+     -0.668,
+     0.2806
+    ],
+    "size": [
+     0.9144,
+     2.0996,
+     1.1191
+    ],
+    "tris": 17640
+   },
+   {
+    "mesh": "Hair_LongCurls_3",
+    "kind": "Hair",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     -0.0204,
+     -0.6074,
+     0.2616
+    ],
+    "size": [
+     0.9392,
+     2.0973,
+     1.1315
+    ],
+    "tris": 17250
+   },
+   {
+    "mesh": "Hair_LongCurls_4",
+    "kind": "Hair",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.022,
+     -0.5769,
+     0.2823
+    ],
+    "size": [
+     0.9499,
+     2.0813,
+     1.0712
+    ],
+    "tris": 17310
+   },
+   {
+    "mesh": "Hair_LongCurls_5",
+    "kind": "Hair",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0019,
+     -0.5666,
+     0.2653
+    ],
+    "size": [
+     0.9409,
+     2.0725,
+     1.1507
+    ],
+    "tris": 16870
+   },
+   {
+    "mesh": "Hair_LongCurls_6",
+    "kind": "Hair",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0027,
+     -0.7362,
+     0.2781
+    ],
+    "size": [
+     0.9482,
+     2.4463,
+     1.0742
+    ],
+    "tris": 16860
+   },
+   {
+    "mesh": "Hair_LongCurls_7",
+    "kind": "Hair",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0101,
+     -0.7368,
+     0.2826
+    ],
+    "size": [
+     0.8283,
+     2.2617,
+     1.1011
+    ],
+    "tris": 6530
+   },
+   {
+    "mesh": "Hair_LongCurls_Cap",
+    "kind": "HairCap",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     -0.0083,
+     -0.8163,
+     0.2726
+    ],
+    "size": [
+     0.7984,
+     2.1016,
+     1.129
+    ],
+    "tris": 17762
+   },
+   {
+    "mesh": "Hair_LongCurls_Cap_2",
+    "kind": "HairCap",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     -0.0169,
+     -0.839,
+     0.2687
+    ],
+    "size": [
+     0.9344,
+     2.1445,
+     1.1309
+    ],
+    "tris": 17400
+   },
+   {
+    "mesh": "Hair_LongCurls_Cap_3",
+    "kind": "HairCap",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0153,
+     -0.6745,
+     0.3082
+    ],
+    "size": [
+     0.9723,
+     1.8156,
+     1.0174
+    ],
+    "tris": 17580
+   },
+   {
+    "mesh": "Hair_LongCurls_Cap_4",
+    "kind": "HairCap",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0095,
+     -0.7738,
+     0.2994
+    ],
+    "size": [
+     0.9491,
+     2.0141,
+     1.073
+    ],
+    "tris": 17690
+   },
+   {
+    "mesh": "Hair_LongCurls_Cap_5",
+    "kind": "HairCap",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     -0.0051,
+     -0.7574,
+     0.2761
+    ],
+    "size": [
+     0.941,
+     1.9812,
+     1.0944
+    ],
+    "tris": 16900
+   },
+   {
+    "mesh": "Hair_LongCurls_Cap_6",
+    "kind": "HairCap",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     -0.005,
+     -0.827,
+     0.2743
+    ],
+    "size": [
+     0.9895,
+     2.1206,
+     1.0946
+    ],
+    "tris": 10030
+   },
+   {
+    "mesh": "Hair_LongCurls_Cards",
+    "kind": "HairCards",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0094,
+     -0.632,
+     0.2625
+    ],
+    "size": [
+     1.0092,
+     2.1562,
+     1.1736
+    ],
+    "tris": 17986
+   },
+   {
+    "mesh": "Hair_LongCurls_Cards_2",
+    "kind": "HairCards",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0218,
+     -0.74,
+     0.2773
+    ],
+    "size": [
+     0.9642,
+     2.4354,
+     1.1845
+    ],
+    "tris": 12392
+   },
+   {
+    "mesh": "Hair_LongCurls_CapCards",
+    "kind": "HairCapCards",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     0.0122,
+     -0.9486,
+     0.2886
+    ],
+    "size": [
+     1.0256,
+     1.9246,
+     1.1404
+    ],
+    "tris": 18000
+   },
+   {
+    "mesh": "Hair_LongCurls_CapCards_2",
+    "kind": "HairCapCards",
+    "key": "LongCurls",
+    "label": "Long Curls",
+    "offset": [
+     -0.0039,
+     -0.9596,
+     0.2751
+    ],
+    "size": [
+     0.9759,
+     1.8345,
+     1.1349
+    ],
+    "tris": 5076
    },
    {
     "mesh": "Hair_LowBun",
