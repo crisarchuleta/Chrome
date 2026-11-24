@@ -2,13 +2,14 @@
 -- NCInk (ModuleScript in ReplicatedStorage): real tattoo ink for the MakeHuman bodies.
 --
 -- How it works (same idea as the car vinyls): every body has 13 thin "ink layer" MeshParts that sit 1 mm above the
--- skin with the exact same bone weights, so they bend with the body and look printed on. A tattoo is just a
+-- skin, one per R15 part. They are rigid (no skin weights) and welded to their part, like the R15 body parts. A tattoo is just a
 -- transparent PNG set as the layer's TextureID. Clothes sit above the layer, so anything covered by clothes hides
 -- the ink with no extra code. Nothing is ever printed on the torso.
 --
 -- Pieces:
---   NC_Ink_<Body>.fbx      the 13 layers (Ink_LeftUpperArm ... Ink_Face) skinned to that body's rig. Import each
---                          into ReplicatedStorage.NCInkRigs as a Model named <Body> (e.g. "Male_Average").
+--   NC_Ink_<Body>.fbx      the 13 layers (Ink_LeftUpperArm ... Ink_Face) as plain meshes, no rig. Import each with
+--                          the 3D Importer (Rig: none) into ReplicatedStorage.NCInkRigs as a Model named <Body>
+--                          (e.g. "Male_Average"). Where it lands doesn't matter: Attach places every layer itself.
 --   NCInkSwatches_1.glb + NCInkSwatches_2.glb      every tattoo PNG on its own plane. Import it once into Workspace, run
 --                          NCInkSetup.Prepare(model) from the command bar: it saves each texture's asset id into
 --                          ReplicatedStorage.NCInkIds (StringValues named after the file) and you can delete the model.
@@ -212,7 +213,7 @@ end
 -- clone the body's ink layers into a character (call once after the body is built or swapped).
 -- Each layer is placed from its own body part on the character (Ink.FIT), never from where the rig model happens to
 -- sit in ReplicatedStorage, and held by a classic Weld (C0 = the exact offset), so it can't freeze a wrong gap the
--- way a WeldConstraint did. The layers keep their bone weights, so skinning still bends them with the body.
+-- way a WeldConstraint did. The layers have no skin weights (skinned layers came in scattered from the importer).
 function Ink.Attach(character, bodyName)
 	local rigs = RS:FindFirstChild("NCInkRigs")
 	local src = rigs and rigs:FindFirstChild(bodyName)
@@ -330,9 +331,22 @@ function Ink.Apply(character, ink)
 		local mp = folder:FindFirstChild(name)
 		if mp then
 			local file = want[name]
-			local id = file and textureId(file) or ""
-			mp.TextureID = id
-			mp.Transparency = (id ~= "") and 0 or 1
+			local old = mp:FindFirstChildOfClass("SurfaceAppearance")
+			if old then
+				old:Destroy()
+			end
+			-- prefer the saved SurfaceAppearance (alpha mode Transparency), fall back to TextureID
+			local sas = RS:FindFirstChild("NCInkSA")
+			local sa = file and sas and sas:FindFirstChild(file)
+			if sa then
+				sa:Clone().Parent = mp
+				mp.TextureID = ""
+				mp.Transparency = 0
+			else
+				local id = file and textureId(file) or ""
+				mp.TextureID = id
+				mp.Transparency = (id ~= "") and 0 or 1
+			end
 		end
 	end
 end

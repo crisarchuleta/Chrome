@@ -8,7 +8,8 @@
 --      require(game.ServerStorage.NCInkSetup).Prepare(workspace.NCInkSwatches_2)
 --    Each plane's texture asset id is saved to ReplicatedStorage.NCInkIds as a StringValue named after the file
 --    (e.g. "sl_rosas_nubes_L"). The report lists anything missing. Delete the swatch model afterwards.
--- 3. Import NC_Ink_<Body>.fbx for each of the 10 bodies into ReplicatedStorage.NCInkRigs as Models named <Body>.
+-- 3. Import NC_Ink_<Body>.fbx for each of the 10 bodies (3D Importer, Rig: none; they are plain rigid meshes) into
+--    ReplicatedStorage.NCInkRigs as Models named <Body>. Replace any older skinned copies.
 local RS = game:GetService("ReplicatedStorage")
 
 local S = {}
@@ -28,6 +29,9 @@ function S.Prepare(model)
 	local ids = RS:FindFirstChild("NCInkIds") or Instance.new("Folder")
 	ids.Name = "NCInkIds"
 	ids.Parent = RS
+	local sas = RS:FindFirstChild("NCInkSA") or Instance.new("Folder")
+	sas.Name = "NCInkSA"
+	sas.Parent = RS
 	local n, missing = 0, {}
 	for _, mp in ipairs(model:GetDescendants()) do
 		if mp:IsA("MeshPart") then
@@ -39,6 +43,21 @@ function S.Prepare(model)
 				v.Value = id
 				v.Parent = ids
 				n += 1
+				-- keep the imported SurfaceAppearance too (alpha mode Transparency): NCInk.Apply prefers it over
+				-- TextureID, because a script can clone a SurfaceAppearance at runtime but can't set its ColorMap
+				local sa = mp:FindFirstChildOfClass("SurfaceAppearance")
+				if sa then
+					local old = sas:FindFirstChild(name)
+					if old then
+						old:Destroy()
+					end
+					local c = sa:Clone()
+					c.Name = name
+					pcall(function()
+						c.AlphaMode = Enum.AlphaMode.Transparency
+					end)
+					c.Parent = sas
+				end
 			else
 				table.insert(missing, name)
 			end
