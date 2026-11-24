@@ -125,7 +125,14 @@ V.List = {
 			part_Dash = "Classic", part_Steering = "Sport", part_Shifter = "THandle", part_Rim = "Steelie", part_KO = "Cap",
 			part_Tire = "Offroad", ww = "" },
 	},
-	{ id = "GeneralsCart", name = "Generals Cart", price = 1200, class = "cart", blurb = "Open-top cart for getting around." },
+	{
+		id = "GeneralsCart", name = "Generals Cart", price = 1200, class = "cart", blurb = "Open-top cart for getting around.",
+		drive = { TopSpeed = 46, Accel = 20, SteerMax = 36, SpringSag = 0.3 },
+		defaults = { part_FrontBumper = "Stock", part_RearBumper = "Stock", part_Grille = "Mesh", part_Headlights = "Square", part_Taillights = "Bar",
+			part_Mirrors = "Rect", part_Hood = "", part_Skirts = "", part_Seats = "Rolls", part_Doors = "Smooth",
+			part_Dash = "Classic", part_Steering = "Sport", part_Shifter = "THandle", part_Rim = "Steelie", part_KO = "Cap",
+			part_Tire = "Classic", ww = "" },
+	},
 	{
 		id = "PoliceCruiser", name = "Police Cruiser", price = 0, class = "boxy", police = true, blurb = "Coast Patrol cruiser.",
 		drive = { TopSpeed = 86, Accel = 32 },

@@ -23,9 +23,11 @@ paint / vinyl / parts / interior / lights options, saved per vehicle. All names 
 | DusterRidge54 | Duster Ridge 54 | 50s pickup | 2 | tailgate + open bed |
 | ShorelineSix | Shoreline Six | six-seat van | 4 | liftgate |
 | ArmoredTruck | Coast Patrol Armored Truck | armored truck (blind box body) | 2 | liftgate |
+| GeneralsCart | Generals Cart | open utility cart (canopy, two benches) | none (open sides) | tailgate + small bed |
 
-These replace the old CarTemplates under the same names. Still to come: GeneralsCart (needs open-top / no-door
-support in the builder), then DirtBike and SportBike (need their own riding physics).
+These replace the old CarTemplates under the same names. A spec with `doors=0, opentop=True` gets
+open step-in sides with trim, a canopy on posts and a second bench (the cart). Still to come: DirtBike and SportBike
+(they need their own riding physics).
 
 A spec can set its own stock parts with `stock={...}` (merged over its flavour's defaults); the same parts go in
 that vehicle's `defaults` in NCVehicles.lua.

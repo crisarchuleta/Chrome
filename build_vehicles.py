@@ -105,6 +105,13 @@ SPECS = {
                          ZB=1.6, BELT=4.1, NOSE=3.9, HOOD=4.2, TAIL=4.1, CROWN=0.03,
                          A0=-4.0, A1=-2.8, C0=10.6, C1=10.75, ROOF=7.6, TUCK=0.1, B=-1.3, doors=2, rear="liftgate",
                          blind=True, police=True, stock={"Top": "", "FrontBumper": "Bull"}, paint=(0.2, 0.22, 0.24)),
+    # open-top utility cart: no doors (open sides), canopy on posts, a small tipping bed with a tailgate
+    "GeneralsCart": dict(name="Generals Cart", flavour="truck", W=2.9, L0=-6.0, L1=6.4, WB=8.4, WR=0.85, WX=2.3, TW=0.7,
+                         ZB=0.75, BELT=2.7, NOSE=2.45, HOOD=2.7, TAIL=2.7, CROWN=0.05,
+                         A0=-3.0, A1=-2.5, C0=2.8, C1=2.85, ROOF=5.7, TUCK=0.1, B=1.0, doors=0, rear="tailgate",
+                         BED=(2.95, 6.4), opentop=True,
+                         stock={"FrontBumper": "Stock", "RearBumper": "Stock", "Grille": "Mesh", "Headlights": "Square", "Seats": "Rolls",
+                                "Rim": "Steelie", "Tire": "Classic", "Skirts": ""}, paint=(0.12, 0.36, 0.22)),
 }
 VID = os.environ.get("NC_VEHICLE", "Ironclad")
 S = SPECS[VID]
@@ -118,6 +125,7 @@ FLAV = S["flavour"]
 COLORS["Body"] = COLORS["Lid"] = S["paint"]
 BED = S.get("BED")
 Q = S.get("Q")
+OPEN = S.get("opentop", False)                              # no doors: open sides, a canopy on posts
 
 exec(compile(open(os.path.join(HERE, "nc_car_kit.py")).read(), "nc_car_kit.py", "exec"), globals())
 OPT_INFO, WHEEL_INFO = {}, {}
@@ -250,7 +258,8 @@ DOOR_Z0 = ZB + 0.45
 DOORS = []
 for s in (1, -1):
     sd = "L" if s > 0 else "R"
-    DOORS.append(("Door" + sd, s, A0 + 0.12, B - 0.03))
+    if S["doors"] >= 2:
+        DOORS.append(("Door" + sd, s, A0 + 0.12, B - 0.03))
     if S["doors"] == 4:
         DOORS.append(("DoorR" + sd, s, B + 0.1, Q))
 FUEL_Y = (WY_R + ARCH + 0.35, WY_R + ARCH + 0.95)
@@ -302,6 +311,9 @@ def cutters_and_body():
     xin = W - 0.45
     cab_end = BED[0] - 0.25 if BED else (L1 - 0.5 if REAR == "liftgate" else C1 - 0.1)
     cut_box(-xin, A0 + 0.05, floor, xin, cab_end, 20)                          # open cabin (+ cargo bay)
+    if OPEN:                                                                  # open sides, step-in height
+        for s in (-1, 1):
+            cut_box(s * (xin - 0.05), A0 + 0.3, ZB + 0.55, s * (W + 0.6), cab_end - 0.05, 20)
     for (nm, s, y0, y1) in DOORS:                                             # door openings
         cut_box(s * (xin - 0.05), y0 - 0.03, DOOR_Z0 - 0.03, s * (W + 0.6), y1 + 0.03, 20)
     if REAR in ("trunk", "hatch"):
@@ -324,6 +336,13 @@ def cutters_and_body():
         for s in (-1, 1):
             scyl("Under", (s * (tub + 0.01), wy, WR), (s * (tub + 0.05), wy, WR), ARCH, seg=32)
     sbox("Carpet", -xin, A0 + 0.1, floor - 0.02, xin, cab_end - 0.05, floor + 0.06)
+    if OPEN:                                                                  # rubber edge trim round the step-in + a sill plate
+        for s in (-1, 1):
+            xa, xb_ = s * (xin - 0.06), s * (W + 0.015)
+            for ya in (A0 + 0.3, cab_end - 0.05):
+                sbox("Under", xa, ya - 0.025, ZB + 0.53, xb_, ya + 0.025, belt_at(ya) + 0.02)
+            sbox("Chrome", xa, A0 + 0.3, ZB + 0.53, xb_, cab_end - 0.05, ZB + 0.57)
+        sbox("Carpet", -(xin - 0.01), cab_end - 0.03, floor, xin - 0.01, cab_end + 0.005, belt_at(cab_end) - 0.06)   # bulkhead lining
     if REAR in ("trunk", "hatch"):
         sbox("Under", -(W - 0.6), C1 + 0.15, TAIL - 0.95, W - 0.6, L1 - 0.45, TAIL - 0.9)
     if BED:
@@ -367,12 +386,19 @@ def gx(z):
 def greenhouse():
     zb = BELT + 0.05
     xt = gx(ROOF)
-    roof_rear = C0
+    roof_rear = C0 if not OPEN else BED[0] - 0.05
     sbox("PanelRoof", -xt - 0.08, A1 - 0.1, ROOF, xt + 0.08, roof_rear + 0.1, ROOF + 0.14, bev=0.06)
     xb = gx(zb)
     sprism("Glass", [(-xb, A0, zb), (xb, A0, zb), (xt - 0.06, A1, ROOF), (-(xt - 0.06), A1, ROOF)],
            [(-xb, A0 + 0.06, zb - 0.04), (xb, A0 + 0.06, zb - 0.04), (xt - 0.06, A1 + 0.06, ROOF - 0.04), (-(xt - 0.06), A1 + 0.06, ROOF - 0.04)])
     # rear glass: on the body (trunk), on the hatch / liftgate (Lid), or the cab's back window (pickup)
+    if OPEN:                                              # canopy: windshield, A posts, rear posts, no side or back glass
+        for s in (-1, 1):
+            sbeam("RoofBody", (s * xb, A0, zb), (s * xt, A1, ROOF), 0.16, 0.16)
+            sbeam("RoofBody", (s * (xt + 0.04), A1, ROOF + 0.02), (s * (xt + 0.04), roof_rear, ROOF + 0.02), 0.08, 0.12)
+            sbeam("RoofBody", (s * xb, BED[0] - 0.15, zb - 0.1), (s * xt, BED[0] - 0.15, ROOF), 0.16, 0.16)
+        sbeam("RoofBody", (-xb, BED[0] - 0.15, zb + 1.1), (xb, BED[0] - 0.15, zb + 1.1), 0.1, 0.1)   # grab bar
+        return
     if REAR == "trunk" or BED:
         k = "RoofGlass"
         y_top, y_bot = (C0, C1) if not BED else (C0, C1)

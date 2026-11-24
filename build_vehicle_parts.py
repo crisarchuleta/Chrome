@@ -213,7 +213,7 @@ def skirts():
 
 def mirrors():
     S = "Mirrors"
-    y = A0 + 0.55
+    y = A0 + 0.55 if not OPEN else A0 + 0.12                    # open cart: on the cowl, ahead of the step-in
     z = BELT + 0.3
     for s in (-1, 1):
         x = s * (W + 0.05)
@@ -328,6 +328,8 @@ def seats():
 
 
 def S_REAR_Y():
+    if OPEN:                                              # cart: a second bench behind the first
+        return SY + 2.0
     if Q:
         return (B + Q) / 2 + 0.55
     if FLAV == "muscle":
