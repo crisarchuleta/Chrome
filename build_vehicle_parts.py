@@ -123,11 +123,11 @@ def headlights():
             q = lambda pts, g=0.0: [(s * (a * W + g * (1 if a > 0.6 else -1)), yc, b + g * (1 if k in (0, 1) else -1)) for k, (a, b) in enumerate(pts)]
             # a swept teardrop: low pointed inner tip, the top edge curving up the fender to a rounded outer end
             def ztop(u):
-                return 2.32 + 0.56 * u ** 1.5 - 0.12 * max(0.0, (u - 0.88) / 0.12) ** 2
+                return 2.15 + 0.17 * min(1.0, u / 0.12) ** 0.5 + 0.56 * u ** 1.5 - 0.12 * max(0.0, (u - 0.88) / 0.12) ** 2
             def zbot(u):
                 return 2.14 + 0.1 * u + 0.36 * max(0.0, (u - 0.7) / 0.3) ** 2
             xu = lambda u: 0.45 + 0.47 * u
-            def strip(kd, f0, f1, g, out, inn, u0=0.0, u1=1.0, n=8):
+            def strip(kd, f0, f1, g, out, inn, u0=0.0, u1=1.0, n=16):
                 for k in range(n):
                     a, b = u0 + (u1 - u0) * k / n, u0 + (u1 - u0) * (k + 1) / n
                     xa, xb_ = s * (xu(a) * W - (g if k == 0 else 0)), s * (xu(b) * W + (g if k == n - 1 else 0))
@@ -301,10 +301,12 @@ def mirrors():
         if SMOOTH:
             x = s * (gh_xb(y) + 0.02)
             # the reference's shell: a teardrop swelling outboard, on a short thick foot from the door's front corner
-            sbeam(kind(S, "Sport", "Body"), (s * (gh_xb(y) - 0.08), y + 0.1, BELT + 0.06), (x + s * 0.28, y + 0.04, z - 0.04), 0.12, 0.16)
-            scyl(kind(S, "Sport", "Body"), (x + s * 0.12, y, z), (x + s * 0.5, y, z), 0.09, seg=18, r2=0.19)
-            scyl(kind(S, "Sport", "Body"), (x + s * 0.5, y, z), (x + s * 0.7, y, z), 0.19, seg=18, r2=0.09)
-            sbox(kind(S, "Sport", "Glass"), x + s * 0.38, y + 0.12, z - 0.09, x + s * 0.62, y + 0.195, z + 0.09)
+            sbeam(kind(S, "Sport", "Body"), (s * (gh_xb(y) - 0.08), y + 0.1, BELT + 0.06), (x + s * 0.2, y + 0.04, z - 0.06), 0.16, 0.2)
+            scyl(kind(S, "Sport", "Body"), (x + s * 0.03, y, z), (x + s * 0.12, y, z), 0.13, seg=20, r2=0.2)
+            scyl(kind(S, "Sport", "Body"), (x + s * 0.12, y, z), (x + s * 0.44, y, z), 0.2, seg=20, r2=0.24)
+            scyl(kind(S, "Sport", "Body"), (x + s * 0.44, y, z), (x + s * 0.6, y, z), 0.24, seg=20, r2=0.19)
+            scyl(kind(S, "Sport", "Body"), (x + s * 0.6, y, z), (x + s * 0.66, y, z), 0.19, seg=20, r2=0.1)
+            sbox(kind(S, "Sport", "Glass"), x + s * 0.18, y + 0.14, z - 0.13, x + s * 0.56, y + 0.245, z + 0.13)
             sbox(kind(S, "Rect", "Body"), x, y - 0.1, z - 0.2, x + s * 0.62, y + 0.14, z + 0.2, bev=0.06)
             sbox(kind(S, "Rect", "Glass"), x + s * 0.05, y + 0.14, z - 0.15, x + s * 0.57, y + 0.16, z + 0.15)
             continue

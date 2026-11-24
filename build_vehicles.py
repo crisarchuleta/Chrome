@@ -706,7 +706,7 @@ def arch_tunnel(s, x_in, wy):
         if WR + ARCH * c < ZB:
             continue
         yy_ = wy + ARCH * math.cos(a)
-        xo = min(W, station_w(yy_), body_x(yy_, WR + ARCH * c) if S.get("smooth") else W) - 0.03   # inside the skin
+        xo = min(W, station_w(yy_), body_x(yy_, WR + ARCH * c) if S.get("smooth") else W) - (0.1 if S.get("SQUARE") else 0.03)   # inside the skin
         rows.append([bm.verts.new((s * x, wy + r * math.cos(a), max(ZB - 0.02, WR + r * c)))
                      for x in (x_in, xo) for r in (r0, r1)])
     for A, B in zip(rows, rows[1:]):
@@ -916,11 +916,21 @@ def dlo_front(z):
     return A0 + 0.3 + (A1 - A0 - 0.1) * v
 
 
+A_PILLAR = 0.24                                       # body-coloured pillar between windshield and side glass
+
+
+def ws_side(t, z):
+    """the windshield's side edge (y) at angle t: the A-pillar line, rounding into the roof's front edge on top"""
+    return min(dlo_front(z) - 0.12 - A_PILLAR, WS_END + 0.07 * max(0.0, 50 - t))
+
+
 def dlo_kind(y, t, z):
     if t > 50:
         return "Glass" if y < WS_END else ("PanelRoof" if y < C0 else "RoofGlass__Lid")
     lo, hi = dlo_lo(y), dlo_hi(y)
     yf = dlo_front(z)
+    if y < ws_side(t, z) and t >= lo:                     # the windshield wraps down to the A-pillars
+        return "Glass"
     if y < yf - 0.12 or hi <= lo + 0.4:
         return "RoofBody"
     if y < yf:
@@ -940,7 +950,8 @@ def dlo_greenhouse(ys, phis, O, N, nj, ni):
     ang = [math.degrees(min(p, math.pi - p)) for p in phis]
     bounds = [lambda y, t, z: t - dlo_lo(y), lambda y, t, z: t - (dlo_lo(y) - 2.6), lambda y, t, z: t - dlo_hi(y),
               lambda y, t, z: t - (dlo_hi(y) + 3.0), lambda y, t, z: y - dlo_front(z), lambda y, t, z: y - (dlo_front(z) - 0.12),
-              lambda y, t, z: y - WS_END, lambda y, t, z: y - (B - 0.08), lambda y, t, z: y - (B + 0.1)]
+              lambda y, t, z: y - WS_END, lambda y, t, z: y - (B - 0.08), lambda y, t, z: y - (B + 0.1),
+              lambda y, t, z: y - ws_side(t, z)]
     if Q:
         bounds += [lambda y, t, z: y - (Q - 0.06), lambda y, t, z: y - (Q + 0.07)]
     thick = {"Glass": 0.05, "RoofGlass": 0.05, "RoofGlass__Lid": 0.05, "PanelRoof": 0.1, "RoofBody": 0.08, "RoofChrome": 0.06}
@@ -1253,7 +1264,8 @@ def build_frunk():
             sbox("Carpet", -xc, ya_, fl, xc, yb_, fl + 0.03)
     else:
         sbox("Carpet", -(ap - 0.06), y0 + 0.06, fl, ap - 0.06, y1 - 0.06, fl + 0.04)
-    sbox("Dark", -0.5, y1 - 0.4, fl + 0.04, 0.5, y1 - 0.08, fl + 0.3, bev=0.04)          # charger bag
+    if not S.get("smooth"):
+        sbox("Dark", -0.5, y1 - 0.4, fl + 0.04, 0.5, y1 - 0.08, fl + 0.3, bev=0.04)      # charger bag
 
 
 def build_engine_bay():
@@ -1370,7 +1382,7 @@ def body_bvh():
     return _BVH[0]
 
 
-def decal(kind, c00, c10, c11, c01, d, nu=10, nv=3, out=0.03, inn=0.03, smooth=30.0):
+def decal(kind, c00, c10, c11, c01, d, nu=10, nv=3, out=0.03, inn=0.03, smooth=30.0, bridge=False):
     """a thin piece over the body: the quad c00 c10 c11 c01 is cast along d onto the skin and thickened along its
     normal (out above the skin, inn below it)"""
     tree = body_bvh()
@@ -1394,6 +1406,18 @@ def decal(kind, c00, c10, c11, c01, d, nu=10, nv=3, out=0.03, inn=0.03, smooth=3
             ri.append(loc - n * inn)
         O.append(ro)
         I.append(ri)
+    if bridge:
+        # a ray that fell through a panel gap (shut line) between two good hits: take the neighbours' average
+        for j in range(nv + 1):
+            for i in range(1, nu):
+                a, b = (j, i - 1), (j, i + 1)
+                if a in miss or b in miss:
+                    continue
+                mid = (O[j][i - 1] + O[j][i + 1]) / 2
+                if (j, i) in miss or (O[j][i] - mid).length > 0.15:
+                    O[j][i] = mid
+                    I[j][i] = (I[j][i - 1] + I[j][i + 1]) / 2
+                    miss.discard((j, i))
     cells = [(j, i) for j in range(nv) for i in range(nu)
              if not ({(j, i), (j + 1, i), (j, i + 1), (j + 1, i + 1)} & miss)]
     # a hit far off the plane of its neighbours (a ray that slipped past an edge onto another surface) is dropped too
@@ -1423,17 +1447,18 @@ def skylight():
         return max(near) if near else 0.0
 
     def rrect(kind, y0, y1, frac, r, out, inn):
-        n = 14
+        n = 24
         for k in range(n):
             u0, u1 = y0 + (y1 - y0) * k / n, y0 + (y1 - y0) * (k + 1) / n
             hw = []
             for u in (u0, u1):
                 d = min(u - y0, y1 - u)
                 c = r - math.sqrt(max(0.0, r * r - (r - d) ** 2)) if d < r else 0.0
-                hw.append(max(0.02, frac * roof_hw(u) - c))
+                hw.append(max(0.02, frac * hw_min - c))
             decal(kind, (-hw[0], u0, 9), (hw[0], u0, 9), (hw[1], u1, 9), (-hw[1], u1, 9), (0, 0, -1),
                   nu=12, nv=1, out=out, inn=inn)
 
+    hw_min = min(roof_hw(ya + (yb - ya) * k / 10) for k in range(11))   # straight sides, inside the panel everywhere
     fr = sk.get("width", 0.8)
     rrect("Dark", ya, yb, fr + 0.04, 0.4, 0.008, 0.05)                         # rubber frame
     ym = (ya + yb) / 2
@@ -1447,15 +1472,15 @@ def smooth_details():
     if S.get("PLAN"):
         # the reference's lower front: a wide mouth whose top edge dips gently toward the sides, side intakes that rise
         # outward holding a small round fog lamp and two chrome blades, and a shallow chrome wing under the nose (no badge)
-        n_ = 12
+        n_ = 24
         for k in range(n_):
-            a, b = -0.6 + 1.2 * k / n_, -0.6 + 1.2 * (k + 1) / n_
-            zt = lambda u: ZB + 0.66 - 0.12 * (abs(u) / 0.6) ** 2
+            a, b = -0.63 + 1.26 * k / n_, -0.63 + 1.26 * (k + 1) / n_
+            zt = lambda u: ZB + 0.66 - 0.1 * (abs(u) / 0.63) ** 2
             decal("Dark", (a * W, yF, ZB + 0.26), (b * W, yF, ZB + 0.26), (b * W, yF, zt(b)), (a * W, yF, zt(a)), (0, 1, 0),
                   nu=3, nv=3, out=0.02, inn=0.05)
         for s_ in (-1, 1):
             x0, x1 = s_ * W * 0.6, s_ * W * 0.88
-            decal("Dark", (x0, yF, ZB + 0.36), (x1, yF, ZB + 0.46), (x1, yF, ZB + 0.98), (x0, yF, ZB + 0.84), (0, 1, 0), nu=6, nv=3,
+            decal("Dark", (x0, yF, ZB + 0.26), (x1, yF, ZB + 0.46), (x1, yF, ZB + 0.98), (x0, yF, ZB + 0.84), (0, 1, 0), nu=10, nv=5,
                   out=0.015, inn=0.05)
             for dz in (0.0, 0.11):                       # two chrome blades along the intake's top
                 za0, za1 = ZB + 0.66 + dz, ZB + 0.78 + dz
@@ -1495,7 +1520,7 @@ def smooth_details():
     if S.get("PLAN"):          # the reference's rear: the hatch's shut line over the bumper, across the tail
         zc_ = ZB + 1.45
         decal("Seam", (-W * 0.6, yR, zc_ - 0.012), (W * 0.6, yR, zc_ - 0.012), (W * 0.6, yR, zc_ + 0.012), (-W * 0.6, yR, zc_ + 0.012),
-              (0, -1, 0), nu=24, nv=1, out=0.006, inn=0.05)
+              (0, -1, 0), nu=48, nv=1, out=0.014, inn=0.05, bridge=True)
     # door shut lines, following the barrelled side (a straight box poked out above the shoulder)
     for (nm, s_, y0, y1) in DOORS:
         xs = s_ * (W + 1.0)
@@ -1509,8 +1534,8 @@ def smooth_details():
     y0h, y1h = L0 + 0.95, A0 - 0.1
     hx = lambda y: 0.744 * station_w(y)
     if S.get("PLAN"):                                    # the reference: lines from the pillars forward to the lamps' tops
-        while hx(y0h) < 0.6 * W and y0h < y1h - 1:
-            y0h += 0.05
+        y0h = L0 + 1.0
+        hx = lambda y: W * (0.5 + 0.28 * min(1.0, max(0.0, (y - y0h) / (y1h - y0h))) ** 0.8)
     n = 10
     for k in range(n):
         ya, yb = y0h + (y1h - y0h) * k / n, y0h + (y1h - y0h) * (k + 1) / n
@@ -1518,8 +1543,9 @@ def smooth_details():
             xa, xb_ = s_ * hx(ya), s_ * hx(yb)
             decal("Seam", (xa - 0.012, ya, 9), (xa + 0.012, ya, 9), (xb_ + 0.012, yb, 9), (xb_ - 0.012, yb, 9), (0, 0, -1),
                   nu=1, nv=2, out=0.006, inn=0.05)
-    decal("Seam", (-hx(y1h), y1h - 0.012, 9), (hx(y1h), y1h - 0.012, 9), (hx(y1h), y1h + 0.012, 9), (-hx(y1h), y1h + 0.012, 9),
-          (0, 0, -1), nu=24, nv=1, out=0.006, inn=0.05)
+    if not S.get("PLAN"):                                # (the reference's hood ends hidden under the windshield)
+        decal("Seam", (-hx(y1h), y1h - 0.012, 9), (hx(y1h), y1h - 0.012, 9), (hx(y1h), y1h + 0.012, 9), (-hx(y1h), y1h + 0.012, 9),
+              (0, 0, -1), nu=24, nv=1, out=0.006, inn=0.05)
     decal("Seam", (-hx(y0h), y0h - 0.012, 9), (hx(y0h), y0h - 0.012, 9), (hx(y0h), y0h + 0.012, 9), (-hx(y0h), y0h + 0.012, 9),
           (0, 0, -1), nu=24, nv=1, out=0.006, inn=0.05)
     # hatch: a body-colour sill on the lid under the glass's lower edge, so the opened hatch has no gap
