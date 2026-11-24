@@ -284,14 +284,14 @@ def mirrors():
     y = A0 + 0.55 if not OPEN else A0 + 0.12                    # open cart: on the cowl, ahead of the step-in
     z = BELT + 0.3
     if SMOOTH:                                   # a modern mirror: on the door glass's front corner, inside the body's width
-        y, z = A0 + 0.75, BELT + 0.42
+        y, z = A0 + 0.75, BELT + 0.55
     for s in (-1, 1):
         x = s * (W + 0.05)
         if SMOOTH:
             x = s * (gh_xb(y) + 0.02)
             sbeam(kind(S, "Sport", "Body"), (s * (gh_xb(y) - 0.08), y + 0.12, BELT + 0.06), (x + s * 0.35, y + 0.08, z - 0.05), 0.1, 0.16)
-            scyl(kind(S, "Sport", "Body"), (x + s * 0.6, y - 0.15, z), (x + s * 0.6, y + 0.14, z), 0.25, seg=16, r2=0.19)
-            scyl(kind(S, "Sport", "Glass"), (x + s * 0.6, y + 0.14, z), (x + s * 0.6, y + 0.16, z), 0.2, seg=16)
+            scyl(kind(S, "Sport", "Body"), (x + s * 0.6, y - 0.15, z), (x + s * 0.6, y + 0.14, z), 0.19, seg=16, r2=0.15)
+            scyl(kind(S, "Sport", "Glass"), (x + s * 0.6, y + 0.14, z), (x + s * 0.6, y + 0.16, z), 0.15, seg=16)
             sbox(kind(S, "Rect", "Body"), x, y - 0.1, z - 0.2, x + s * 0.62, y + 0.14, z + 0.2, bev=0.06)
             sbox(kind(S, "Rect", "Glass"), x + s * 0.05, y + 0.14, z - 0.15, x + s * 0.57, y + 0.16, z + 0.15)
             continue

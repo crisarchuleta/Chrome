@@ -951,22 +951,22 @@ return {
 		Windows = {
 			DoorL = {
 				Dir = {0, -1, 0},
-				Drop = 1.357,
+				Drop = 1.466,
 				Piece = "RoofGlass__WinDoorL",
 			},
 			DoorR = {
 				Dir = {0, -1, 0},
-				Drop = 1.357,
+				Drop = 1.464,
 				Piece = "RoofGlass__WinDoorR",
 			},
 			DoorRL = {
 				Dir = {0, -1, 0},
-				Drop = 1.198,
+				Drop = 1.212,
 				Piece = "RoofGlass__WinDoorRL",
 			},
 			DoorRR = {
 				Dir = {0, -1, 0},
-				Drop = 1.198,
+				Drop = 1.212,
 				Piece = "RoofGlass__WinDoorRR",
 			},
 		},

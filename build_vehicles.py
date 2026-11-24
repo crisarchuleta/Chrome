@@ -121,7 +121,7 @@ SPECS = {
     "VireoE": dict(name="Vireo E", flavour="sports", W=3.8, L0=-9.6, L1=9.15, WB=11.17, WR=1.33, WX=3.18, TW=1.0,
                    ZB=0.62, BELT=3.4, NOSE=2.95, HOOD=3.8, TAIL=4.0, CROWN=0.02, HCROWN=-0.3,
                    A0=-3.6, A1=-0.1, C0=3.8, C1=7.9, ROOF=5.35, TUCK=0.75, B=1.0, Q=3.9, doors=4, rear="hatch",
-                   electric=True, LEAN=0.1, LONGGLASS=True, PLAN=True, NOSEDROP=1.25, lowpro=0.24, smooth=True, rim_dark=True,
+                   electric=True, LEAN=0.1, LONGGLASS=True, PLAN=True, NOSEDROP=1.25, FLEAN=0.08, GH_IN=0.06, GH_N=2.3, QWIN=(2.5, 1.9), DLO=dict(tip=5.9, kick=10.0), lowpro=0.24, smooth=True, rim_dark=True,
                    stock={"Exhaust": "", "Spoiler": "", "Rim": "Split", "KO": "Cap", "Top": "", "Seats": "Buckets", "Grille": "", "FrontBumper": "", "RearBumper": "",
                                          "Dash": "Digital", "Steering": "Sport"}, paint=(0.025, 0.025, 0.03)),
 }
@@ -368,7 +368,8 @@ def lean_at(y):
     if not (S.get("smooth") and Q):
         return 0.0
     c_ = min(1.0, max(0.0, (y - Q) / 2.5))
-    return S.get("LEAN", 0.1) * c_ * c_ * (3 - 2 * c_)
+    f_ = min(1.0, max(0.0, (A0 + 0.5 - y) / 2.5))          # the front fenders round off over the top too
+    return S.get("LEAN", 0.1) * c_ * c_ * (3 - 2 * c_) + S.get("FLEAN", 0.0) * f_ * f_ * (3 - 2 * f_)
 
 
 def top_w(y):
@@ -790,7 +791,7 @@ def greenhouse():
 # crown near the B pillar down the liftback to the deck, and every cross-section is a superellipse (rounded top,
 # tumblehome sides). The canopy grid is then cut by angle and position into windshield, roof, hatch glass, pillars,
 # side glass and a chrome window surround.
-GH_P = 2 / 3.4                                   # superellipse exponent (2/n)
+GH_P = 2 / S.get("GH_N", 3.4)                                   # superellipse exponent (2/n)
 
 
 def solid_grid(kind, O, I, cells, smooth=30.0):
@@ -853,7 +854,7 @@ def gh_xb(y):
     front = 0.45 if S.get("smooth") else 0.2
     if S.get("smooth"):                                  # the canopy narrows from the roof's rear into the tail (teardrop)
         t = min(1.0, max(0.0, (y - C0) / (GH_YEND - C0)))
-        xb = W * 0.9 - 0.3 - front * (1 - sm((y - A0) / 1.4)) - 1.3 * t ** 1.6
+        xb = W * 0.9 - S.get("GH_IN", 0.3) - front * (1 - sm((y - A0) / 1.4)) - 1.3 * t ** 1.6
         return min(xb, (0.9 - lean_at(y)) * station_w(y) - 0.06)       # never past the (tucked) shoulder
     return W - 0.3 - 0.2 * (1 - sm((y - A0) / 1.0)) - 0.35 * sm((y - Q) / (GH_YEND - Q))
 
@@ -872,6 +873,104 @@ def roof_z(x, y):
     return GH_ZB + h * math.sqrt(max(0.0, 1 - c * c)) ** GH_P
 
 
+GH_TOP = 46.5 if S.get("DLO") else 36.0             # side glass's top edge (degrees round the canopy section)
+
+
+def dlo_lo(y):
+    """window's lower edge angle: rises toward the rear like the reference's belt kick"""
+    d = S.get("DLO", {})
+    u = min(1.0, max(0.0, (y - (A0 + 1.0)) / (d.get("tip", 6.3) - A0 - 1.0)))
+    return 3.0 + d.get("kick", 9.0) * u ** 1.3
+
+
+def dlo_hi(y):
+    """window's upper edge angle: level along the roof, then sweeping down to meet the lower edge at the tip"""
+    d = S.get("DLO", {})
+    tip, y0 = d.get("tip", 6.3), d.get("sweep", (Q or B) - 0.8)
+    lo = dlo_lo(y)
+    if y <= y0:
+        return GH_TOP
+    g = min(1.0, max(0.0, (tip - y) / (tip - y0)))
+    return lo + (GH_TOP - lo) * math.sqrt(max(0.0, 1 - (1 - g) ** 2))
+
+
+def dlo_front(z):
+    """window's front edge (y) at height z: parallel to the windshield pillar"""
+    v = min(1.0, max(0.0, (z - GH_ZB) / max(0.1, ROOF - GH_ZB)))
+    return A0 + 0.3 + (A1 - A0 - 0.1) * v
+
+
+def dlo_kind(y, t, z):
+    if t > 50:
+        return "Glass" if y < A1 else ("PanelRoof" if y < C0 else "RoofGlass__Lid")
+    lo, hi = dlo_lo(y), dlo_hi(y)
+    yf = dlo_front(z)
+    if y < yf - 0.12 or hi <= lo + 0.4:
+        return "RoofBody"
+    if y < yf:
+        return "RoofChrome" if lo - 2.6 <= t <= hi + 3.0 else "RoofBody"
+    if lo <= t <= hi:
+        if B - 0.08 < y < B + 0.1 or (Q and Q - 0.06 < y < Q + 0.07):
+            return "RoofBody"
+        return "RoofGlass"
+    if lo - 2.6 <= t < lo or hi < t <= hi + 3.0:
+        return "RoofChrome"
+    return "RoofBody"
+
+
+def dlo_greenhouse(ys, phis, O, N, nj, ni):
+    """the canopy cut into its pieces along the reference's window outline: cells the outline crosses are split
+    along it (no stair steps)"""
+    ang = [math.degrees(min(p, math.pi - p)) for p in phis]
+    bounds = [lambda y, t, z: t - dlo_lo(y), lambda y, t, z: t - (dlo_lo(y) - 2.6), lambda y, t, z: t - dlo_hi(y),
+              lambda y, t, z: t - (dlo_hi(y) + 3.0), lambda y, t, z: y - dlo_front(z), lambda y, t, z: y - (dlo_front(z) - 0.12)]
+    thick = {"Glass": 0.05, "RoofGlass": 0.05, "RoofGlass__Lid": 0.05, "PanelRoof": 0.1, "RoofBody": 0.08, "RoofChrome": 0.06}
+    groups, polys = {}, []
+    for j in range(nj - 1):
+        for i in range(ni - 1):
+            q = [(j, i), (j, i + 1), (j + 1, i + 1), (j + 1, i)]
+            yc = (ys[j] + ys[j + 1]) / 2
+            tc = (ang[i] + ang[i + 1]) / 2
+            zc = sum(O[a][b].z for a, b in q) / 4
+            kinds = {dlo_kind(ys[a] + (yc - ys[a]) * 0.02, ang[b] + (tc - ang[b]) * 0.02, O[a][b].z) for a, b in q}
+            if len(kinds) == 1 or tc > 50:
+                groups.setdefault(dlo_kind(yc, tc, zc), []).append((j, i))
+                continue
+            done = False
+            for fb in bounds:
+                f = [fb(ys[a], ang[b], O[a][b].z) for a, b in q]
+                if min(f) < 0 < max(f):
+                    P = [O[a][b] for a, b in q]
+                    Nn = [N[a][b] for a, b in q]
+                    for sgn in (-1, 1):
+                        pts, nrm, yy, tt = [], [], [], []
+                        for m in range(4):
+                            a0, b0 = q[m]
+                            a1, b1 = q[(m + 1) % 4]
+                            f0, f1 = f[m], f[(m + 1) % 4]
+                            if f0 * sgn >= 0:
+                                pts.append(P[m]); nrm.append(Nn[m]); yy.append(ys[a0]); tt.append(ang[b0])
+                            if (f0 < 0) != (f1 < 0):
+                                u = f0 / (f0 - f1)
+                                pts.append(P[m].lerp(P[(m + 1) % 4], u)); nrm.append(Nn[m].lerp(Nn[(m + 1) % 4], u).normalized())
+                                yy.append(ys[a0] + (ys[a1] - ys[a0]) * u); tt.append(ang[b0] + (ang[b1] - ang[b0]) * u)
+                        if len(pts) >= 3:
+                            cy, ct = sum(yy) / len(yy), sum(tt) / len(tt)
+                            cz = sum(p.z for p in pts) / len(pts)
+                            polys.append((dlo_kind(cy, ct, cz), pts, nrm))
+                    done = True
+                    break
+            if not done:
+                groups.setdefault(dlo_kind(yc, tc, zc), []).append((j, i))
+    for k, cells in groups.items():
+        t = thick[k]
+        I = [[O[j][i] - N[j][i] * t for i in range(ni)] for j in range(nj)]
+        solid_grid(k, O, I, cells, smooth=40.0 if k != "RoofChrome" else 20.0)
+    for k, pts, nrm in polys:
+        sprism(k, [tuple(p) for p in pts], [tuple(p - n * thick[k]) for p, n in zip(pts, nrm)])
+    HINGE_OF["RoofGlass__Lid"] = "Lid"
+
+
 def greenhouse_smooth():
     ys = [A0 + i * 0.1 for i in range(int((GH_YEND - A0) / 0.1) + 1)]
     keys = [A0, A0 + 0.9, A1, B - 0.1, B + 0.14, C0, GH_YEND]
@@ -883,10 +982,13 @@ def greenhouse_smooth():
     ys = sorted(set(keys) | {y for y in ys if min(abs(y - k) for k in keys) > 0.035})
     # side angles (deg): chrome sill | side glass | chrome | rail | roof / windshield / hatch glass
     th = [0, 3, 11.25, 19.5, 27.75, 36, 39, 42.5, 46] + [46 + i * 5.5 for i in range(1, 9)]
+    if S.get("DLO"):                                      # finer bands: the window outline is cut along its own curve
+        th = [0, 1.5, 3, 5, 7, 9, 11, 13, 15, 18, 22, 26, 30, 34, 38, 41, 44, 47, 50] + [50 + i * 5 for i in range(1, 9)]
     phis = [math.radians(t) for t in th] + [math.radians(180 - t) for t in reversed(th[:-1])]
     O = [[gh_pt(y, ph) for ph in phis] for y in ys]
     nj, ni = len(ys), len(phis)
-    q_end = lambda z: (Q if Q else B) + 1.55 - 1.1 * (z - GH_ZB) / (ROOF - GH_ZB)
+    qa_, qb_ = S.get("QWIN", (1.55, 1.1))                 # the quarter window's rear edge: its foot, and its lean
+    q_end = lambda z: (Q if Q else B) + qa_ - qb_ * (z - GH_ZB) / (ROOF - GH_ZB)
     N = []
     for j in range(nj):
         row = []
@@ -901,6 +1003,9 @@ def greenhouse_smooth():
                 n = -n
             row.append(n)
         N.append(row)
+
+    if S.get("DLO"):
+        return dlo_greenhouse(ys, phis, O, N, nj, ni)
 
     def kind_of(yc, t, zc):
         if t > 46:
@@ -1164,8 +1269,13 @@ def split_onto_doors():
             if ob["kind"] == "RoofGlass":
                 # door glass is its own piece so it can roll down into the door (Kit.SetWindow)
                 kind = "RoofGlass__Win" + nm
+                # the glass can come in several objects (cut cells), so the span covers all of them
                 zs = [v.co.z for v in part.verts]
-                WINDOWS[nm] = {"piece": kind, "drop": max(0.0, min(max(zs) - min(zs) + 0.02, min(zs) - DOOR_Z0 - 0.12))}
+                lo, hi = min(zs), max(zs)
+                if nm in WINDOWS:
+                    lo, hi = min(lo, WINDOWS[nm]["lo"]), max(hi, WINDOWS[nm]["hi"])
+                WINDOWS[nm] = {"piece": kind, "lo": lo, "hi": hi,
+                               "drop": max(0.0, min(hi - lo + 0.02, lo - DOOR_Z0 - 0.12))}
             if ob["kind"] in OPT_INFO:
                 OPT_INFO[kind] = dict(OPT_INFO[ob["kind"]], hinge=nm)
             else:
@@ -1239,7 +1349,7 @@ def decal(kind, c00, c10, c11, c01, d, nu=10, nv=3, out=0.03, inn=0.03, smooth=3
 def smooth_details():
     """the fixed details of a smooth modern body: lower intake, fog-lamp slats, rear diffuser, door trim"""
     yF, yR = L0 - 1.0, L1 + 1.0
-    decal("Dark", (-W * 0.5, yF, ZB + 0.38), (W * 0.5, yF, ZB + 0.38), (W * 0.5, yF, ZB + 0.82), (-W * 0.5, yF, ZB + 0.82),
+    decal("Dark", (-W * 0.55, yF, ZB + 0.3), (W * 0.55, yF, ZB + 0.3), (W * 0.55, yF, ZB + 0.85), (-W * 0.55, yF, ZB + 0.85),
           (0, 1, 0), nu=16, nv=3, out=0.02, inn=0.05)
     if S.get("PLAN"):          # the reference's nose: a thin chrome V from each lamp's inner tip down to the middle (no badge)
         for s_ in (-1, 1):
@@ -1249,7 +1359,7 @@ def smooth_details():
     for s_ in (-1, 1):
         x0, x1 = s_ * W * 0.56, s_ * W * 0.8
         if S.get("PLAN"):
-            x0, x1 = s_ * W * 0.58, s_ * W * 0.84
+            x0, x1 = s_ * W * 0.6, s_ * W * 0.86
         decal("Dark", (x0, yF, ZB + 0.4), (x1, yF, ZB + 0.4), (x1, yF, ZB + 0.78), (x0, yF, ZB + 0.78), (0, 1, 0), nu=6, nv=3,
               out=0.015, inn=0.05)
         for k in range(3):
@@ -1263,6 +1373,10 @@ def smooth_details():
               (-s_, 0, 0), nu=60, nv=1, out=0.025, inn=0.02)
     decal("Dark", (-W * 0.6, yR, ZB + 0.3), (W * 0.6, yR, ZB + 0.3), (W * 0.6, yR, ZB + 0.6), (-W * 0.6, yR, ZB + 0.6),
           (0, -1, 0), nu=14, nv=3, out=0.03, inn=0.05)
+    if S.get("PLAN"):          # the reference's rear: the hatch's shut line over the bumper, across the tail
+        zc_ = ZB + 1.45
+        decal("Seam", (-W * 0.7, yR, zc_ - 0.012), (W * 0.7, yR, zc_ - 0.012), (W * 0.7, yR, zc_ + 0.012), (-W * 0.7, yR, zc_ + 0.012),
+              (0, -1, 0), nu=24, nv=1, out=0.006, inn=0.05)
     # door shut lines, following the barrelled side (a straight box poked out above the shoulder)
     for (nm, s_, y0, y1) in DOORS:
         xs = s_ * (W + 1.0)
@@ -1594,7 +1708,7 @@ def shot(name, loc, tgt):
 
 
 Lr = max(-L0, L1)
-REF_VIEWS = [[0, 4.5], [30, 5.5], [90, 4.5], [205, 4.5], [180, 5.5], [200, 4.5], [270, 4.5], [25, 5.5]]   # the reference sheet's angles
+REF_VIEWS = [[0, 3.25], [27, 5.5], [90, 4.5], [208, 4.75], [180, 5.5], [203, 4.75], [270, 4.5], [28, 5.5]]   # the reference sheet's angles
 fz = (ROOF * 0.4)
 if os.environ.get("NC_REFMASK"):                        # silhouettes for fitting the body to the reference sheet
     show()
