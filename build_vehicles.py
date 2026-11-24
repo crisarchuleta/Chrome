@@ -119,9 +119,9 @@ SPECS = {
     # long glass roof into a liftback, big multi-spoke wheels, no exhaust; a front trunk where the engine would be and
     # a charge port where the gas door would be
     "VireoE": dict(name="Vireo E", flavour="sports", W=3.8, L0=-9.6, L1=9.15, WB=11.17, WR=1.33, WX=3.18, TW=1.0,
-                   ZB=0.62, BELT=3.4, NOSE=2.95, HOOD=3.8, TAIL=4.0, CROWN=0.02, HCROWN=-0.3,
+                   ZB=0.62, BELT=3.4, NOSE=2.95, HOOD=3.8, TAIL=4.0, CROWN=0.02, HCROWN=-0.42,
                    A0=-3.6, A1=-0.1, C0=3.8, C1=7.9, ROOF=5.35, TUCK=0.75, B=1.0, Q=3.9, doors=4, rear="hatch",
-                   electric=True, LEAN=0.1, LONGGLASS=True, PLAN=True, NOSEDROP=1.25, FLEAN=0.08, GH_IN=0.06, GH_N=2.3, QWIN=(2.5, 1.9), DLO=dict(tip=5.9, kick=10.0), lowpro=0.24, smooth=True, rim_dark=True,
+                   electric=True, LEAN=0.1, LONGGLASS=True, PLAN=True, NOSEDROP=1.25, FLEAN=0.08, GH_IN=0.06, GH_N=2.3, QWIN=(2.5, 1.9), DLO=dict(tip=5.9, kick=10.0), SQUARE=1.0, WS_BACK=1.4, SKYLIGHT=dict(front=0.15, rear=0.07, width=0.9), lowpro=0.24, smooth=True, rim_dark=True,
                    stock={"Exhaust": "", "Spoiler": "", "Rim": "Split", "KO": "Cap", "Top": "", "Seats": "Buckets", "Grille": "", "FrontBumper": "", "RearBumper": "",
                                          "Dash": "Digital", "Steering": "Sport"}, paint=(0.025, 0.025, 0.03)),
 }
@@ -230,12 +230,14 @@ def section(w, zb, belt, top, crown, lean=0.0):
     if S.get("smooth"):  # modern body: a gently barrelled side and a rounder shoulder
         mid = zb + 0.45 + (belt - sh - zb - 0.45) * 0.45
         # lean > 0 (the rear quarters) tucks the upper side in more: the reference's haunches narrow toward the deck
-        half = [(0.0, zb), (w * 0.84, zb), (w * 0.94, zb + 0.1), (w * 0.98, zb + 0.32), (w, mid), (w * (0.985 - 0.6 * lean), belt - sh),
-                (w * (0.95 - 0.85 * lean), belt - sh * 0.3), (w * (0.9 - lean), belt + 0.03)]
+        r_ = S.get("SQUARE", 0.0)                         # 0 = round, 1 = the reference's crisper corners
+        half = [(0.0, zb), (w * (0.84 + 0.1 * r_), zb), (w * (0.94 + 0.05 * r_), zb + 0.1 - 0.04 * r_),
+                (w * (0.98 + 0.02 * r_), zb + 0.32 - 0.12 * r_), (w, mid), (w * (0.985 + 0.007 * r_ - 0.6 * lean), belt - sh),
+                (w * (0.95 + 0.028 * r_ - 0.85 * lean), belt - sh * 0.3), (w * (0.9 + 0.035 * r_ - lean), belt + 0.03)]
         # a tall deck (the tail) leans in above the belt, like the reference's rear three-quarter
         shrink = 1 - 0.12 * min(1.0, max(0.0, (top - belt) / 0.6))
         for k in range(5):
-            x = w * (0.89 - lean) * shrink * (1 - k / 5)
+            x = w * (0.89 + 0.035 * r_ - lean) * shrink * (1 - k / 5)
             half.append((x, ztop(x, top, crown, w) - (0.03 if k == 0 else 0.0)))
         half.append((0.0, top + crown))
         return half + [(-x, z) for (x, z) in reversed(half[1:-1])]
@@ -854,8 +856,9 @@ def gh_xb(y):
     front = 0.45 if S.get("smooth") else 0.2
     if S.get("smooth"):                                  # the canopy narrows from the roof's rear into the tail (teardrop)
         t = min(1.0, max(0.0, (y - C0) / (GH_YEND - C0)))
-        xb = W * 0.9 - S.get("GH_IN", 0.3) - front * (1 - sm((y - A0) / 1.4)) - 1.3 * t ** 1.6
-        return min(xb, (0.9 - lean_at(y)) * station_w(y) - 0.06)       # never past the (tucked) shoulder
+        sq = 0.035 * S.get("SQUARE", 0.0)                # squarer shoulders move the deck edge out; the canopy follows
+        xb = W * (0.9 + sq) - S.get("GH_IN", 0.3) - front * (1 - sm((y - A0) / 1.4)) - 1.3 * t ** 1.6
+        return min(xb, (0.9 + sq - lean_at(y)) * station_w(y) - 0.06)       # never past the (tucked) shoulder
     return W - 0.3 - 0.2 * (1 - sm((y - A0) / 1.0)) - 0.35 * sm((y - Q) / (GH_YEND - Q))
 
 
@@ -873,6 +876,7 @@ def roof_z(x, y):
     return GH_ZB + h * math.sqrt(max(0.0, 1 - c * c)) ** GH_P
 
 
+WS_END = A1 - S.get("WS_BACK", 0.0)                 # where the windshield glass meets the roof panel (top view)
 GH_TOP = 46.5 if S.get("DLO") else 36.0             # side glass's top edge (degrees round the canopy section)
 
 
@@ -902,7 +906,7 @@ def dlo_front(z):
 
 def dlo_kind(y, t, z):
     if t > 50:
-        return "Glass" if y < A1 else ("PanelRoof" if y < C0 else "RoofGlass__Lid")
+        return "Glass" if y < WS_END else ("PanelRoof" if y < C0 else "RoofGlass__Lid")
     lo, hi = dlo_lo(y), dlo_hi(y)
     yf = dlo_front(z)
     if y < yf - 0.12 or hi <= lo + 0.4:
@@ -923,7 +927,8 @@ def dlo_greenhouse(ys, phis, O, N, nj, ni):
     along it (no stair steps)"""
     ang = [math.degrees(min(p, math.pi - p)) for p in phis]
     bounds = [lambda y, t, z: t - dlo_lo(y), lambda y, t, z: t - (dlo_lo(y) - 2.6), lambda y, t, z: t - dlo_hi(y),
-              lambda y, t, z: t - (dlo_hi(y) + 3.0), lambda y, t, z: y - dlo_front(z), lambda y, t, z: y - (dlo_front(z) - 0.12)]
+              lambda y, t, z: t - (dlo_hi(y) + 3.0), lambda y, t, z: y - dlo_front(z), lambda y, t, z: y - (dlo_front(z) - 0.12),
+              lambda y, t, z: y - WS_END]
     thick = {"Glass": 0.05, "RoofGlass": 0.05, "RoofGlass__Lid": 0.05, "PanelRoof": 0.1, "RoofBody": 0.08, "RoofChrome": 0.06}
     groups, polys = {}, []
     for j in range(nj - 1):
@@ -933,7 +938,7 @@ def dlo_greenhouse(ys, phis, O, N, nj, ni):
             tc = (ang[i] + ang[i + 1]) / 2
             zc = sum(O[a][b].z for a, b in q) / 4
             kinds = {dlo_kind(ys[a] + (yc - ys[a]) * 0.02, ang[b] + (tc - ang[b]) * 0.02, O[a][b].z) for a, b in q}
-            if len(kinds) == 1 or tc > 50:
+            if len(kinds) == 1:
                 groups.setdefault(dlo_kind(yc, tc, zc), []).append((j, i))
                 continue
             done = False
@@ -1346,6 +1351,42 @@ def decal(kind, c00, c10, c11, c01, d, nu=10, nv=3, out=0.03, inn=0.03, smooth=3
     return solid_grid(kind, O, I, cells, smooth) if cells else None
 
 
+def skylight():
+    """the reference's top view: a framed two-pane glass roof inset in the body-coloured roof panel, with small
+    rounded corners and a thin bar across the middle"""
+    sk = S["SKYLIGHT"]
+    pts = []
+    for ob in OBJS:
+        if ob["kind"] == "PanelRoof":
+            bake(ob)
+            pts += [ob.matrix_world @ v.co for v in ob.data.vertices]
+    if not pts:
+        return
+    ya, yb = WS_END + (C0 - WS_END) * sk.get("front", 0.13), C0 - (C0 - WS_END) * sk.get("rear", 0.08)
+
+    def roof_hw(y):
+        near = [abs(p.x) for p in pts if abs(p.y - y) < 0.25]
+        return max(near) if near else 0.0
+
+    def rrect(kind, y0, y1, frac, r, out, inn):
+        n = 14
+        for k in range(n):
+            u0, u1 = y0 + (y1 - y0) * k / n, y0 + (y1 - y0) * (k + 1) / n
+            hw = []
+            for u in (u0, u1):
+                d = min(u - y0, y1 - u)
+                c = r - math.sqrt(max(0.0, r * r - (r - d) ** 2)) if d < r else 0.0
+                hw.append(max(0.02, frac * roof_hw(u) - c))
+            decal(kind, (-hw[0], u0, 9), (hw[0], u0, 9), (hw[1], u1, 9), (-hw[1], u1, 9), (0, 0, -1),
+                  nu=12, nv=1, out=out, inn=inn)
+
+    fr = sk.get("width", 0.8)
+    rrect("Dark", ya, yb, fr + 0.04, 0.4, 0.008, 0.05)                         # rubber frame
+    ym = (ya + yb) / 2
+    rrect("Glass", ya + 0.07, ym - 0.03, fr, 0.33, 0.016, 0.02)                # front pane
+    rrect("Glass", ym + 0.03, yb - 0.07, fr, 0.33, 0.016, 0.02)                # rear pane
+
+
 def smooth_details():
     """the fixed details of a smooth modern body: lower intake, fog-lamp slats, rear diffuser, door trim"""
     yF, yR = L0 - 1.0, L1 + 1.0
@@ -1384,6 +1425,8 @@ def smooth_details():
             z0, z1 = DOOR_Z0 - 0.03, belt_at(yy) + 0.02
             decal("Seam", (xs, yy - 0.012, z0), (xs, yy + 0.012, z0), (xs, yy + 0.012, z1), (xs, yy - 0.012, z1), (-s_, 0, 0),
                   nu=1, nv=12, out=0.006, inn=0.05)
+    if S.get("SKYLIGHT"):
+        skylight()
     # hood shut lines: along the fender peaks' inner edge and across behind the nose cone
     y0h, y1h = L0 + 0.95, A0 - 0.1
     hx = lambda y: 0.744 * station_w(y)

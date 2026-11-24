@@ -60,13 +60,13 @@ return {
 				Axis = {0, 1, 0},
 				Kind = "charge",
 				Open = -80,
-				Pivot = {-2.942, 3.106, 7.565},
+				Pivot = {-2.957, 3.106, 7.565},
 			},
 			Hood = {
 				Axis = {-1, 0, 0},
 				Kind = "hood",
 				Open = -50,
-				Pivot = {-0.0, 3.692, -3.65},
+				Pivot = {-0.0, 3.627, -3.65},
 			},
 			Lid = {
 				Axis = {-1, 0, 0},
@@ -79,8 +79,8 @@ return {
 			{-3.8, 0.62, -9.8, 3.8, 3.5, 9.35},
 			{-3.5, 3.4, -3.3, 3.5, 5.45, 7.9},
 		},
-		ImportMax = {4.067, 5.525, 10.04},
-		ImportMin = {-4.067, 0.5, -9.4},
+		ImportMax = {4.102, 5.525, 10.04},
+		ImportMin = {-4.102, 0.5, -9.4},
 		LidHinge = {-0.0, 5.25, 3.8},
 		OptInfo = {
 			OptDashBilletChrome = {
@@ -951,22 +951,22 @@ return {
 		Windows = {
 			DoorL = {
 				Dir = {0, -1, 0},
-				Drop = 1.466,
+				Drop = 1.522,
 				Piece = "RoofGlass__WinDoorL",
 			},
 			DoorR = {
 				Dir = {0, -1, 0},
-				Drop = 1.464,
+				Drop = 1.521,
 				Piece = "RoofGlass__WinDoorR",
 			},
 			DoorRL = {
 				Dir = {0, -1, 0},
-				Drop = 1.212,
+				Drop = 1.269,
 				Piece = "RoofGlass__WinDoorRL",
 			},
 			DoorRR = {
 				Dir = {0, -1, 0},
-				Drop = 1.212,
+				Drop = 1.269,
 				Piece = "RoofGlass__WinDoorRR",
 			},
 		},
