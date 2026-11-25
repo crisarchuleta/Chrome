@@ -322,7 +322,7 @@ def _build_item(o, it, f, p, c1, c2, nm, camo):
         if p.get("layered"):
             sl = "long"
         NG.build_top(o, nm, kind="tee", sleeve=sl, color=c1, accent=c2, hood=False, pocket=False, rib=sl == "long",
-                     ease=0.06, sleeve_ease=0.28 if sl == "short" else 0.12, thick=0.003,
+                     ease=0.06, sleeve_ease=0.12 if sl == "short" else 0.12, thick=0.003,
                      band=None,
                      neck_drop=0.05 if sl == "none" else 0)
     elif f == "hoodie":
@@ -336,13 +336,13 @@ def _build_item(o, it, f, p, c1, c2, nm, camo):
     elif f in ("shirt", "polo"):
         sl = "short" if (p.get("sleeve") == "tee" or f == "polo") else "long"
         NG.build_top(o, nm, kind="tee", sleeve=sl, color=c1, accent=c2, hood=False, pocket=False, rib=False,
-                     collar="shirt", ease=0.05, sleeve_ease=0.1 if sl == "long" else 0.2, thick=0.003, front_open=bool(p.get("open")) and it["slot"] == "Outer",
+                     collar="shirt", ease=0.05, sleeve_ease=0.1 if sl == "long" else 0.12, thick=0.003, front_open=bool(p.get("open")) and it["slot"] == "Outer",
                      zip_front=not (p.get("open") and it["slot"] == "Outer"), length=-0.01,
                      neck_drop=0.03 if p.get("open") else 0)  # Top-slot shirts stay closed so the tank never shows
     elif f == "jersey":
         sl = {"tee": "short", "long": "long"}.get(p.get("sleeve"), "none")
         NG.build_top(o, nm, kind="tee", sleeve=sl, color=c1, accent=c2, hood=False, pocket=False, rib=True,
-                     ease=0.12, sleeve_ease=0.3, thick=0.003, neck_drop=0.04, band=c2, length=0.02)
+                     ease=0.12, sleeve_ease=0.14, thick=0.003, neck_drop=0.04, band=c2, length=0.02)
     elif f == "croptop":
         NG.build_top(o, nm, kind="tee", sleeve="short", color=c1, accent=c2, hood=False, pocket=False, rib=False,
                      ease=0.0, sleeve_ease=0.08, thick=0.003, length=-0.17)
@@ -365,7 +365,7 @@ def _build_item(o, it, f, p, c1, c2, nm, camo):
         NG.build_top(o, nm, kind="jacket", sleeve="none" if p.get("vest") else "long", color=(1, 1, 1) if camo else c1, accent=c2,
                      camo_pal=camo, hood=p.get("collar") == "hood", pocket=False, rib=bool(p.get("cuffs")) or p.get("collar") == "rib",
                      puffer=bool(p.get("puffer")), collar=coll, zip_front=bool(p.get("zip")) and not is_open,
-                     front_open=is_open, ease=0.1, sleeve_ease=0.16, length=(0.3 * (L - 1) + 0.12) if L else -0.02,
+                     front_open=is_open, ease=0.1, sleeve_ease=0.08, length=(0.3 * (L - 1) + 0.12) if L else -0.02,
                      flare=0.03 if L else 0.012, band=c2 if p.get("stripes") else None, thick=0.005)
     elif f == "blazer":
         NG.build_top(o, nm, kind="jacket", color=c1, accent=c2, hood=False, pocket=False, rib=False, collar="lapel",

@@ -868,7 +868,7 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
                 continue
             def p95(lo, hi):
                 q = Ra[m & (sa > lo) & (sa < hi)]
-                return np.percentile(q, 95) if len(q) else Ra[m].max()
+                return np.percentile(q, SLEEVE_PCT_JACKET if kind == "jacket" else SLEEVE_PCT) if len(q) else Ra[m].max()
             r_up, r_lo, r_wr = p95(0.12, 0.35), p95(0.55, 0.8), p95(0.85, 1.0)
             ss = sa[m]
             if sleeve == "long":
@@ -882,13 +882,13 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
                 bunch = np.sin(2 * np.pi * ss / 0.055 + 1.3 * np.sin(2 * phi + ss * 9)) * smoothstep(0.62, 0.86, ss) * (1 - smoothstep(s_end - 0.08, s_end - 0.04, ss))
                 Rt = Rt * (1 + 0.07 * bunch)
             else:
-                Rt = r_up * (1 + sleeve_ease) * (1 + 0.12 * ss / max(s_end, 1e-3))
+                Rt = r_up * (1 + sleeve_ease) * (1 + SHORT_SLEEVE_FLARE * ss / max(s_end, 1e-3))
             if puffer:
                 Rt = Rt * (1 + 0.06 * np.abs(np.sin(np.pi * ss / 0.11)) ** 0.6)
             if SLEEVE_ROOT_EASE > 0 and sleeve == "long":  # (a short sleeve ballooned into a ring)
                 # room at the armpit (like a real armhole): with a skin-tight sleeve root the arm skin or the tank
                 # showed through whenever the arm swung forward or across
-                Rt = Rt * (1 + SLEEVE_ROOT_EASE * (1 - smoothstep(0.12, 0.42, ss)))
+                Rt = Rt * (1 + (SLEEVE_ROOT_EASE_JACKET if kind == "jacket" else SLEEVE_ROOT_EASE) * (1 - smoothstep(0.12, 0.42, ss)))
             Rn = np.maximum(Ra[m], Rt)
             w = smoothstep(0.02, 0.2, ss)
             A_ = J[side + "-shoulder"]; d = J[side + "-hand"] - A_; L = np.linalg.norm(d); d /= L
@@ -950,6 +950,22 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
             "none": []}[collar]
     col_rings = []
     tup = None
+    nout_ = None
+    if COLLAR_FOLLOW and collar in ("lapel", "shirt") and o.col.tree is not None:
+        # a fold-over collar is laid out in the body's own frame (up the neck, out along the skin normal): laid out
+        # level, its turned-down part dug into the sloping trapezius at the sides and crumpled into spikes
+        _, jn_ = o.col.tree.query(L0)
+        nn_ = o.col.N[jn_]
+        tup = np.array([0, 0, 1.0]) - nn_[:, 2:3] * nn_
+        tup /= np.maximum(np.linalg.norm(tup, axis=1, keepdims=True), 1e-9)
+        for _ in range(12):  # (per-vertex body normals are noisy: smooth along the neck loop)
+            nn_ = 0.25 * np.roll(nn_, 1, 0) + 0.5 * nn_ + 0.25 * np.roll(nn_, -1, 0)
+        nn_ /= np.maximum(np.linalg.norm(nn_, axis=1, keepdims=True), 1e-9)
+        tup = np.array([0, 0, 1.0]) - nn_[:, 2:3] * nn_
+        tup /= np.maximum(np.linalg.norm(tup, axis=1, keepdims=True), 1e-9)
+        nout_ = nn_.copy(); nout_[:, 2] = np.maximum(nout_[:, 2], 0.0)
+        nout_ /= np.maximum(np.linalg.norm(nout_, axis=1, keepdims=True), 1e-9)
+        if COLLAR_FOLLOW == 2: nout_ = None  # (only the rise follows the neck)
     if collar == "rib" and o.col.tree is not None:
         # a rib collar lies along the body: on sloped (muscular) shoulders straight up would dig into the skin
         _, jn_ = o.col.tree.query(L0)
@@ -962,13 +978,23 @@ def build_top(o, name, kind="hoodie", sleeve="long", length=0.0, ease=0.08, slee
             pts += tup * dz * k
         else:
             pts[:, 2] += dz * k
-        pts[:, :2] += outd * dr * k
+        if nout_ is not None:
+            pts += nout_ * dr * k
+        else:
+            pts[:, :2] += outd * dr * k
         col_rings.append(pts)
     if col_rings:
         X, F, R, _ = _extend_loop(X, F, nl, None, col_rings, R, "Collar")
     E = edges_of(F)
     X = laplace(X, E, 2, taubin=True)
-    X = o.col.push(X, 0.006 * k)
+    if PUSH_DIFFUSE and kind in PUSH_DIFFUSE_KINDS:
+        # a loose body panel touches the body only on bumps (shoulder blades): pushing just those vertices out
+        # left star-shaped pinches. Spread the push over the panel, then push again for clearance.
+        Xb = X.copy(); D = o.col.push(X, 0.006 * k) - Xb
+        D = laplace(D, E, PUSH_DIFFUSE, mask=~_isin(R, ("Collar",)))
+        X = o.col.push(Xb + D * PUSH_DIFFUSE_GAIN, 0.006 * k)
+    else:
+        X = o.col.push(X, 0.006 * k)
     if kind == "jacket" and len(o.objs) > 0:
         # over other clothes: smooth-then-push a few times so the sleeve bridges an under-layer's hem step (a tee's
         # short sleeve) instead of tracing a ledge round the arm
@@ -2627,7 +2653,7 @@ def skin_to_rig(o):
                     # forearm sleeve keeps the body's own elbow transition (smearing it along the sleeve pinched the
                     # elbow into hanging flaps when the arm bends)
                     sa_, _, _ = arm_param(b, P)
-                    fz_ = ~(flag & (sa_ > 0.35))
+                    fz_ = ~(flag & (sa_ > SLEEVE_FREEZE_S))
                 for it_ in range(its):
                     Wn = 0.5 * Wg + 0.5 * (A @ Wg) / deg[:, None]
                     Wg = np.where(fz_[:, None] | (it_ < (SLEEVE_DIFFUSE or 0)), Wn, Wg)
@@ -3408,6 +3434,10 @@ BUILD_ARM_RAD = 0.7
 UNPOSE_PUSH = 0.022  # (x k) cloth kept this far off the rest torso in the armpit band after unposing
 UNPOSE_PUSH_BODY_ONLY = True
 LAPEL_PROF = [(0.012, -0.001), (0.018, 0.008), (0.006, 0.028), (-0.008, 0.04)]  # (dz, dr) x k rings of a lapel collar
+PUSH_DIFFUSE = 60  # build_top: laplace steps spreading the collar-step push over the panel (0 = off)
+PUSH_DIFFUSE_GAIN = 1.0
+PUSH_DIFFUSE_KINDS = ("jacket",)
+COLLAR_FOLLOW = False  # build_top: lapel/shirt collars laid out in the body's local frame
 FOLD_LIFT = 0.008  # build_top: a fold-over collar's turned-down part sits this much (x k) above the panel
 REHANG_BLEND = 0.0  # rehang: the straight fall eases in over this height (x k) below its start
 REHANG_TOP = True
@@ -3417,6 +3447,11 @@ SLEEVE_PUSH = 0.008  # (x k) sleeves kept this far off the rest arm after unposi
 SLEEVE_OFF_TANK = True  # _sleeve_flag: sleeve-root cloth over the tank is body panel
 HIP_CUT_CENTRE = 0.08  # hip_cut_z: rise of the cut at the centre front/back (x k)
 HIP_CUT_CW = 0.10
+SHORT_SLEEVE_FLARE = -0.15  # build_top: a short sleeve widens (or narrows, <0) this much toward its hem
+SLEEVE_FREEZE_S = 0.35  # skin_to_rig: sleeve cloth past this arm fraction keeps undiffused weights
+SLEEVE_PCT_JACKET = 60  # (jacket sleeves over a top looked puffed)
+SLEEVE_PCT = 95  # build_top: sleeve tube radius = this percentile of the arm shell radius (x 1+sleeve_ease)
+SLEEVE_ROOT_EASE_JACKET = 0.05  # (jackets sit over a top: more puffed the shoulders)
 SLEEVE_ROOT_EASE = 0.15  # build_top: extra sleeve radius at the root (x)
 ARMPIT_HUG = 0.0  # build_top: cloth near the armpit pulled onto the skin
 ARMPIT_BODY = 0.0  # cloth near the armpit takes the skin's own weights (see skin_to_rig)
