@@ -1279,7 +1279,7 @@ def build_styles(H):
 
     # --- locs / twists: a short base, then real strands that hang (the front ones fall over the eyes)
     def locs_extras(length, n_front, n_all, radius, front_len, end_z=None, part=False, two_strand=False, gap=0.075, clear_k=1.3,
-                    frame_face=False, hat_tail=False, curl_tips=False, turns=30.0, hem=None, ringlet=None, layered=False, seed=11):
+                    frame_face=False, hat_tail=False, curl_tips=False, turns=30.0, hem=None, ringlet=None, layered=False, seed=11, ear_min=None):
         """frame_face: the front locs fall beside the face (not over it); hat_tail: under a hat each loc keeps the part
         below the cap band, so the locs hang out from under the hat all round (person's photos 2026-11-24);
         curl_tips: the last few cm twist into a loose hook like real rope-twist locs"""
@@ -1299,6 +1299,8 @@ def build_styles(H):
             # (face-framing locs also grow over the temples, right down to just above the ear: otherwise the shell
             #  showed there as a smooth slab between the ropes)
             e_min, xy_min = (0.075, 0.025) if frame_face else (0.13, 0.06)
+            if ear_min is not None:                   # (right up round the ear: the scalp showed in a strip by it)
+                e_min, xy_min = ear_min, 0.0
             cand = np.array([i for i in np.where(T > 0.012)[0] if kde.find(V[i])[2] > e_min
                              and kxy.find((V[i][0], V[i][1], 0.0))[2] > xy_min])
             r2.shuffle(cand)
@@ -1496,6 +1498,10 @@ def build_styles(H):
                     tt = ss / tot
                     # (tight at the root, the coil opens over the first few cm; each turn a little different)
                     rr_ = cr * (0.25 + 0.75 * np.clip(tt / 0.12, 0, 1)) * (1 + 0.12 * np.sin(ss * 23.0 + ph))
+                    if capped and hat_tail:
+                        # (under a hat the coil stays tight for its first ~10 cm, so it tucks under the band instead
+                        #  of springing out over it)
+                        rr_ *= 0.15 + 0.85 * np.clip((ss - 0.03) / 0.1, 0, 1)
                     th = 2 * math.pi * ss / pit + ph
                     coil = C_ + (e1 * np.cos(th)[:, None] + e2 * np.sin(th)[:, None]) * rr_[:, None]
                     coil[0] = C_[0]
@@ -1674,8 +1680,8 @@ def build_styles(H):
             return ex
         # (a close layer of short tight curls all over the scalp under the long ones: the scalp showed as a smooth
         #  shiny patch at the crown and a see-through strip by the ear between the long curls)
-        under = lambda: locs_extras(0.24, 12, 230, 0.022, 0.24, gap=0.04, clear_k=1.0, frame_face=True, hat_tail=True,
-                                    ringlet=(0.015, 0.008, 0.05, 3, 5, False), seed=7)
+        under = lambda: locs_extras(0.24, 12, 320, 0.022, 0.24, gap=0.034, clear_k=1.0, frame_face=True, hat_tail=True,
+                                    ringlet=(0.015, 0.008, 0.05, 3, 5, False), seed=7, ear_min=0.035)
         add_short("Curls", "Shoulder Length Curls", dict(base, groove=0.25), both(under(),
                   locs_extras(1.15, 12, 290, 0.03, 1.15, gap=0.039, clear_k=2.4, frame_face=True, hat_tail=True,
                               layered=0.72, ringlet=(0.024, 0.009, 0.07, 3, 6, False))))
@@ -1794,7 +1800,7 @@ def build_styles(H):
             b.add(vv, ff)                                              # the hair tie
         add_short("Ponytail", "High Ponytail", dict(slick, part=None, groove=0.04, cards=tie_card(np.array([0.0, H.centre[1] + 0.85 * H.R, H.anchor[2] + 0.12]))), ponytail)
 
-        def curtain(length, flare, curl, part_x=None):
+        def curtain(length, flare, curl, part_x=None, long_front=False):
             def ex(b, T, capped=False):
                 # one continuous sheet of hair from the scalp past the ears, draped over the back and shoulders.
                 # Each column falls straight down from the widest point above it (like real hair over a head and
@@ -1900,7 +1906,7 @@ def build_styles(H):
                 if capped:
                     # under a hat only the sheet below the band (the untrimmed sheet stood ~3 cm over every hat)
                     VA_ = np.array(verts)
-                    over_ = VA_[:, 2] > cap_line(H, VA_) - 0.03
+                    over_ = VA_[:, 2] > cap_line(H, VA_) - 0.06    # (the new caps sit tighter: 6 cm margin)
                     faces = [f_ for f_ in faces if not over_[f_].any()]
                 b.add(verts, faces, np.r_[uu, uu], np.r_[ww, ww])
                 # strand cards: guide strands from roots all over the scalp, combed along the style's flow over the
@@ -1961,14 +1967,25 @@ def build_styles(H):
                         r_ = math.hypot(q[0] - axis[0], q[1] - axis[1])
                         z_ = q[2]
                         floor_z = (shoulder_z + rng_.uniform(-0.07, 0.08)) if abs(ang) > math.radians(55) else -9.0
+                        # (in front of the shoulders the hair falls on down over the chest to the full length: the front
+                        #  stopped at the shoulder while the back reached the waist)
+                        front_ = abs(ang) > math.radians(100) and long_front
+                        if front_:
+                            floor_z = -9.0
                         kq = int(np.clip((ang - a_lo) / (a_hi - a_lo) * (cols - 1), 0, cols - 1))
-                        floor_z = max(floor_z, z0 - col_len(angs[kq]) + rng_.uniform(0.0, 0.08))   # (inside the sheet's cut)
+                        if not front_:
+                            floor_z = max(floor_z, z0 - col_len(angs[kq]) + rng_.uniform(0.0, 0.08))   # (inside the sheet's cut)
                         while L < total and z_ - step_h > floor_z:   # then down, onto the sheet
                             z_ -= step_h
                             L += step_h
-                            tgt = sheet_r(ang, z_) + h_off - 0.004
-                            r_ = r_ + float(np.clip(tgt - r_, -0.03, 0.04))
-                            pts.append(np.array([axis[0] + math.sin(ang) * r_, axis[1] + math.cos(ang) * r_, z_]))
+                            if not (front_ and z_ < neck_z + 0.05):      # (in front: falls straight, pushed off the body)
+                                tgt = sheet_r(ang, z_) + h_off - 0.004
+                                r_ = r_ + float(np.clip(tgt - r_, -0.03, 0.04))
+                            q_ = np.array([axis[0] + math.sin(ang) * r_, axis[1] + math.cos(ang) * r_, z_])
+                            if front_ and z_ < neck_z + 0.05:          # over the shoulder and chest, never into them
+                                q_ = push_out(H, q_, 0.02 + h_off, body)
+                                r_ = math.hypot(q_[0] - axis[0], q_[1] - axis[1])
+                            pts.append(q_)
                             outs.append(np.array([math.sin(ang), math.cos(ang), 0.0]))
                         if len(pts) < 3:
                             continue
@@ -1992,7 +2009,7 @@ def build_styles(H):
                             if len(idx) >= 2:
                                 seg_p = P_[idx]
                                 if capped:
-                                    keep = seg_p[:, 2] < cap_line(H, seg_p) - 0.02
+                                    keep = seg_p[:, 2] < cap_line(H, seg_p) - 0.05
                                     if not keep.all():
                                         if s0 + seg_len >= sarc[-1] - 1e-6:
                                             break
@@ -2016,7 +2033,7 @@ def build_styles(H):
             return ex
         add_short("LongStraight", "Long Straight", dict(slick, top=0.05, side=0.04, groove=0.3,
                                                         cards=dict(straight_cards("back", 0.35, 0.4), defer=True, sides_down=True)),
-                  curtain(1.9, 0.25, False))
+                  curtain(1.9, 0.25, False))   # (long_front: front lengths past the shoulders, not finished)
         add_short("Bob", "Chin Bob", dict(slick, top=0.06, side=0.045, part=0.2, groove=0.3,
                                           cards=dict(straight_cards("part", 0.3, 0.36), part=0.2, defer=True, sides_down=True)),
                   curtain(1.0, 0.45, True, part_x=0.2))
