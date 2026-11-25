@@ -294,8 +294,8 @@ def make_stations():
             st.append((y, W * pf, ZB + 0.1 * (1 - e), bl, top, hc * f))
         wz = S.get("WS_Z", 0.0)                         # the hood's back edge rises to meet a raised windshield base
         if wz:
-            st[-1] = st[-1][:4] + (st[-1][4] + 0.3 * wz, st[-1][5] * 0.6)
-        st.append((A0, W, ZB, BELT, HOOD + 0.06 + 0.9 * wz, hc * (0.15 if wz else 0.5)))
+            st[-1] = st[-1][:4] + (st[-1][4] + 0.15 * wz, st[-1][5] * 0.6)
+        st.append((A0, W, ZB, BELT, HOOD + 0.06 + 0.4 * wz, hc * (0.15 if wz else 0.5)))
     else:
         st = [(L0, W - 0.5, ZB + 0.35, nb - 0.2, nb - 0.12, 0.0), (L0 + 0.2, W - 0.22, ZB + 0.15, nb, NOSE - 0.05, CROWN * 0.4),
               (L0 + 0.8, W - 0.05, ZB, nb + 0.05, NOSE + (HOOD - NOSE) * 0.1, CROWN), (A0 - 0.6, W, ZB, BELT - 0.1, HOOD - 0.02, CROWN),
@@ -629,7 +629,7 @@ def cutters_and_body():
             nsl = 10
             for k in range(nsl):
                 y0s, y1s = ya + (yb - ya) * k / nsl, ya + (yb - ya) * (k + 1) / nsl
-                flat_floor("Under", min(W, station_w(y1s)) - 0.65, y0s, y1s, tz, tz + 0.05)
+                flat_floor("Under", min(min(min(W, station_w(y)) - 0.54, top_w(y) - 0.03) for y in (y0s, y1s)) - 0.03, y0s, y1s, tz, tz + 0.05)
                 # side walls: line the cut up to the deck, or the opening shows the hollow body
                 xa_, xb_ = (min(min(W, station_w(y)) - 0.54, top_w(y) - 0.03) for y in (y0s, y1s))
                 za_, zb_ = deck_z(xa_, y0s) - 0.04, deck_z(xb_, y1s) - 0.04
@@ -768,7 +768,10 @@ def build_doors(src):
         HINGE_OF["PanelDoor" + sd] = HINGE_OF["DoorJamb" + sd] = nm
         for yy in (y0 - 0.015, y1 + 0.015) if not S.get("smooth") else ():     # shut lines (smooth: smooth_details)
             sbox("Seam", s * (W - 0.25), yy - 0.012, DOOR_Z0 - 0.03, s * (W - 0.01), yy + 0.012, belt_at(yy) + 0.05)
-        sbox("Chrome", s * (W + 0.02) - 0.04, y1 - 0.75, BELT - 0.42, s * (W + 0.02) + 0.04, y1 - 0.3, BELT - 0.34, bev=0.02)   # handle
+        kh = "Chrome__" + nm                              # the handle rides on its door
+        HINGE_OF[kh] = nm
+        xh = body_x((2 * y1 - 1.05) / 2, BELT - 0.38) if S.get("smooth") else W
+        sbox(kh, s * (xh + 0.02) - 0.04, y1 - 0.75, BELT - 0.42, s * (xh + 0.02) + 0.04, y1 - 0.3, BELT - 0.34, bev=0.02)   # handle
 
 
 # ------------------------------------------------------------------ greenhouse
@@ -1374,7 +1377,7 @@ def split_onto_doors():
         if kind == "RoofGlass":
             return W - 0.32 - TUCK - 0.2, BELT, ROOF
         if kind == "RoofBody" and S.get("smooth"):        # the canopy's sill band under the door glass
-            return W - 0.32 - TUCK - 0.2, DOOR_Z0, BELT + 0.3
+            return 1.5, DOOR_Z0, BELT + 0.3                   # (the canopy narrows at the rear doors)
         if kind == "RoofChrome":                          # window surround + door trim strips ride on the doors
             return W - 0.32 - TUCK - 0.2, DOOR_Z0 - 0.1, ROOF
         return None

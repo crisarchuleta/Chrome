@@ -135,7 +135,7 @@ def headlights():
                     xa, xb_ = s * (xu(a) * W - (g if k == 0 else 0)), s * (xu(b) * W + (g if k == n - 1 else 0))
                     decal(kd, (xa, yc, f1(a) + g), (xb_, yc, f1(b) + g), (xb_, yc, f0(b) - g), (xa, yc, f0(a) - g), (0, 1, 0),
                           nu=3, nv=3, out=out, inn=inn)
-            strip(kind(S, "Slim", "Dark"), zbot, ztop, 0.05, 0.02, 0.06)                       # housing
+            strip(kind(S, "Slim", "Dark"), zbot, ztop, 0.02, 0.02, 0.06)                       # housing
             strip(kind(S, "Slim", "Chrome"), zbot, ztop, 0.0, 0.04, 0.02)                      # the lamp's reflector
             strip(kind(S, "Slim", "Head"), lambda u: ztop(u) - 0.075, lambda u: ztop(u) - 0.025, 0.0, 0.055, 0.0,
                   u0=0.04, u1=0.9)                                                             # LED strip (lights up)
