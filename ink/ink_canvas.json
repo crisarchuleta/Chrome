@@ -1,0 +1,208 @@
+{
+ "canvas": {
+  "Arm": [
+   768,
+   1024,
+   0.75
+  ],
+  "Leg": [
+   640,
+   1024,
+   0.625
+  ],
+  "Hand": [
+   512,
+   1024
+  ],
+  "Neck": [
+   1024,
+   384
+  ],
+  "Face": [
+   768,
+   1024
+  ]
+ },
+ "bodies": {
+  "Male_Skinny": {
+   "k": 3.7967719221382996,
+   "spots": [
+    "Ink_LeftUpperArm",
+    "Ink_LeftLowerArm",
+    "Ink_LeftUpperLeg",
+    "Ink_LeftLowerLeg",
+    "Ink_LeftHand",
+    "Ink_RightUpperArm",
+    "Ink_RightLowerArm",
+    "Ink_RightUpperLeg",
+    "Ink_RightLowerLeg",
+    "Ink_RightHand",
+    "Ink_NeckHead",
+    "Ink_NeckUpperTorso",
+    "Ink_Face"
+   ]
+  },
+  "Male_Average": {
+   "k": 3.8089284987262126,
+   "spots": [
+    "Ink_LeftUpperArm",
+    "Ink_LeftLowerArm",
+    "Ink_LeftUpperLeg",
+    "Ink_LeftLowerLeg",
+    "Ink_LeftHand",
+    "Ink_RightUpperArm",
+    "Ink_RightLowerArm",
+    "Ink_RightUpperLeg",
+    "Ink_RightLowerLeg",
+    "Ink_RightHand",
+    "Ink_NeckHead",
+    "Ink_NeckUpperTorso",
+    "Ink_Face"
+   ]
+  },
+  "Male_Athletic": {
+   "k": 3.7941054346856107,
+   "spots": [
+    "Ink_LeftUpperArm",
+    "Ink_LeftLowerArm",
+    "Ink_LeftUpperLeg",
+    "Ink_LeftLowerLeg",
+    "Ink_LeftHand",
+    "Ink_RightUpperArm",
+    "Ink_RightLowerArm",
+    "Ink_RightUpperLeg",
+    "Ink_RightLowerLeg",
+    "Ink_RightHand",
+    "Ink_NeckHead",
+    "Ink_NeckUpperTorso",
+    "Ink_Face"
+   ]
+  },
+  "Male_Muscular": {
+   "k": 3.806546163023188,
+   "spots": [
+    "Ink_LeftUpperArm",
+    "Ink_LeftLowerArm",
+    "Ink_LeftUpperLeg",
+    "Ink_LeftLowerLeg",
+    "Ink_LeftHand",
+    "Ink_RightUpperArm",
+    "Ink_RightLowerArm",
+    "Ink_RightUpperLeg",
+    "Ink_RightLowerLeg",
+    "Ink_RightHand",
+    "Ink_NeckHead",
+    "Ink_NeckUpperTorso",
+    "Ink_Face"
+   ]
+  },
+  "Male_Heavy": {
+   "k": 3.807115891759985,
+   "spots": [
+    "Ink_LeftUpperArm",
+    "Ink_LeftLowerArm",
+    "Ink_LeftUpperLeg",
+    "Ink_LeftLowerLeg",
+    "Ink_LeftHand",
+    "Ink_RightUpperArm",
+    "Ink_RightLowerArm",
+    "Ink_RightUpperLeg",
+    "Ink_RightLowerLeg",
+    "Ink_RightHand",
+    "Ink_NeckHead",
+    "Ink_NeckUpperTorso",
+    "Ink_Face"
+   ]
+  },
+  "Female_Skinny": {
+   "k": 3.33329929310954,
+   "spots": [
+    "Ink_LeftUpperArm",
+    "Ink_LeftLowerArm",
+    "Ink_LeftUpperLeg",
+    "Ink_LeftLowerLeg",
+    "Ink_LeftHand",
+    "Ink_RightUpperArm",
+    "Ink_RightLowerArm",
+    "Ink_RightUpperLeg",
+    "Ink_RightLowerLeg",
+    "Ink_RightHand",
+    "Ink_NeckHead",
+    "Ink_NeckUpperTorso",
+    "Ink_Face"
+   ]
+  },
+  "Female_Average": {
+   "k": 3.325547663013587,
+   "spots": [
+    "Ink_LeftUpperArm",
+    "Ink_LeftLowerArm",
+    "Ink_LeftUpperLeg",
+    "Ink_LeftLowerLeg",
+    "Ink_LeftHand",
+    "Ink_RightUpperArm",
+    "Ink_RightLowerArm",
+    "Ink_RightUpperLeg",
+    "Ink_RightLowerLeg",
+    "Ink_RightHand",
+    "Ink_NeckHead",
+    "Ink_NeckUpperTorso",
+    "Ink_Face"
+   ]
+  },
+  "Female_Athletic": {
+   "k": 3.33315965332342,
+   "spots": [
+    "Ink_LeftUpperArm",
+    "Ink_LeftLowerArm",
+    "Ink_LeftUpperLeg",
+    "Ink_LeftLowerLeg",
+    "Ink_LeftHand",
+    "Ink_RightUpperArm",
+    "Ink_RightLowerArm",
+    "Ink_RightUpperLeg",
+    "Ink_RightLowerLeg",
+    "Ink_RightHand",
+    "Ink_NeckHead",
+    "Ink_NeckUpperTorso",
+    "Ink_Face"
+   ]
+  },
+  "Female_Muscular": {
+   "k": 3.3266861452145524,
+   "spots": [
+    "Ink_LeftUpperArm",
+    "Ink_LeftLowerArm",
+    "Ink_LeftUpperLeg",
+    "Ink_LeftLowerLeg",
+    "Ink_LeftHand",
+    "Ink_RightUpperArm",
+    "Ink_RightLowerArm",
+    "Ink_RightUpperLeg",
+    "Ink_RightLowerLeg",
+    "Ink_RightHand",
+    "Ink_NeckHead",
+    "Ink_NeckUpperTorso",
+    "Ink_Face"
+   ]
+  },
+  "Female_Heavy": {
+   "k": 3.326686019642969,
+   "spots": [
+    "Ink_LeftUpperArm",
+    "Ink_LeftLowerArm",
+    "Ink_LeftUpperLeg",
+    "Ink_LeftLowerLeg",
+    "Ink_LeftHand",
+    "Ink_RightUpperArm",
+    "Ink_RightLowerArm",
+    "Ink_RightUpperLeg",
+    "Ink_RightLowerLeg",
+    "Ink_RightHand",
+    "Ink_NeckHead",
+    "Ink_NeckUpperTorso",
+    "Ink_Face"
+   ]
+  }
+ }
+}
